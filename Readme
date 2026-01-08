@@ -1,1 +1,5 @@
-Hello
+# Web Catalog Application
+
+A complete web application for generating product catalog PDFs from CSV files with WYSIWYG admin interface.
+
+See [README.md](./README.md) for full documentation.
