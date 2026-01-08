@@ -2,7 +2,23 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
-const dbPath = process.env.DB_PATH || path.join(__dirname, '../../../database/catalog.db');
+// Find project root (where package.json is)
+const findProjectRoot = (startPath) => {
+  let currentPath = startPath;
+  while (currentPath !== path.parse(currentPath).root) {
+    if (fs.existsSync(path.join(currentPath, 'package.json'))) {
+      const packageJson = require(path.join(currentPath, 'package.json'));
+      if (packageJson.name === 'web-catalog') {
+        return currentPath;
+      }
+    }
+    currentPath = path.dirname(currentPath);
+  }
+  return startPath;
+};
+
+const projectRoot = findProjectRoot(__dirname);
+const dbPath = process.env.DB_PATH || path.join(projectRoot, 'database/catalog.db');
 
 // Ensure database directory exists
 const dbDir = path.dirname(dbPath);

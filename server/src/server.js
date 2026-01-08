@@ -2,6 +2,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../.env') }
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -29,7 +30,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/logos', logoRoutes);
 app.use('/api', pdfRoutes);
-app.use('/api', settingsRoutes);
+app.use(settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
