@@ -1,0 +1,32 @@
+{
+  "name": "web-catalog",
+  "version": "1.0.0",
+  "description": "Application web pour générer des fiches articles à partir de fichiers CSV",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm install --workspace=client && npm install --workspace=server",
+    "setup-db": "npm run setup-db --workspace=server",
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "build": "npm run build --workspace=client",
+    "build:client": "npm run build --workspace=client",
+    "start": "npm start --workspace=server",
+    "clean": "rm -rf node_modules client/node_modules server/node_modules client/dist server/dist"
+  },
+  "keywords": [
+    "catalog",
+    "pdf",
+    "csv",
+    "wysiwyg"
+  ],
+  "author": "Progressio",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
