@@ -140,6 +140,18 @@ function initializeDatabase() {
   
   if (fs.existsSync(dbPath)) {
     log('  ℹ️  Base de données existe déjà', 'reset');
+    log('  📊 Exécution des migrations...', 'cyan');
+    
+    try {
+      execSync('npm run migrate --workspace=server', { 
+        stdio: 'inherit',
+        cwd: path.join(__dirname, '..')
+      });
+      log('  ✅ Migrations appliquées avec succès', 'green');
+    } catch (error) {
+      log('  ⚠️  Certaines migrations ont peut-être déjà été appliquées', 'yellow');
+    }
+    
     log('  💡 Pour réinitialiser la base de données, exécutez: npm run setup-db', 'yellow');
     return;
   }

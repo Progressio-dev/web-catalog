@@ -11,6 +11,11 @@ CREATE TABLE IF NOT EXISTS templates (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   config TEXT NOT NULL,  -- JSON structure for drag & drop elements
+  page_format TEXT DEFAULT 'A4',  -- 'A4', 'A5', 'Letter', 'Custom'
+  page_orientation TEXT DEFAULT 'portrait',  -- 'portrait', 'landscape'
+  page_width REAL,  -- width in mm for custom format
+  page_height REAL,  -- height in mm for custom format
+  csv_separator TEXT DEFAULT ',',  -- CSV separator character
   is_active INTEGER DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
