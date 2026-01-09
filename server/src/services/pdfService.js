@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer');
 const path = require('path');
+const fs = require('fs');
 const { dbGet } = require('../config/database');
 
 /**
@@ -59,21 +60,29 @@ exports.generatePreviewHtml = async ({ item, template, logos }) => {
   // Get background color from template
   const backgroundColor = template?.background_color || templateConfig?.backgroundColor || '#FFFFFF';
 
-  // Use same HTML structure as buildHtml() with mm units
+  // Use same HTML structure as buildHtml() with mm units and proper CSS
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
       <style>
-        body { margin: 0; padding: 20px; background: #f0f0f0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          margin: 0; 
+          padding: 20px; 
+          background: #f0f0f0;
+          display: flex;
+          justify-content: center;
+          align-items: flex-start;
+        }
         .page {
           position: relative;
           width: ${pageWidth}mm;
           height: ${pageHeight}mm;
-          background-color: ${backgroundColor};
-          margin: 0 auto;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          background: ${backgroundColor};
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          overflow: hidden;
         }
       </style>
     </head>
@@ -168,11 +177,40 @@ async function renderElement(element, item, logos, template) {
     }
     
     if (logoPath) {
-      // Ensure absolute path for file:// protocol
-      const absolutePath = logoPath.startsWith('/')  ? logoPath : path.resolve(logoPath);
-      return `<img src="file://${absolutePath}" alt="Logo" style="${baseStyle} object-fit: contain;" />`;
+      // Convert relative path to absolute filesystem path
+      let absolutePath = logoPath;
+      
+      if (!logoPath.startsWith('http') && !path.isAbsolute(logoPath)) {
+        // Remove leading /uploads if present
+        const cleanPath = logoPath.replace(/^\/uploads\//, '');
+        absolutePath = path.join(__dirname, '../../uploads', cleanPath);
+      }
+      
+      // Check if file exists
+      if (fs.existsSync(absolutePath)) {
+        const imageStyle = `
+          ${baseStyle}
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        `;
+        
+        const imgStyle = `
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        `;
+        
+        // Use file:// protocol for local files
+        const src = absolutePath.startsWith('http') 
+          ? absolutePath 
+          : `file://${absolutePath}`;
+        
+        return `<div style="${imageStyle}"><img src="${src}" style="${imgStyle}" /></div>`;
+      }
     }
-    return '';
+    
+    return `<div style="${baseStyle}">Logo non trouvé</div>`;
   }
 
   if (element.type === 'image') {

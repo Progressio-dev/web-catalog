@@ -147,6 +147,7 @@ exports.generatePdf = async (req, res) => {
     // Set response headers
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="catalog-${Date.now()}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Generate PDF error:', error);

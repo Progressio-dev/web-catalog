@@ -1,4 +1,5 @@
 import React from 'react';
+import { logoAPI } from '../../../services/api';
 
 const PAGE_FORMATS = {
   A4: { width: 210, height: 297 },
@@ -10,6 +11,20 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
   const [zoom, setZoom] = React.useState(1);
   const [currentRowIndex, setCurrentRowIndex] = React.useState(0);
   const [codeResults, setCodeResults] = React.useState({});
+  const [logos, setLogos] = React.useState([]);
+
+  // Fetch logos on mount
+  React.useEffect(() => {
+    const fetchLogos = async () => {
+      try {
+        const response = await logoAPI.getAll();
+        setLogos(response.data.filter(logo => logo.is_active));
+      } catch (error) {
+        console.error('Error fetching logos:', error);
+      }
+    };
+    fetchLogos();
+  }, []);
 
   const pageWidth =
     pageConfig.format === 'Custom'
@@ -130,24 +145,47 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     }
 
     if (element.type === 'logo') {
-      const content = element.logoPath 
-        ? <img src={element.logoPath} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-        : 'Logo';
-
+      // Find logo by ID
+      const logo = logos?.find(l => l.id === element.logoId || l.id === parseInt(element.logoId));
+      
+      if (logo) {
+        // Build correct logo URL
+        const logoUrl = logo.path.startsWith('http') 
+          ? logo.path 
+          : `http://localhost:5000${logo.path}`;
+          
+        return (
+          <div key={element.id} style={baseStyle}>
+            <img 
+              src={logoUrl}
+              alt={logo.name || 'Logo'}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain'
+              }}
+              onError={(e) => {
+                console.error('Logo load error:', logoUrl);
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;border:1px dashed #ccc;font-size:10px;color:#999;">Logo erreur</div>';
+              }}
+            />
+          </div>
+        );
+      }
+      
+      // Fallback if logo not found
       return (
-        <div
-          key={element.id}
-          style={{
-            ...baseStyle,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#f0f0f0',
-            fontSize: '10px',
-            color: '#999',
-          }}
-        >
-          {content}
+        <div key={element.id} style={{
+          ...baseStyle,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '1px dashed #ccc',
+          fontSize: '10px',
+          color: '#999'
+        }}>
+          Logo non trouvé
         </div>
       );
     }
