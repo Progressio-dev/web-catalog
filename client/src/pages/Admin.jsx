@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
-import TemplateEditor from '../components/Admin/TemplateEditor';
+import TemplateList from '../components/Admin/TemplateList';
 import LogoManager from '../components/Admin/LogoManager';
 import MappingConfig from '../components/Admin/MappingConfig';
 import SettingsPanel from '../components/Admin/SettingsPanel';
@@ -76,7 +76,7 @@ const Admin = () => {
         </nav>
 
         <main style={styles.main}>
-          {activeTab === 'templates' && <TemplateEditor />}
+          {activeTab === 'templates' && <TemplateList />}
           {activeTab === 'logos' && <LogoManager />}
           {activeTab === 'mappings' && <MappingConfig />}
           {activeTab === 'settings' && <SettingsPanel />}
