@@ -87,11 +87,12 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   useEffect(() => {
     if (selectedElement) {
       const latestElement = elements.find(el => el.id === selectedElement.id);
-      if (latestElement) {
+      // Only update if the element data has actually changed to prevent loops
+      if (latestElement && latestElement !== selectedElement) {
         setSelectedElement(latestElement);
       }
     }
-  }, [elements]);
+  }, [elements, selectedElement]);
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) {
