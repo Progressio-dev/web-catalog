@@ -12,7 +12,7 @@ const TemplateSelector = ({ onTemplateSelected }) => {
 
   const fetchTemplates = async () => {
     try {
-      const response = await api.get('/api/templates');
+      const response = await api.get('/templates');
       // Filter only active templates for users
       const activeTemplates = response.data.filter((t) => t.is_active);
       setTemplates(activeTemplates);

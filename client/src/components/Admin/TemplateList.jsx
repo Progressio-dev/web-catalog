@@ -15,7 +15,7 @@ const TemplateList = () => {
 
   const fetchTemplates = async () => {
     try {
-      const response = await api.get('/api/templates');
+      const response = await api.get('/templates');
       setTemplates(response.data);
     } catch (error) {
       console.error('Fetch templates error:', error);
@@ -31,7 +31,7 @@ const TemplateList = () => {
     }
 
     try {
-      await api.delete(`/api/templates/${id}`);
+      await api.delete(`/templates/${id}`);
       toast.success('Template supprimé');
       fetchTemplates();
     } catch (error) {
@@ -42,7 +42,7 @@ const TemplateList = () => {
 
   const handleDuplicate = async (id) => {
     try {
-      await api.post(`/api/templates/${id}/duplicate`);
+      await api.post(`/templates/${id}/duplicate`);
       toast.success('Template dupliqué');
       fetchTemplates();
     } catch (error) {
@@ -53,7 +53,7 @@ const TemplateList = () => {
 
   const handleToggleActive = async (template) => {
     try {
-      await api.put(`/api/templates/${template.id}`, {
+      await api.put(`/templates/${template.id}`, {
         is_active: template.is_active ? 0 : 1,
       });
       toast.success(

@@ -40,7 +40,7 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
 
       // Call PDF generation API
       const response = await api.post(
-        '/api/generate-pdf',
+        '/generate-pdf',
         {
           templateId: template.id,
           selectedRows: selectedData,
