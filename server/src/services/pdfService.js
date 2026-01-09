@@ -183,7 +183,9 @@ async function renderElement(element, item, logos, template) {
       if (!logoPath.startsWith('http') && !path.isAbsolute(logoPath)) {
         // Remove leading /uploads if present
         const cleanPath = logoPath.replace(/^\/uploads\//, '');
-        absolutePath = path.join(__dirname, '../../uploads', cleanPath);
+        // Use configurable upload directory
+        const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+        absolutePath = path.join(uploadDir, cleanPath);
       }
       
       // Check if file exists

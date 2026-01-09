@@ -149,10 +149,10 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
       const logo = logos?.find(l => l.id === element.logoId || l.id === parseInt(element.logoId));
       
       if (logo) {
-        // Build correct logo URL
+        // Build correct logo URL - use relative path that works with Vite proxy
         const logoUrl = logo.path.startsWith('http') 
           ? logo.path 
-          : `http://localhost:5000${logo.path}`;
+          : logo.path; // Proxy handles /uploads paths
           
         return (
           <div key={element.id} style={baseStyle}>
@@ -166,8 +166,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
               }}
               onError={(e) => {
                 console.error('Logo load error:', logoUrl);
-                e.target.style.display = 'none';
-                e.target.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;border:1px dashed #ccc;font-size:10px;color:#999;">Logo erreur</div>';
+                // Hide the broken image
+                e.target.style.opacity = '0';
               }}
             />
           </div>
