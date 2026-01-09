@@ -62,7 +62,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
       return String(result);
     } catch (error) {
       console.error('Erreur d\'exécution du code JS:', error);
-      return `❌ Erreur: ${error.message}`;
+      // Use generic error message to avoid exposing system details
+      return '❌ Erreur d\'exécution du code';
     }
   };
 
