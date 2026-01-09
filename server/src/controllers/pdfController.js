@@ -128,18 +128,11 @@ exports.generatePdf = async (req, res) => {
       logo = await dbGet('SELECT * FROM logos WHERE id = ? AND is_active = 1', [logoId]);
     }
 
-    // Get mappings for template
-    let mappings = [];
-    if (template) {
-      mappings = await dbAll('SELECT * FROM mappings WHERE template_id = ?', [template.id]);
-    }
-
     // Generate PDF
     const pdfBuffer = await pdfService.generatePdf({
       items,
       template,
       logo,
-      mappings,
       visibleFields,
       options
     });
