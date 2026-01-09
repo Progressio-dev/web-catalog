@@ -2,6 +2,110 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const { dbGet } = require('../config/database');
 
+// Page format definitions
+const PAGE_FORMATS = {
+  'A4': { width: 210, height: 297 }, // mm
+  'A5': { width: 148, height: 210 },
+  'Letter': { width: 215.9, height: 279.4 },
+  'Custom': { width: null, height: null } // defined by user
+};
+
+// Generate preview HTML for a single item
+exports.generatePreviewHtml = async ({ item, template, logos }) => {
+  const templateConfig = template ? JSON.parse(template.config) : null;
+  
+  if (!templateConfig || !templateConfig.elements) {
+    return '<div style="padding: 20px;">Aucun élément dans le template</div>';
+  }
+
+  const elements = templateConfig.elements.map(element => {
+    return renderElement(element, item, logos, template);
+  }).join('');
+
+  const pageWidth = template.page_format === 'Custom' ? template.page_width : PAGE_FORMATS[template.page_format]?.width || 210;
+  const pageHeight = template.page_format === 'Custom' ? template.page_height : PAGE_FORMATS[template.page_format]?.height || 297;
+
+  return `
+    <div style="position: relative; width: ${pageWidth}mm; height: ${pageHeight}mm; background: white; border: 1px solid #ddd;">
+      ${elements}
+    </div>
+  `;
+};
+
+// Render a single element
+function renderElement(element, item, logos, template) {
+  const baseStyle = `
+    position: absolute;
+    left: ${element.x || 0}px;
+    top: ${element.y || 0}px;
+    width: ${element.width || 'auto'}px;
+    height: ${element.height || 'auto'}px;
+  `;
+
+  if (element.type === 'text') {
+    const content = item[element.csvColumn] || '';
+    const textStyle = `
+      ${baseStyle}
+      font-size: ${element.fontSize || 12}px;
+      font-family: ${element.fontFamily || 'Arial'}, sans-serif;
+      font-weight: ${element.fontWeight || 'normal'};
+      font-style: ${element.fontStyle || 'normal'};
+      color: ${element.color || '#000000'};
+      text-align: ${element.textAlign || 'left'};
+      ${element.wordWrap ? 'word-wrap: break-word; overflow-wrap: break-word;' : 'white-space: nowrap;'}
+      text-decoration: ${element.textDecoration || 'none'};
+    `;
+    return `<div style="${textStyle}">${content}</div>`;
+  }
+
+  if (element.type === 'logo') {
+    const logo = logos.find(l => l.id === element.logoId);
+    if (logo) {
+      return `<img src="file://${path.resolve(logo.path)}" alt="Logo" style="${baseStyle} object-fit: contain;" />`;
+    }
+    return '';
+  }
+
+  if (element.type === 'image') {
+    const imageUrl = buildProductImageUrl(item, element);
+    if (imageUrl) {
+      const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'};`;
+      return `<img src="${imageUrl}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
+    }
+    return '';
+  }
+
+  if (element.type === 'line') {
+    const lineStyle = `
+      ${baseStyle}
+      border-bottom: ${element.thickness || 1}px ${element.style || 'solid'} ${element.color || '#000000'};
+    `;
+    return `<div style="${lineStyle}"></div>`;
+  }
+
+  if (element.type === 'rectangle') {
+    const rectStyle = `
+      ${baseStyle}
+      background-color: ${element.backgroundColor || 'transparent'};
+      border: ${element.borderWidth || 1}px ${element.borderStyle || 'solid'} ${element.borderColor || '#000000'};
+      border-radius: ${element.borderRadius || 0}px;
+    `;
+    return `<div style="${rectStyle}"></div>`;
+  }
+
+  return '';
+}
+
+// Build product image URL
+function buildProductImageUrl(item, element) {
+  if (!element.baseUrl || !element.csvColumn) return null;
+  
+  const value = item[element.csvColumn];
+  if (!value) return null;
+
+  return `${element.baseUrl}${value}${element.extension || ''}`;
+}
+
 // Build HTML from template and data
 const buildHtml = (items, template, logo, mappings, visibleFields, options = {}) => {
   const templateConfig = template ? JSON.parse(template.config) : null;
@@ -12,7 +116,7 @@ const buildHtml = (items, template, logo, mappings, visibleFields, options = {})
     
     return `
       <div class="product-card" style="page-break-after: always; padding: 20px; font-family: Arial, sans-serif;">
-        ${logo ? `<img src="${logo.path}" alt="Logo" style="max-width: 200px; margin-bottom: 20px;" />` : ''}
+        ${logo ? `<img src="file://${path.resolve(logo.path)}" alt="Logo" style="max-width: 200px; margin-bottom: 20px;" />` : ''}
         ${fields.map(field => `
           <div style="margin-bottom: 10px;">
             <strong>${field}:</strong> ${item[field] || ''}
@@ -25,46 +129,22 @@ const buildHtml = (items, template, logo, mappings, visibleFields, options = {})
   // If template config exists, use it to build custom HTML
   let customHtml = '';
   if (templateConfig && templateConfig.elements) {
-    customHtml = items.map(item => {
+    // Get all logos for rendering
+    const logos = logo ? [logo] : [];
+    
+    customHtml = items.map((item, index) => {
       const elements = templateConfig.elements.map(element => {
-        const style = `
-          position: absolute;
-          left: ${element.x || 0}px;
-          top: ${element.y || 0}px;
-          width: ${element.width || 'auto'};
-          height: ${element.height || 'auto'};
-          font-size: ${element.fontSize || 12}px;
-          font-weight: ${element.fontWeight || 'normal'};
-          font-style: ${element.fontStyle || 'normal'};
-          color: ${element.color || '#000'};
-          background: ${element.background || 'transparent'};
-          border: ${element.border || 'none'};
-        `;
-
-        // Map CSV field to element
-        let content = element.content || '';
-        if (element.type === 'text' && element.field) {
-          const mapping = mappings.find(m => m.pdf_zone === element.id);
-          if (mapping && item[mapping.csv_field]) {
-            content = item[mapping.csv_field];
-          }
-        } else if (element.type === 'image') {
-          if (element.source === 'logo' && logo) {
-            return `<img src="${logo.path}" alt="Logo" style="${style}" />`;
-          } else if (element.source === 'product') {
-            // Build product image URL
-            const imageUrl = buildProductImageUrl(item, options.productImageBaseUrl);
-            if (imageUrl) {
-              return `<img src="${imageUrl}" alt="Product" style="${style}" />`;
-            }
-          }
-        }
-
-        return `<div style="${style}">${content}</div>`;
+        return renderElement(element, item, logos, template);
       }).join('');
 
+      const pageWidth = template.page_format === 'Custom' ? template.page_width : PAGE_FORMATS[template.page_format]?.width || 210;
+      const pageHeight = template.page_format === 'Custom' ? template.page_height : PAGE_FORMATS[template.page_format]?.height || 297;
+
+      // Add page break after each page except the last one
+      const pageBreak = index < items.length - 1 ? 'page-break-after: always;' : '';
+
       return `
-        <div class="product-card" style="page-break-after: always; position: relative; width: 210mm; height: 297mm;">
+        <div class="product-card" style="position: relative; width: ${pageWidth}mm; height: ${pageHeight}mm; ${pageBreak}">
           ${elements}
         </div>
       `;
@@ -80,6 +160,9 @@ const buildHtml = (items, template, logo, mappings, visibleFields, options = {})
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; }
         .product-card:last-child { page-break-after: auto; }
+        @media print {
+          .product-card { page-break-inside: avoid; }
+        }
       </style>
     </head>
     <body>
@@ -89,17 +172,6 @@ const buildHtml = (items, template, logo, mappings, visibleFields, options = {})
   `;
 
   return html;
-};
-
-// Build product image URL
-const buildProductImageUrl = (item, baseUrl) => {
-  if (!baseUrl) return null;
-  
-  // Try to find reference field
-  const referenceField = item.reference || item.Reference || item.ref || item.sku || item.SKU;
-  if (!referenceField) return null;
-
-  return `${baseUrl}${referenceField}.jpg`;
 };
 
 // Generate PDF
@@ -129,17 +201,31 @@ exports.generatePdf = async (params) => {
     // Set content
     await page.setContent(html, { waitUntil: 'networkidle0' });
 
-    // Generate PDF
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
+    // Configure page format based on template
+    const pageConfig = {
       printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px'
+      margin: { top: 0, right: 0, bottom: 0, left: 0 }
+    };
+
+    if (template) {
+      const format = template.page_format || 'A4';
+      const orientation = template.page_orientation || 'portrait';
+
+      if (format === 'Custom' && template.page_width && template.page_height) {
+        pageConfig.width = `${template.page_width}mm`;
+        pageConfig.height = `${template.page_height}mm`;
+      } else {
+        pageConfig.format = format;
       }
-    });
+
+      pageConfig.landscape = orientation === 'landscape';
+    } else {
+      pageConfig.format = 'A4';
+      pageConfig.landscape = false;
+    }
+
+    // Generate PDF
+    const pdfBuffer = await page.pdf(pageConfig);
 
     return pdfBuffer;
   } catch (error) {

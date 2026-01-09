@@ -99,3 +99,41 @@ exports.deleteTemplate = async (req, res) => {
     res.status(500).json({ error: 'Failed to delete template' });
   }
 };
+
+// Duplicate template
+exports.duplicateTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const template = await dbGet('SELECT * FROM templates WHERE id = ?', [id]);
+    
+    if (!template) {
+      return res.status(404).json({ error: 'Template non trouvé' });
+    }
+
+    // Create duplicate with new name
+    const newName = `${template.name} (copie)`;
+    
+    const result = await dbRun(
+      `INSERT INTO templates (name, config, page_format, page_orientation, page_width, page_height, csv_separator, is_active) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newName,
+        template.config,
+        template.page_format || 'A4',
+        template.page_orientation || 'portrait',
+        template.page_width,
+        template.page_height,
+        template.csv_separator || ',',
+        0  // Inactive by default
+      ]
+    );
+
+    const newTemplate = await dbGet('SELECT * FROM templates WHERE id = ?', [result.lastID]);
+    
+    res.status(201).json(newTemplate);
+  } catch (error) {
+    console.error('Duplicate template error:', error);
+    res.status(500).json({ error: 'Échec de la duplication du template' });
+  }
+};

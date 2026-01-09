@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const pdfController = require('../controllers/pdfController');
+const authMiddleware = require('../middleware/authMiddleware');
 
 // Configure multer for CSV uploads
 const storage = multer.diskStorage({
@@ -33,5 +34,9 @@ const upload = multer({
 // Public routes
 router.post('/upload-csv', upload.single('csv'), pdfController.uploadCsv);
 router.post('/generate-pdf', pdfController.generatePdf);
+
+// Protected routes (admin only)
+router.post('/templates/analyze-csv', authMiddleware, pdfController.analyzeCsv);
+router.post('/preview', authMiddleware, pdfController.generatePreview);
 
 module.exports = router;
