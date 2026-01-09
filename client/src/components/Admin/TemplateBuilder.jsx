@@ -112,11 +112,11 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
 
       if (template?.id) {
         // Edit mode - use PUT
-        await api.put(`/api/templates/${template.id}`, payload);
+        await api.put(`/templates/${template.id}`, payload);
         toast.success('Template mis à jour avec succès');
       } else {
         // Create mode - use POST
-        await api.post('/api/templates', payload);
+        await api.post('/templates', payload);
         toast.success('Template créé avec succès');
       }
 

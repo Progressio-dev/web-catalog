@@ -15,7 +15,7 @@ const Step1TemplateSelector = ({ onTemplateSelected }) => {
 
   const fetchTemplates = async () => {
     try {
-      const response = await api.get('/api/templates');
+      const response = await api.get('/templates');
       // Filter only active templates
       const activeTemplates = response.data.filter(t => t.is_active === 1);
       setTemplates(activeTemplates);
