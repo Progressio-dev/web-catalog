@@ -61,7 +61,7 @@ const CsvUploader = ({ onCsvUploaded, separator, onSeparatorChange }) => {
       formData.append('csv', file);
       formData.append('separator', separator);
 
-      const response = await api.post('/api/templates/analyze-csv', formData, {
+      const response = await api.post('/templates/analyze-csv', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
