@@ -116,7 +116,9 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
         {/* Right Panel - Preview */}
         <div style={styles.rightPanel}>
           <div style={styles.previewHeader}>
-            <h3 style={styles.previewTitle}>👁️ Aperçu Visuel</h3>
+            <h3 style={styles.previewTitle}>
+              <span aria-label="Aperçu visuel">👁️</span> Aperçu Visuel
+            </h3>
             {csvData.length > 0 && (
               <div style={styles.previewNav}>
                 <button

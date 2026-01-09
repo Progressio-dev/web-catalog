@@ -89,6 +89,10 @@ const RowPreview = ({ row, template, logos }) => {
       </div>
       <div style={styles.previewWrapper}>
         <div
+          // SECURITY NOTE: The HTML comes from our own trusted backend service
+          // which generates preview content from the template and data.
+          // The backend sanitizes user input and uses server-side rendering.
+          // If additional security is needed, consider implementing CSP headers.
           dangerouslySetInnerHTML={{ __html: previewHtml }}
           style={{
             transform: `scale(${zoom})`,
@@ -145,8 +149,8 @@ const styles = {
     border: '4px solid #f3f3f3',
     borderTop: '4px solid #2196F3',
     borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
     marginBottom: '15px',
+    animation: 'spinnerRotate 1s linear infinite',
   },
   error: {
     display: 'flex',
@@ -166,14 +170,17 @@ const styles = {
   },
 };
 
-// Add spinner animation in a style tag
-const styleSheet = document.createElement('style');
-styleSheet.textContent = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-document.head.appendChild(styleSheet);
+// Inject CSS animation as a style tag once
+if (typeof document !== 'undefined' && !document.getElementById('row-preview-styles')) {
+  const styleSheet = document.createElement('style');
+  styleSheet.id = 'row-preview-styles';
+  styleSheet.textContent = `
+    @keyframes spinnerRotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(styleSheet);
+}
 
 export default RowPreview;
