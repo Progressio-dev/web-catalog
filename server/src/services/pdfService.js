@@ -42,20 +42,47 @@ exports.generatePreviewHtml = async ({ item, template, logos }) => {
   const elements = await Promise.all(elementPromises);
   const elementsHtml = elements.join('');
 
-  const pageWidth = template.page_format === 'Custom' ? template.page_width : PAGE_FORMATS[template.page_format]?.width || 210;
-  const pageHeight = template.page_format === 'Custom' ? template.page_height : PAGE_FORMATS[template.page_format]?.height || 297;
+  // Get page dimensions exactly as in buildHtml()
+  let pageWidth = template.page_format === 'Custom' 
+    ? template.page_width 
+    : PAGE_FORMATS[template.page_format]?.width || 210;
   
-  // Use same scale as canvas for consistency
-  const scale = 2.5;
-  const pixelWidth = pageWidth * scale;
-  const pixelHeight = pageHeight * scale;
+  let pageHeight = template.page_format === 'Custom'
+    ? template.page_height
+    : PAGE_FORMATS[template.page_format]?.height || 297;
   
+  // Apply orientation (landscape = swap width/height)
+  if (template.page_orientation === 'landscape') {
+    [pageWidth, pageHeight] = [pageHeight, pageWidth];
+  }
+  
+  // Get background color from template
   const backgroundColor = template?.background_color || templateConfig?.backgroundColor || '#FFFFFF';
 
+  // Use same HTML structure as buildHtml() with mm units
   return `
-    <div style="position: relative; width: ${pixelWidth}px; height: ${pixelHeight}px; background-color: ${backgroundColor}; border: 1px solid #ddd;">
-      ${elementsHtml}
-    </div>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { margin: 0; padding: 20px; background: #f0f0f0; }
+        .page {
+          position: relative;
+          width: ${pageWidth}mm;
+          height: ${pageHeight}mm;
+          background-color: ${backgroundColor};
+          margin: 0 auto;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+      </style>
+    </head>
+    <body>
+      <div class="page">
+        ${elementsHtml}
+      </div>
+    </body>
+    </html>
   `;
 };
 

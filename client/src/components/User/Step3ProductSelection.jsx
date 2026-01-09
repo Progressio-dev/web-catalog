@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import RowPreview from './RowPreview';
 
 /**
  * Step3ProductSelection - Product selection table with preview
@@ -6,6 +7,7 @@ import React, { useState } from 'react';
 const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected, onGeneratePdf, onBack }) => {
   const [selectAll, setSelectAll] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [hoveredRow, setHoveredRow] = useState(null);
 
   const handleSelectAll = () => {
     if (selectAll) {
@@ -80,11 +82,17 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
                     style={{
                       ...styles.tr,
                       ...(selectedRows.includes(index) ? styles.trSelected : {}),
+                      ...(hoveredRow === index ? styles.trHovered : {}),
                     }}
                     onClick={() => {
                       handleRowToggle(index);
                       setPreviewIndex(index);
                     }}
+                    onMouseEnter={() => {
+                      setHoveredRow(index);
+                      setPreviewIndex(index);
+                    }}
+                    onMouseLeave={() => setHoveredRow(null)}
                   >
                     <td style={styles.td}>
                       <input
@@ -108,8 +116,10 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
         {/* Right Panel - Preview */}
         <div style={styles.rightPanel}>
           <div style={styles.previewHeader}>
-            <h3 style={styles.previewTitle}>👁️ Aperçu</h3>
-            {selectedRows.length > 0 && (
+            <h3 style={styles.previewTitle}>
+              <span aria-label="Aperçu visuel">👁️</span> Aperçu Visuel
+            </h3>
+            {csvData.length > 0 && (
               <div style={styles.previewNav}>
                 <button
                   onClick={() => setPreviewIndex(Math.max(0, previewIndex - 1))}
@@ -139,23 +149,16 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
           </div>
 
           <div style={styles.previewContent}>
-            {selectedRows.length === 0 ? (
+            {csvData.length === 0 ? (
               <div style={styles.previewEmpty}>
-                <p>Sélectionnez au moins une fiche pour voir l'aperçu</p>
+                <p>Aucune donnée à afficher</p>
               </div>
             ) : (
-              <div style={styles.previewBox}>
-                <p style={styles.previewNote}>
-                  ℹ️ Aperçu simplifié de la ligne {previewIndex + 1}
-                </p>
-                <div style={styles.previewData}>
-                  {Object.entries(csvData[previewIndex]).map(([key, value]) => (
-                    <div key={key} style={styles.previewRow}>
-                      <strong>{key}:</strong> {value}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <RowPreview 
+                row={csvData[previewIndex]}
+                template={template}
+                logos={[]}
+              />
             )}
           </div>
         </div>
@@ -257,6 +260,9 @@ const styles = {
     cursor: 'pointer',
     transition: 'background-color 0.2s',
   },
+  trHovered: {
+    backgroundColor: '#f5f5f5',
+  },
   trSelected: {
     backgroundColor: '#e3f2fd',
   },
@@ -296,8 +302,7 @@ const styles = {
   },
   previewContent: {
     flex: 1,
-    overflow: 'auto',
-    padding: '20px',
+    overflow: 'hidden',
   },
   previewEmpty: {
     display: 'flex',
@@ -306,27 +311,6 @@ const styles = {
     height: '100%',
     color: '#999',
     fontSize: '16px',
-  },
-  previewBox: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: '8px',
-    padding: '20px',
-  },
-  previewNote: {
-    fontSize: '14px',
-    color: '#666',
-    marginBottom: '15px',
-  },
-  previewData: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  previewRow: {
-    fontSize: '14px',
-    padding: '8px',
-    backgroundColor: 'white',
-    borderRadius: '5px',
   },
   actions: {
     display: 'flex',
