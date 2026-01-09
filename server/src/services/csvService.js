@@ -30,11 +30,22 @@ exports.parseCSV = (filePath, separator = ',') => {
     fs.createReadStream(filePath)
       .pipe(csv({ separator: sep }))
       .on('data', (data) => {
-        results.push(data);
-        // Collect all unique field names
-        Object.keys(data).forEach(key => fields.add(key));
+        // Clean BOM and whitespace from keys
+        const cleanedData = {};
+        Object.keys(data).forEach(key => {
+          const cleanKey = key.replace(/^\uFEFF/, '').trim();
+          cleanedData[cleanKey] = data[key];
+          fields.add(cleanKey);
+        });
+        
+        results.push(cleanedData);
       })
       .on('end', () => {
+        // Log first row headers for debugging
+        if (results.length > 0) {
+          console.log('CSV Headers:', Object.keys(results[0]));
+        }
+        
         resolve({
           data: results,
           fields: Array.from(fields)

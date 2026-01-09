@@ -44,9 +44,16 @@ exports.generatePreviewHtml = async ({ item, template, logos }) => {
 
   const pageWidth = template.page_format === 'Custom' ? template.page_width : PAGE_FORMATS[template.page_format]?.width || 210;
   const pageHeight = template.page_format === 'Custom' ? template.page_height : PAGE_FORMATS[template.page_format]?.height || 297;
+  
+  // Use same scale as canvas for consistency
+  const scale = 2.5;
+  const pixelWidth = pageWidth * scale;
+  const pixelHeight = pageHeight * scale;
+  
+  const backgroundColor = template?.background_color || templateConfig?.backgroundColor || '#FFFFFF';
 
   return `
-    <div style="position: relative; width: ${pageWidth}mm; height: ${pageHeight}mm; background: white; border: 1px solid #ddd;">
+    <div style="position: relative; width: ${pixelWidth}px; height: ${pixelHeight}px; background-color: ${backgroundColor}; border: 1px solid #ddd;">
       ${elementsHtml}
     </div>
   `;
