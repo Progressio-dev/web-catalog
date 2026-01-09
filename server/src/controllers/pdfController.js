@@ -107,10 +107,13 @@ exports.generatePreview = async (req, res) => {
 // Generate PDF
 exports.generatePdf = async (req, res) => {
   try {
-    const { items, templateId, logoId, visibleFields, options } = req.body;
+    const { items, templateId, logoId, visibleFields, options, selectedRows } = req.body;
 
-    if (!items || items.length === 0) {
-      return res.status(400).json({ error: 'No items provided' });
+    // Support both 'items' and 'selectedRows' parameter names
+    const dataItems = items || selectedRows;
+
+    if (!dataItems || dataItems.length === 0) {
+      return res.status(400).json({ error: 'Aucun élément fourni' });
     }
 
     // Get template
@@ -128,11 +131,15 @@ exports.generatePdf = async (req, res) => {
       logo = await dbGet('SELECT * FROM logos WHERE id = ? AND is_active = 1', [logoId]);
     }
 
+    // Load all active logos for template elements that may reference them
+    const allLogos = await dbAll('SELECT * FROM logos WHERE is_active = 1');
+
     // Generate PDF
     const pdfBuffer = await pdfService.generatePdf({
-      items,
+      items: dataItems,
       template,
       logo,
+      allLogos, // Pass all logos for element rendering
       visibleFields,
       options
     });
@@ -143,6 +150,6 @@ exports.generatePdf = async (req, res) => {
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Generate PDF error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    res.status(500).json({ error: 'Échec de la génération du PDF' });
   }
 };
