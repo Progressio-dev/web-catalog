@@ -8,6 +8,7 @@
     "server"
   ],
   "scripts": {
+    "postinstall": "node scripts/post-install.js",
     "install:all": "npm install && npm install --workspace=client && npm install --workspace=server",
     "setup-db": "npm run setup-db --workspace=server",
     "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",

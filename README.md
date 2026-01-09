@@ -39,41 +39,71 @@ Application web complète pour générer des fiches articles à partir de fichie
 
 - Node.js 18+ 
 - npm ou yarn
+- **Dépendances système pour Puppeteer** (voir ci-dessous)
 
 ## Installation
 
-### 1. Cloner le repository
+### 1. Installer les dépendances système (Linux/Ubuntu/Debian)
+
+Puppeteer nécessite certaines bibliothèques système pour fonctionner correctement :
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  libgbm1 \
+  libnss3 \
+  libxss1 \
+  libasound2 \
+  libatk-bridge2.0-0 \
+  libgtk-3-0 \
+  libx11-xcb1 \
+  libxcomposite1 \
+  libxcursor1 \
+  libxdamage1 \
+  libxi6 \
+  libxtst6 \
+  libxrandr2 \
+  libpangocairo-1.0-0 \
+  libcups2 \
+  libdrm2
+```
+
+**Sur macOS et Windows**, ces dépendances sont généralement incluses avec Puppeteer.
+
+### 2. Cloner le repository
 
 ```bash
 git clone <repository-url>
 cd web-catalog
 ```
 
-### 2. Installer les dépendances
+### 3. Installer les dépendances Node.js
 
 ```bash
 npm install
 ```
 
-Cette commande installera les dépendances pour le projet root, le client et le serveur.
+Cette commande va :
+- Installer toutes les dépendances (root, client, serveur)
+- Créer automatiquement les dossiers nécessaires (`server/uploads`, `server/generated`, `database`)
+- Vérifier les dépendances système Puppeteer
+- Copier `.env.example` vers `.env` si nécessaire
+- Initialiser la base de données SQLite
 
-### 3. Configuration
+### 4. Configuration (optionnel)
 
-Copier le fichier `.env.example` vers `.env` et configurer les variables :
-
-```bash
-cp .env.example .env
-```
-
-Modifier les valeurs dans `.env` selon votre environnement.
-
-### 4. Initialiser la base de données
+Le fichier `.env` est créé automatiquement. Modifiez-le si nécessaire :
 
 ```bash
-npm run setup-db
+nano .env
 ```
 
-Cette commande créera la base SQLite avec le schéma et l'utilisateur admin par défaut.
+Variables disponibles :
+- `PORT` : Port du serveur (défaut: 5000)
+- `JWT_SECRET` : Secret pour JWT (changez-le en production!)
+- `ADMIN_EMAIL` : Email admin par défaut
+- `ADMIN_PASSWORD` : Mot de passe admin par défaut
+- `PRODUCT_IMAGE_BASE_URL` : URL de base pour les images produits
 
 ## Démarrage
 
@@ -253,6 +283,53 @@ npm run clean
 ## Support
 
 Pour toute question ou problème, ouvrez une issue sur le repository.
+
+## Troubleshooting Puppeteer
+
+### Erreur: "Failed to launch the browser process"
+
+Cette erreur signifie généralement qu'il manque des dépendances système. Solutions :
+
+1. **Vérifier les dépendances manquantes** :
+```bash
+ldd $(which chrome) # ou ldd ./node_modules/puppeteer/.local-chromium/linux-*/chrome-linux/chrome
+```
+
+2. **Réinstaller les dépendances système** :
+```bash
+sudo apt-get update
+sudo apt-get install -y libgbm1 libnss3 libxss1 libasound2 libatk-bridge2.0-0 libgtk-3-0
+```
+
+3. **Environnement sans tête (serveur sans GUI)** :
+Puppeteer fonctionne en mode headless par défaut, mais vous pouvez forcer certaines options :
+```javascript
+// Dans server/src/services/pdfService.js, les args sont déjà configurés
+args: ['--no-sandbox', '--disable-setuid-sandbox']
+```
+
+### Erreur: "Running as root without --no-sandbox is not supported"
+
+Si vous exécutez l'application en tant que root (déconseillé), Puppeteer nécessite l'option `--no-sandbox` qui est déjà incluse dans la configuration.
+
+### Performance lente de génération PDF
+
+1. **Installer les fonts** (améliore le rendu) :
+```bash
+sudo apt-get install -y fonts-liberation fonts-noto-color-emoji
+```
+
+2. **Limiter le nombre de pages** : Générez les PDFs par lots plutôt que tout en une fois.
+
+### Chromium ne se télécharge pas pendant l'installation
+
+1. **Réinstaller Puppeteer manuellement** :
+```bash
+cd server
+npm rebuild puppeteer
+```
+
+2. **Vérifier la connectivité internet** et les proxies éventuels.
 
 ## License
 
