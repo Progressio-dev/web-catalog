@@ -13,7 +13,7 @@ import { toast } from 'react-toastify';
  * Workflow: CSV Upload → Page Config → Drag & Drop → Preview → Save
  */
 const TemplateBuilder = ({ template, onSave, onCancel }) => {
-  const [step, setStep] = useState(1); // 1: CSV, 2: Page Config, 3: Builder
+  const [step, setStep] = useState(template ? 2 : 1); // Skip CSV upload if editing
   const [csvData, setCsvData] = useState(null);
   const [pageConfig, setPageConfig] = useState({
     format: template?.page_format || 'A4',
@@ -24,11 +24,29 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   });
   const [csvSeparator, setCsvSeparator] = useState(template?.csv_separator || ',');
   const [elements, setElements] = useState(
-    template?.config ? JSON.parse(template.config).elements || [] : []
+    template?.config ? (JSON.parse(template.config).elements || []) : []
   );
   const [selectedElement, setSelectedElement] = useState(null);
   const [templateName, setTemplateName] = useState(template?.name || '');
   const [saving, setSaving] = useState(false);
+  const [isEditMode] = useState(!!template);
+
+  // Extract CSV test data if saved in config
+  React.useEffect(() => {
+    if (template?.config) {
+      try {
+        const config = JSON.parse(template.config);
+        if (config.csvTestData) {
+          setCsvData({
+            columns: Object.keys(config.csvTestData[0] || {}),
+            preview: config.csvTestData,
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing template config:', error);
+      }
+    }
+  }, [template]);
 
   const handleCsvUploaded = (data) => {
     setCsvData(data);
@@ -73,7 +91,14 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
 
     setSaving(true);
     try {
-      const config = { elements, backgroundColor: pageConfig.backgroundColor };
+      // Save CSV test data in config for later editing
+      const csvTestData = csvData?.preview ? csvData.preview.slice(0, 5) : null;
+      const config = { 
+        elements, 
+        backgroundColor: pageConfig.backgroundColor,
+        csvTestData, // Save first 5 rows for preview during editing
+      };
+      
       const payload = {
         name: templateName,
         config: JSON.stringify(config),
@@ -86,9 +111,11 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
       };
 
       if (template?.id) {
+        // Edit mode - use PUT
         await api.put(`/api/templates/${template.id}`, payload);
         toast.success('Template mis à jour avec succès');
       } else {
+        // Create mode - use POST
         await api.post('/api/templates', payload);
         toast.success('Template créé avec succès');
       }
@@ -107,7 +134,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
       {/* Header with progress indicator */}
       <div style={styles.header}>
         <h2 style={styles.title}>
-          {template ? 'Modifier le template' : 'Créer un nouveau template'}
+          {isEditMode ? `Modifier le template: ${templateName}` : 'Créer un nouveau template'}
         </h2>
         <div style={styles.steps}>
           <div style={{ ...styles.step, ...(step >= 1 ? styles.stepActive : {}) }}>
@@ -135,11 +162,21 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
 
       {/* Step 2: Page Configuration */}
       {step === 2 && (
-        <PageConfigPanel
-          config={pageConfig}
-          onComplete={handlePageConfigComplete}
-          onBack={() => setStep(1)}
-        />
+        <div>
+          {isEditMode && !csvData && (
+            <div style={styles.editModeNotice}>
+              <p>ℹ️ Mode édition: Pour voir l'aperçu avec vos données, uploadez à nouveau un fichier CSV de test.</p>
+              <button onClick={() => setStep(1)} style={styles.btnSecondary}>
+                ← Charger un CSV de test
+              </button>
+            </div>
+          )}
+          <PageConfigPanel
+            config={pageConfig}
+            onComplete={handlePageConfigComplete}
+            onBack={() => setStep(1)}
+          />
+        </div>
       )}
 
       {/* Step 3: Template Builder */}
@@ -330,6 +367,13 @@ const styles = {
     padding: '20px',
     textAlign: 'center',
     color: '#666',
+  },
+  editModeNotice: {
+    padding: '20px',
+    margin: '20px',
+    backgroundColor: '#e3f2fd',
+    borderRadius: '8px',
+    textAlign: 'center',
   },
 };
 
