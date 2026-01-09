@@ -12,6 +12,7 @@ const PageConfigPanel = ({ config, onComplete, onBack }) => {
   const [orientation, setOrientation] = React.useState(config.orientation);
   const [width, setWidth] = React.useState(config.width || 210);
   const [height, setHeight] = React.useState(config.height || 297);
+  const [backgroundColor, setBackgroundColor] = React.useState(config.backgroundColor || '#FFFFFF');
 
   const handleContinue = () => {
     onComplete({
@@ -19,6 +20,7 @@ const PageConfigPanel = ({ config, onComplete, onBack }) => {
       orientation,
       width: format === 'Custom' ? parseFloat(width) : null,
       height: format === 'Custom' ? parseFloat(height) : null,
+      backgroundColor,
     });
   };
 
@@ -85,6 +87,25 @@ const PageConfigPanel = ({ config, onComplete, onBack }) => {
             >
               📃 Paysage
             </button>
+          </div>
+        </div>
+
+        <div style={styles.section}>
+          <label style={styles.label}>Couleur de fond:</label>
+          <div style={styles.colorPickerContainer}>
+            <input
+              type="color"
+              value={backgroundColor}
+              onChange={(e) => setBackgroundColor(e.target.value)}
+              style={styles.colorPicker}
+            />
+            <input
+              type="text"
+              value={backgroundColor}
+              onChange={(e) => setBackgroundColor(e.target.value)}
+              placeholder="#FFFFFF"
+              style={styles.colorInput}
+            />
           </div>
         </div>
 
@@ -174,6 +195,25 @@ const styles = {
     borderColor: '#2196F3',
     backgroundColor: '#e3f2fd',
     color: '#2196F3',
+  },
+  colorPickerContainer: {
+    display: 'flex',
+    gap: '10px',
+    alignItems: 'center',
+  },
+  colorPicker: {
+    width: '60px',
+    height: '40px',
+    border: '1px solid #ddd',
+    borderRadius: '5px',
+    cursor: 'pointer',
+  },
+  colorInput: {
+    flex: 1,
+    padding: '10px',
+    fontSize: '14px',
+    border: '1px solid #ddd',
+    borderRadius: '5px',
   },
   actions: {
     display: 'flex',

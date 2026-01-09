@@ -164,6 +164,7 @@ const TemplateCanvas = ({
             ...styles.canvas,
             width: `${canvasWidth}px`,
             height: `${canvasHeight}px`,
+            backgroundColor: pageConfig.backgroundColor || '#FFFFFF',
           }}
           onClick={() => onSelectElement(null)}
         >

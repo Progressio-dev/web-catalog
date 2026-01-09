@@ -20,6 +20,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     orientation: template?.page_orientation || 'portrait',
     width: template?.page_width || null,
     height: template?.page_height || null,
+    backgroundColor: template?.background_color || '#FFFFFF',
   });
   const [csvSeparator, setCsvSeparator] = useState(template?.csv_separator || ',');
   const [elements, setElements] = useState(
@@ -72,7 +73,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
 
     setSaving(true);
     try {
-      const config = { elements };
+      const config = { elements, backgroundColor: pageConfig.backgroundColor };
       const payload = {
         name: templateName,
         config: JSON.stringify(config),
@@ -81,6 +82,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
         page_width: pageConfig.format === 'Custom' ? pageConfig.width : null,
         page_height: pageConfig.format === 'Custom' ? pageConfig.height : null,
         csv_separator: csvSeparator,
+        background_color: pageConfig.backgroundColor,
       };
 
       if (template?.id) {

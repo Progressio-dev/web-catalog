@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS templates (
   page_width REAL,  -- width in mm for custom format
   page_height REAL,  -- height in mm for custom format
   csv_separator TEXT DEFAULT ',',  -- CSV separator character
+  background_color TEXT DEFAULT '#FFFFFF',  -- Page background color
   is_active INTEGER DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
