@@ -11,5 +11,6 @@ router.get('/:id', templateController.getTemplate);
 router.post('/', templateController.createTemplate);
 router.put('/:id', templateController.updateTemplate);
 router.delete('/:id', templateController.deleteTemplate);
+router.post('/:id/duplicate', templateController.duplicateTemplate);
 
 module.exports = router;

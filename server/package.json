@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "setup-db": "node src/setup-db.js"
+    "setup-db": "node src/setup-db.js",
+    "migrate": "node src/migrations/001_add_template_columns.js"
   },
   "keywords": [
     "express",

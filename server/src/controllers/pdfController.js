@@ -1,6 +1,53 @@
 const csvService = require('../services/csvService');
 const pdfService = require('../services/pdfService');
 const { dbGet, dbAll } = require('../config/database');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configure multer for temporary CSV uploads
+const tempStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const tempDir = path.join(__dirname, '../../uploads/temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    cb(null, tempDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, `temp-${Date.now()}-${file.originalname}`);
+  }
+});
+
+const tempUpload = multer({ storage: tempStorage });
+
+// Upload and analyze CSV (for template creation)
+exports.analyzeCsv = [
+  tempUpload.single('csv'),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'Aucun fichier uploadé' });
+      }
+
+      const { separator } = req.body;
+
+      const csvData = await csvService.parseCSV(req.file.path, separator || ',');
+
+      // Clean up the uploaded file after parsing
+      fs.unlinkSync(req.file.path);
+
+      res.json({
+        columns: csvData.fields,
+        preview: csvData.data.slice(0, 5), // First 5 rows for preview
+        totalRows: csvData.data.length
+      });
+    } catch (error) {
+      console.error('Analyze CSV error:', error);
+      res.status(500).json({ error: 'Échec de l\'analyse du fichier CSV' });
+    }
+  }
+];
 
 // Upload and parse CSV
 exports.uploadCsv = async (req, res) => {
@@ -12,7 +59,6 @@ exports.uploadCsv = async (req, res) => {
     const csvData = await csvService.parseCSV(req.file.path);
     
     // Clean up the uploaded file after parsing
-    const fs = require('fs');
     fs.unlinkSync(req.file.path);
 
     res.json({
@@ -23,6 +69,38 @@ exports.uploadCsv = async (req, res) => {
   } catch (error) {
     console.error('Upload CSV error:', error);
     res.status(500).json({ error: 'Failed to parse CSV file' });
+  }
+};
+
+// Generate PDF preview for a single item
+exports.generatePreview = async (req, res) => {
+  try {
+    const { templateId, rowData } = req.body;
+
+    if (!templateId || !rowData) {
+      return res.status(400).json({ error: 'templateId et rowData sont requis' });
+    }
+
+    // Get template
+    const template = await dbGet('SELECT * FROM templates WHERE id = ?', [templateId]);
+    if (!template) {
+      return res.status(404).json({ error: 'Template non trouvé' });
+    }
+
+    // Get logos if needed
+    const logos = await dbAll('SELECT * FROM logos WHERE is_active = 1');
+
+    // Generate preview HTML
+    const previewHtml = await pdfService.generatePreviewHtml({
+      item: rowData,
+      template,
+      logos
+    });
+
+    res.json({ html: previewHtml });
+  } catch (error) {
+    console.error('Generate preview error:', error);
+    res.status(500).json({ error: 'Échec de la génération de l\'aperçu' });
   }
 };
 
