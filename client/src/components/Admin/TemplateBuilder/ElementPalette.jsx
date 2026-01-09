@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { logoAPI } from '../../services/api';
+import { logoAPI } from '../../../services/api';
 import { toast } from 'react-toastify';
 
 const ElementPalette = ({ csvColumns, onAddElement }) => {
