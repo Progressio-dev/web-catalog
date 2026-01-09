@@ -145,7 +145,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
       {/* Step 3: Template Builder */}
       {step === 3 && (
         <div style={styles.builder}>
-          {/* Left sidebar - Element Palette */}
+          {/* Left sidebar - Element Palette (30%) */}
           <div style={styles.sidebar}>
             <ElementPalette
               csvColumns={csvData?.columns || []}
@@ -153,7 +153,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
             />
           </div>
 
-          {/* Center - Canvas */}
+          {/* Center - Canvas (40%) */}
           <div style={styles.canvasContainer}>
             <div style={styles.canvasHeader}>
               <input
@@ -190,7 +190,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
             />
           </div>
 
-          {/* Right sidebar - Properties & Preview */}
+          {/* Right sidebar - Properties & Preview (30%) */}
           <div style={styles.rightSidebar}>
             {selectedElement ? (
               <ElementProperties
@@ -201,7 +201,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
               />
             ) : (
               <div style={styles.noSelection}>
-                <p>Sélectionnez un élément pour voir ses propriétés</p>
+                <p>Cliquez sur un élément pour le configurer</p>
               </div>
             )}
 
@@ -210,6 +210,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
                 elements={elements}
                 pageConfig={pageConfig}
                 sampleData={csvData.preview[0]}
+                allSampleData={csvData.preview}
               />
             )}
           </div>
@@ -263,12 +264,15 @@ const styles = {
     overflow: 'hidden',
   },
   sidebar: {
-    width: '250px',
+    width: '30%',
+    minWidth: '250px',
+    maxWidth: '350px',
     backgroundColor: 'white',
     borderRight: '1px solid #ddd',
     overflow: 'auto',
   },
   canvasContainer: {
+    width: '40%',
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
@@ -313,10 +317,14 @@ const styles = {
     fontSize: '14px',
   },
   rightSidebar: {
-    width: '300px',
+    width: '30%',
+    minWidth: '300px',
+    maxWidth: '400px',
     backgroundColor: 'white',
     borderLeft: '1px solid #ddd',
     overflow: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
   },
   noSelection: {
     padding: '20px',
