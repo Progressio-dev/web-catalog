@@ -6,6 +6,8 @@ const PAGE_FORMATS = {
   Letter: { width: 215.9, height: 279.4 },
 };
 
+const CLICK_THRESHOLD = 5; // pixels - max movement to distinguish click from drag
+
 const TemplateCanvas = ({
   pageConfig,
   elements,
@@ -152,8 +154,8 @@ const TemplateCanvas = ({
         Math.pow(e.clientX - mouseDownPos.x, 2) + 
         Math.pow(e.clientY - mouseDownPos.y, 2)
       );
-      // If mouse moved less than 5 pixels, treat it as a click
-      if (distance < 5) {
+      // If mouse moved less than threshold, treat it as a click
+      if (distance < CLICK_THRESHOLD) {
         const element = elements.find(el => el.id === draggingId);
         if (element) {
           onSelectElement(element);
@@ -176,7 +178,7 @@ const TemplateCanvas = ({
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [draggingId, resizingId, dragOffset, resizeStart, resizeHandle, mouseDownPos, elements]);
+  }, [draggingId, resizingId, dragOffset, resizeStart, resizeHandle, mouseDownPos]);
 
   const renderElement = (element) => {
     const isSelected = selectedElement?.id === element.id;
