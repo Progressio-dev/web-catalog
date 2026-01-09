@@ -2,6 +2,23 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const { dbGet } = require('../config/database');
 
+/**
+ * SECURITY NOTE: JavaScript Code Execution
+ * 
+ * This service executes user-provided JavaScript code for dynamic content generation.
+ * Current implementation uses AsyncFunction constructor with basic safeguards:
+ * - 5-second timeout to prevent infinite loops
+ * - 1000 character output limit
+ * - Generic error messages to avoid information disclosure
+ * 
+ * PRODUCTION RECOMMENDATIONS:
+ * - Implement a proper sandbox using 'vm2' or 'isolated-vm'
+ * - Add whitelist for allowed global objects and modules
+ * - Implement rate limiting per user/template
+ * - Log all code executions for audit purposes
+ * - Consider disabling fetch/network access in sandboxed environment
+ */
+
 // Page format definitions
 const PAGE_FORMATS = {
   'A4': { width: 210, height: 297 }, // mm
@@ -18,22 +35,25 @@ exports.generatePreviewHtml = async ({ item, template, logos }) => {
     return '<div style="padding: 20px;">Aucun élément dans le template</div>';
   }
 
-  const elements = templateConfig.elements.map(element => {
+  const elementPromises = templateConfig.elements.map(element => {
     return renderElement(element, item, logos, template);
-  }).join('');
+  });
+  
+  const elements = await Promise.all(elementPromises);
+  const elementsHtml = elements.join('');
 
   const pageWidth = template.page_format === 'Custom' ? template.page_width : PAGE_FORMATS[template.page_format]?.width || 210;
   const pageHeight = template.page_format === 'Custom' ? template.page_height : PAGE_FORMATS[template.page_format]?.height || 297;
 
   return `
     <div style="position: relative; width: ${pageWidth}mm; height: ${pageHeight}mm; background: white; border: 1px solid #ddd;">
-      ${elements}
+      ${elementsHtml}
     </div>
   `;
 };
 
 // Render a single element
-function renderElement(element, item, logos, template) {
+async function renderElement(element, item, logos, template) {
   const baseStyle = `
     position: absolute;
     left: ${element.x || 0}px;
@@ -43,7 +63,16 @@ function renderElement(element, item, logos, template) {
   `;
 
   if (element.type === 'text') {
-    const content = item[element.csvColumn] || '';
+    let content = item[element.csvColumn] || '';
+    
+    // Apply prefix/suffix if enabled
+    if (element.hasTextModifier && element.csvColumn) {
+      const prefix = element.textPrefix || '';
+      const suffix = element.textSuffix || '';
+      const csvValue = item[element.csvColumn] || '';
+      content = `${prefix}${csvValue}${suffix}`;
+    }
+    
     const textStyle = `
       ${baseStyle}
       font-size: ${element.fontSize || 12}px;
@@ -56,6 +85,43 @@ function renderElement(element, item, logos, template) {
       text-decoration: ${element.textDecoration || 'none'};
     `;
     return `<div style="${textStyle}">${content}</div>`;
+  }
+
+  if (element.type === 'freeText') {
+    const content = element.content || 'Texte libre';
+    const textStyle = `
+      ${baseStyle}
+      font-size: ${element.fontSize || 14}px;
+      font-family: ${element.fontFamily || 'Arial'}, sans-serif;
+      font-weight: ${element.fontWeight || 'normal'};
+      font-style: ${element.fontStyle || 'normal'};
+      color: ${element.color || '#000000'};
+      text-align: ${element.textAlign || 'left'};
+      white-space: pre-wrap;
+    `;
+    return `<div style="${textStyle}">${content}</div>`;
+  }
+
+  if (element.type === 'jsCode') {
+    let result = '';
+    try {
+      // Execute JavaScript code
+      result = await executeJsCode(element.code, item);
+    } catch (error) {
+      // Error already handled in executeJsCode, use generic message
+      result = 'Erreur d\'exécution';
+    }
+    
+    const textStyle = `
+      ${baseStyle}
+      font-size: ${element.fontSize || 14}px;
+      font-family: ${element.fontFamily || 'Arial'}, sans-serif;
+      font-weight: ${element.fontWeight || 'normal'};
+      font-style: ${element.fontStyle || 'normal'};
+      color: ${element.color || '#000000'};
+      text-align: ${element.textAlign || 'left'};
+    `;
+    return `<div style="${textStyle}">${result}</div>`;
   }
 
   if (element.type === 'logo') {
@@ -105,6 +171,46 @@ function renderElement(element, item, logos, template) {
   return '';
 }
 
+// Execute JavaScript code with timeout
+async function executeJsCode(code, data) {
+  if (!code) return '';
+  
+  try {
+    // Create async function from code
+    const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+    const fn = new AsyncFunction('data', code);
+    
+    // Execute with timeout (5 seconds)
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout: Le code a pris plus de 5 secondes')), 5000)
+    );
+    
+    const result = await Promise.race([
+      fn(data || {}),
+      timeoutPromise
+    ]);
+    
+    // Validate and sanitize result
+    if (result === null || result === undefined) {
+      return '';
+    }
+    
+    // Convert to string safely
+    const stringResult = String(result);
+    
+    // Limit length to prevent excessive output
+    if (stringResult.length > 1000) {
+      return stringResult.substring(0, 1000) + '...';
+    }
+    
+    return stringResult;
+  } catch (error) {
+    console.error('JS code execution error:', error);
+    // Return generic error message to avoid exposing system information
+    return 'Erreur d\'exécution du code JavaScript';
+  }
+}
+
 // Build product image URL
 function buildProductImageUrl(item, element) {
   if (!element.baseUrl || !element.csvColumn) return null;
@@ -116,7 +222,7 @@ function buildProductImageUrl(item, element) {
 }
 
 // Build HTML from template and data
-const buildHtml = (items, template, logo, allLogos, mappings, visibleFields, options = {}) => {
+const buildHtml = async (items, template, logo, allLogos, mappings, visibleFields, options = {}) => {
   const templateConfig = template ? JSON.parse(template.config) : null;
   
   // Get background color from template config or template column
@@ -144,10 +250,13 @@ const buildHtml = (items, template, logo, allLogos, mappings, visibleFields, opt
     // Use all logos for rendering, fallback to single logo if provided
     const logos = allLogos && allLogos.length > 0 ? allLogos : (logo ? [logo] : []);
     
-    customHtml = items.map((item, index) => {
-      const elements = templateConfig.elements.map(element => {
+    const pagePromises = items.map(async (item, index) => {
+      const elementPromises = templateConfig.elements.map(element => {
         return renderElement(element, item, logos, template);
-      }).join('');
+      });
+      
+      const elements = await Promise.all(elementPromises);
+      const elementsHtml = elements.join('');
 
       const pageWidth = template.page_format === 'Custom' ? template.page_width : PAGE_FORMATS[template.page_format]?.width || 210;
       const pageHeight = template.page_format === 'Custom' ? template.page_height : PAGE_FORMATS[template.page_format]?.height || 297;
@@ -157,10 +266,13 @@ const buildHtml = (items, template, logo, allLogos, mappings, visibleFields, opt
 
       return `
         <div class="product-card" style="position: relative; width: ${pageWidth}mm; height: ${pageHeight}mm; background-color: ${backgroundColor}; ${pageBreak}">
-          ${elements}
+          ${elementsHtml}
         </div>
       `;
-    }).join('');
+    });
+    
+    const pages = await Promise.all(pagePromises);
+    customHtml = pages.join('');
   }
 
   const html = `
@@ -208,7 +320,7 @@ exports.generatePdf = async (params) => {
     }
 
     // Build HTML
-    const html = buildHtml(items, template, logo, allLogos, mappings || [], visibleFields, { productImageBaseUrl });
+    const html = await buildHtml(items, template, logo, allLogos, mappings || [], visibleFields, { productImageBaseUrl });
 
     // Set content
     await page.setContent(html, { waitUntil: 'networkidle0' });

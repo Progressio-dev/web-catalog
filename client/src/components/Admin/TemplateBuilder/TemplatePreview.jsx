@@ -9,6 +9,7 @@ const PAGE_FORMATS = {
 const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) => {
   const [zoom, setZoom] = React.useState(1);
   const [currentRowIndex, setCurrentRowIndex] = React.useState(0);
+  const [codeResults, setCodeResults] = React.useState({});
 
   const pageWidth =
     pageConfig.format === 'Custom'
@@ -41,6 +42,53 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     }
   };
 
+  // Execute JavaScript code with timeout
+  const executeJsCode = async (code, rowData) => {
+    try {
+      // Create async function from code
+      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+      const fn = new AsyncFunction('data', code);
+      
+      // Execute with timeout (5 seconds)
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout: Le code a pris plus de 5 secondes')), 5000)
+      );
+      
+      const result = await Promise.race([
+        fn(rowData || {}),
+        timeoutPromise
+      ]);
+      
+      return String(result);
+    } catch (error) {
+      console.error('Erreur d\'exécution du code JS:', error);
+      // Use generic error message to avoid exposing system details
+      return '❌ Erreur d\'exécution du code';
+    }
+  };
+
+  // Execute all JS code elements when data changes
+  React.useEffect(() => {
+    const executeAllJsElements = async () => {
+      const results = {};
+      const jsElements = elements.filter(el => el.type === 'jsCode');
+      
+      for (const element of jsElements) {
+        if (element.code) {
+          results[element.id] = await executeJsCode(element.code, displayData);
+        } else {
+          results[element.id] = '(code vide)';
+        }
+      }
+      
+      setCodeResults(results);
+    };
+    
+    if (displayData) {
+      executeAllJsElements();
+    }
+  }, [elements, displayData]);
+
   const renderPreviewElement = (element) => {
     const baseStyle = {
       position: 'absolute',
@@ -51,7 +99,16 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     };
 
     if (element.type === 'text') {
-      const content = displayData?.[element.csvColumn] || element.csvColumn || '';
+      let content = displayData?.[element.csvColumn] || element.csvColumn || '';
+      
+      // Apply prefix/suffix if enabled
+      if (element.hasTextModifier && element.csvColumn) {
+        const prefix = element.textPrefix || '';
+        const suffix = element.textSuffix || '';
+        const csvValue = displayData?.[element.csvColumn] || '';
+        content = `${prefix}${csvValue}${suffix}`;
+      }
+      
       return (
         <div
           key={element.id}
@@ -137,6 +194,48 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
             borderRadius: `${element.borderRadius}px`,
           }}
         />
+      );
+    }
+
+    if (element.type === 'freeText') {
+      return (
+        <div
+          key={element.id}
+          style={{
+            ...baseStyle,
+            fontSize: `${element.fontSize}px`,
+            fontFamily: element.fontFamily,
+            fontWeight: element.fontWeight,
+            fontStyle: element.fontStyle,
+            color: element.color,
+            textAlign: element.textAlign,
+            whiteSpace: 'pre-wrap',
+            overflow: 'hidden',
+          }}
+        >
+          {element.content || 'Texte libre'}
+        </div>
+      );
+    }
+
+    if (element.type === 'jsCode') {
+      const result = codeResults[element.id] || 'Chargement...';
+      return (
+        <div
+          key={element.id}
+          style={{
+            ...baseStyle,
+            fontSize: `${element.fontSize}px`,
+            fontFamily: element.fontFamily,
+            fontWeight: element.fontWeight,
+            fontStyle: element.fontStyle,
+            color: element.color,
+            textAlign: element.textAlign,
+            overflow: 'hidden',
+          }}
+        >
+          {result}
+        </div>
       );
     }
 

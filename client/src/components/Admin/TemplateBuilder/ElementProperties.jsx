@@ -129,6 +129,48 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns }) => {
           Retour à la ligne automatique
         </label>
       </div>
+
+      {/* Préfixe/Suffixe pour champs CSV */}
+      {element.csvColumn && (
+        <>
+          <div style={styles.group}>
+            <label style={styles.checkbox}>
+              <input
+                type="checkbox"
+                checked={element.hasTextModifier || false}
+                onChange={(e) => onUpdate({ hasTextModifier: e.target.checked })}
+              />
+              Ajouter du texte au champ
+            </label>
+          </div>
+
+          {element.hasTextModifier && (
+            <>
+              <div style={styles.group}>
+                <label style={styles.label}>Texte avant (préfixe):</label>
+                <input
+                  type="text"
+                  value={element.textPrefix || ''}
+                  onChange={(e) => onUpdate({ textPrefix: e.target.value })}
+                  placeholder='Ex: "Fournisseur : "'
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={styles.group}>
+                <label style={styles.label}>Texte après (suffixe):</label>
+                <input
+                  type="text"
+                  value={element.textSuffix || ''}
+                  onChange={(e) => onUpdate({ textSuffix: e.target.value })}
+                  placeholder='Ex: " (fournisseur)"'
+                  style={styles.input}
+                />
+              </div>
+            </>
+          )}
+        </>
+      )}
     </>
   );
 
@@ -182,6 +224,191 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns }) => {
           <option value="contain">Contenir</option>
           <option value="cover">Couvrir</option>
           <option value="fill">Remplir</option>
+        </select>
+      </div>
+    </>
+  );
+
+  const renderFreeTextProperties = () => (
+    <>
+      <div style={styles.group}>
+        <label style={styles.label}>Contenu:</label>
+        <textarea
+          value={element.content || ''}
+          onChange={(e) => onUpdate({ content: e.target.value })}
+          rows={3}
+          style={{ ...styles.input, resize: 'vertical', fontFamily: 'inherit' }}
+          placeholder="Entrez votre texte libre..."
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Police:</label>
+        <select
+          value={element.fontFamily || 'Arial'}
+          onChange={(e) => onUpdate({ fontFamily: e.target.value })}
+          style={styles.select}
+        >
+          <option value="Arial">Arial</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Helvetica">Helvetica</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Georgia">Georgia</option>
+        </select>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Taille: {element.fontSize}px</label>
+        <input
+          type="range"
+          min="8"
+          max="72"
+          value={element.fontSize || 14}
+          onChange={(e) => onUpdate({ fontSize: parseInt(e.target.value) })}
+          style={styles.range}
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Couleur:</label>
+        <input
+          type="color"
+          value={element.color || '#000000'}
+          onChange={(e) => onUpdate({ color: e.target.value })}
+          style={styles.colorInput}
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Style:</label>
+        <div style={styles.buttonGroup}>
+          <button
+            onClick={() =>
+              onUpdate({ fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })
+            }
+            style={{
+              ...styles.toggleBtn,
+              ...(element.fontWeight === 'bold' ? styles.toggleBtnActive : {}),
+            }}
+          >
+            <strong>B</strong>
+          </button>
+          <button
+            onClick={() =>
+              onUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })
+            }
+            style={{
+              ...styles.toggleBtn,
+              ...(element.fontStyle === 'italic' ? styles.toggleBtnActive : {}),
+            }}
+          >
+            <em>I</em>
+          </button>
+        </div>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Alignement:</label>
+        <div style={styles.buttonGroup}>
+          <button
+            onClick={() => onUpdate({ textAlign: 'left' })}
+            style={{
+              ...styles.toggleBtn,
+              ...(element.textAlign === 'left' ? styles.toggleBtnActive : {}),
+            }}
+          >
+            ⬅
+          </button>
+          <button
+            onClick={() => onUpdate({ textAlign: 'center' })}
+            style={{
+              ...styles.toggleBtn,
+              ...(element.textAlign === 'center' ? styles.toggleBtnActive : {}),
+            }}
+          >
+            ⬌
+          </button>
+          <button
+            onClick={() => onUpdate({ textAlign: 'right' })}
+            style={{
+              ...styles.toggleBtn,
+              ...(element.textAlign === 'right' ? styles.toggleBtnActive : {}),
+            }}
+          >
+            ➡
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderJsCodeProperties = () => (
+    <>
+      <div style={styles.group}>
+        <label style={styles.label}>Code JavaScript:</label>
+        <textarea
+          value={element.code || ''}
+          onChange={(e) => onUpdate({ code: e.target.value })}
+          rows={8}
+          style={{ ...styles.input, resize: 'vertical', fontFamily: 'monospace', fontSize: '12px' }}
+          placeholder='return new Date().toLocaleDateString("fr-FR");'
+        />
+      </div>
+
+      <div style={styles.codeHelp}>
+        <strong style={{ fontSize: '12px' }}>Variables disponibles:</strong>
+        <ul style={{ fontSize: '11px', margin: '5px 0', paddingLeft: '20px' }}>
+          <li><code>data.*</code> : Colonnes CSV (ex: data.FOURNISSEUR)</li>
+          <li><code>new Date()</code> : Date du jour</li>
+          <li><code>await fetch()</code> : Appels API (CORS requis)</li>
+        </ul>
+        <div style={{ 
+          padding: '8px', 
+          backgroundColor: '#fff3cd', 
+          borderLeft: '3px solid #ffc107', 
+          marginTop: '8px',
+          fontSize: '11px',
+          color: '#856404'
+        }}>
+          ⚠️ <strong>Attention:</strong> Le code s'exécute côté serveur et client. 
+          Évitez les boucles infinies et les appels API non autorisés.
+        </div>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Taille: {element.fontSize}px</label>
+        <input
+          type="range"
+          min="8"
+          max="72"
+          value={element.fontSize || 14}
+          onChange={(e) => onUpdate({ fontSize: parseInt(e.target.value) })}
+          style={styles.range}
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Couleur:</label>
+        <input
+          type="color"
+          value={element.color || '#000000'}
+          onChange={(e) => onUpdate({ color: e.target.value })}
+          style={styles.colorInput}
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Police:</label>
+        <select
+          value={element.fontFamily || 'Arial'}
+          onChange={(e) => onUpdate({ fontFamily: e.target.value })}
+          style={styles.select}
+        >
+          <option value="Arial">Arial</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Helvetica">Helvetica</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Georgia">Georgia</option>
         </select>
       </div>
     </>
@@ -242,13 +469,15 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns }) => {
 
       <div style={styles.content}>
         <div style={styles.typeLabel}>
-          Type: {element.type === 'text' ? '📝 Texte' : element.type === 'logo' ? '🖼️ Logo' : element.type === 'image' ? '📷 Image' : element.type === 'line' ? '➖ Ligne' : '▭ Rectangle'}
+          Type: {element.type === 'text' ? '📝 Texte' : element.type === 'logo' ? '🖼️ Logo' : element.type === 'image' ? '📷 Image' : element.type === 'line' ? '➖ Ligne' : element.type === 'freeText' ? '📝 Texte Libre' : element.type === 'jsCode' ? '💻 Code JavaScript' : '▭ Rectangle'}
         </div>
 
         {renderPositionAndSize()}
 
         {element.type === 'text' && renderTextProperties()}
         {element.type === 'image' && renderImageProperties()}
+        {element.type === 'freeText' && renderFreeTextProperties()}
+        {element.type === 'jsCode' && renderJsCodeProperties()}
       </div>
     </div>
   );
@@ -345,6 +574,12 @@ const styles = {
     gap: '8px',
     fontSize: '13px',
     cursor: 'pointer',
+  },
+  codeHelp: {
+    padding: '10px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '5px',
+    fontSize: '12px',
   },
 };
 
