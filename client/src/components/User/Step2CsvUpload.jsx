@@ -77,6 +77,7 @@ const Step2CsvUpload = ({ template, onCsvUploaded, onBack }) => {
       header: true,
       delimiter: template.csv_separator || ',',
       skipEmptyLines: true,
+      transformHeader: (header) => header.replace(/^\uFEFF/, '').trim(), // Remove BOM + trim whitespace
       complete: (results) => {
         setParsedData(results.data);
         validateCsv(results.data);

@@ -19,6 +19,7 @@ const TemplateCanvas = ({
   const [resizingId, setResizingId] = React.useState(null);
   const [resizeHandle, setResizeHandle] = React.useState(null);
   const [resizeStart, setResizeStart] = React.useState({ x: 0, y: 0, width: 0, height: 0 });
+  const [mouseDownPos, setMouseDownPos] = React.useState(null);
 
   const pageWidth =
     pageConfig.format === 'Custom'
@@ -48,16 +49,17 @@ const TemplateCanvas = ({
 
   const handleMouseDown = (e, element) => {
     e.stopPropagation();
+    setMouseDownPos({ x: e.clientX, y: e.clientY });
     setDraggingId(element.id);
     setDragOffset({
       x: e.clientX - element.x,
       y: e.clientY - element.y,
     });
-    onSelectElement(element);
   };
 
   const handleResizeStart = (e, element, handle) => {
     e.stopPropagation();
+    setMouseDownPos({ x: e.clientX, y: e.clientY });
     setResizingId(element.id);
     setResizeHandle(handle);
     setResizeStart({
@@ -68,7 +70,6 @@ const TemplateCanvas = ({
       left: element.x,
       top: element.y,
     });
-    onSelectElement(element);
   };
 
   const handleMouseMove = (e) => {
@@ -144,10 +145,26 @@ const TemplateCanvas = ({
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
+    // Check if it was a click (not a drag) - select the element
+    if (draggingId && mouseDownPos && !resizingId) {
+      const distance = Math.sqrt(
+        Math.pow(e.clientX - mouseDownPos.x, 2) + 
+        Math.pow(e.clientY - mouseDownPos.y, 2)
+      );
+      // If mouse moved less than 5 pixels, treat it as a click
+      if (distance < 5) {
+        const element = elements.find(el => el.id === draggingId);
+        if (element) {
+          onSelectElement(element);
+        }
+      }
+    }
+    
     setDraggingId(null);
     setResizingId(null);
     setResizeHandle(null);
+    setMouseDownPos(null);
   };
 
   React.useEffect(() => {
@@ -159,7 +176,7 @@ const TemplateCanvas = ({
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [draggingId, resizingId, dragOffset, resizeStart, resizeHandle]);
+  }, [draggingId, resizingId, dragOffset, resizeStart, resizeHandle, mouseDownPos, elements]);
 
   const renderElement = (element) => {
     const isSelected = selectedElement?.id === element.id;
@@ -383,7 +400,12 @@ const TemplateCanvas = ({
             height: `${canvasHeight}px`,
             backgroundColor: pageConfig.backgroundColor || '#FFFFFF',
           }}
-          onClick={() => onSelectElement(null)}
+          onClick={(e) => {
+            // Only deselect if clicking directly on canvas (not on an element)
+            if (e.target === e.currentTarget || e.target.style.pointerEvents === 'none') {
+              onSelectElement(null);
+            }
+          }}
         >
           {/* Grid background */}
           <div style={styles.grid} />
