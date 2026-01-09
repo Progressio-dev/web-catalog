@@ -535,8 +535,18 @@ return result.description;
 
 ✅ **Timeout de 5 secondes** : Protège contre les boucles infinies  
 ✅ **Try/catch global** : Gère les erreurs d'exécution  
-✅ **Messages d'erreur français** : Facilite le débogage  
-⚠️ **Pour la production** : Envisager l'utilisation de `vm2` ou `isolated-vm` pour un sandbox complet
+✅ **Messages d'erreur génériques** : Évite l'exposition d'informations système  
+✅ **Limite de sortie (1000 caractères)** : Prévient les sorties excessives  
+✅ **Validation du résultat** : Vérification null/undefined avant conversion  
+✅ **Avertissement utilisateur** : Interface affiche un message de sécurité  
+
+⚠️ **Pour la production** : 
+- **FORTEMENT RECOMMANDÉ** : Utiliser `vm2` ou `isolated-vm` pour un sandbox sécurisé
+- Implémenter une whitelist des objets globaux autorisés
+- Ajouter un rate limiting par utilisateur/template
+- Logger toutes les exécutions de code pour audit
+- Considérer la désactivation de `fetch` dans l'environnement sandboxé
+- Mettre en place une politique d'utilisation acceptable du code JavaScript
 
 ---
 
@@ -707,6 +717,67 @@ Chaque élément peut maintenant avoir ces propriétés :
 ### Migration des Templates
 
 Les templates existants continueront de fonctionner sans modification. Les nouvelles propriétés sont optionnelles et ont des valeurs par défaut sûres.
+
+---
+
+## 🔒 Considérations de Sécurité
+
+### Exécution de Code JavaScript
+
+La fonctionnalité de code JavaScript permet aux utilisateurs d'exécuter du code arbitraire pour générer du contenu dynamique. **Mesures de sécurité implémentées** :
+
+#### Protection Actuelle
+1. **Timeout de 5 secondes** : Empêche les boucles infinies et les opérations longues
+2. **Limite de sortie** : Maximum 1000 caractères pour éviter les sorties excessives
+3. **Validation du résultat** : Vérification null/undefined avant conversion en string
+4. **Messages d'erreur génériques** : N'exposent pas d'informations système sensibles
+5. **Avertissement UI** : Interface affiche un message de prudence aux utilisateurs
+
+#### Risques Résiduels
+- ⚠️ Accès aux objets globaux Node.js côté serveur
+- ⚠️ Possibilité d'appels réseau via `fetch` ou `require`
+- ⚠️ Accès potentiel au système de fichiers
+- ⚠️ Pas d'isolation complète du processus
+
+#### Recommandations pour Production
+
+**Priorité HAUTE** :
+1. **Sandbox sécurisé** : Implémenter `vm2` ou `isolated-vm`
+   ```javascript
+   const { VM } = require('vm2');
+   const vm = new VM({
+     timeout: 5000,
+     sandbox: { data: rowData }
+   });
+   const result = vm.run(element.code);
+   ```
+
+2. **Whitelist des fonctions** : Autoriser uniquement un sous-ensemble d'API
+   ```javascript
+   const sandbox = {
+     data: rowData,
+     Date: Date,
+     Math: Math,
+     // Pas de: require, fs, process, etc.
+   };
+   ```
+
+3. **Rate limiting** : Limiter le nombre d'exécutions par utilisateur/période
+
+**Priorité MOYENNE** :
+4. **Audit logging** : Enregistrer toutes les exécutions de code
+5. **Politique d'utilisation** : Définir des règles claires pour les utilisateurs
+6. **Revue de code** : Permettre aux administrateurs de valider les templates avant publication
+
+**Priorité BASSE** :
+7. **Analyse statique** : Détecter les patterns dangereux avant exécution
+8. **Isolation par processus** : Exécuter dans un worker thread ou processus séparé
+
+### Autres Considérations
+
+- **CORS et fetch()** : Les appels API externes sont soumis aux restrictions CORS
+- **Données CSV sensibles** : Les données passées à `data.*` doivent être considérées comme exposées
+- **Permissions utilisateur** : Envisager de restreindre l'accès à cette fonctionnalité selon les rôles
 
 ---
 

@@ -2,6 +2,23 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const { dbGet } = require('../config/database');
 
+/**
+ * SECURITY NOTE: JavaScript Code Execution
+ * 
+ * This service executes user-provided JavaScript code for dynamic content generation.
+ * Current implementation uses AsyncFunction constructor with basic safeguards:
+ * - 5-second timeout to prevent infinite loops
+ * - 1000 character output limit
+ * - Generic error messages to avoid information disclosure
+ * 
+ * PRODUCTION RECOMMENDATIONS:
+ * - Implement a proper sandbox using 'vm2' or 'isolated-vm'
+ * - Add whitelist for allowed global objects and modules
+ * - Implement rate limiting per user/template
+ * - Log all code executions for audit purposes
+ * - Consider disabling fetch/network access in sandboxed environment
+ */
+
 // Page format definitions
 const PAGE_FORMATS = {
   'A4': { width: 210, height: 297 }, // mm
@@ -91,8 +108,8 @@ async function renderElement(element, item, logos, template) {
       // Execute JavaScript code
       result = await executeJsCode(element.code, item);
     } catch (error) {
-      console.error('JS execution error:', error);
-      result = `Erreur: ${error.message}`;
+      // Error already handled in executeJsCode, use generic message
+      result = 'Erreur d\'exécution';
     }
     
     const textStyle = `
@@ -173,10 +190,24 @@ async function executeJsCode(code, data) {
       timeoutPromise
     ]);
     
-    return String(result);
+    // Validate and sanitize result
+    if (result === null || result === undefined) {
+      return '';
+    }
+    
+    // Convert to string safely
+    const stringResult = String(result);
+    
+    // Limit length to prevent excessive output
+    if (stringResult.length > 1000) {
+      return stringResult.substring(0, 1000) + '...';
+    }
+    
+    return stringResult;
   } catch (error) {
     console.error('JS code execution error:', error);
-    throw error;
+    // Return generic error message to avoid exposing system information
+    return 'Erreur d\'exécution du code JavaScript';
   }
 }
 

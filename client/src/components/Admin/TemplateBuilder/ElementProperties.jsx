@@ -360,8 +360,19 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns }) => {
         <ul style={{ fontSize: '11px', margin: '5px 0', paddingLeft: '20px' }}>
           <li><code>data.*</code> : Colonnes CSV (ex: data.FOURNISSEUR)</li>
           <li><code>new Date()</code> : Date du jour</li>
-          <li><code>await fetch()</code> : Appels API</li>
+          <li><code>await fetch()</code> : Appels API (CORS requis)</li>
         </ul>
+        <div style={{ 
+          padding: '8px', 
+          backgroundColor: '#fff3cd', 
+          borderLeft: '3px solid #ffc107', 
+          marginTop: '8px',
+          fontSize: '11px',
+          color: '#856404'
+        }}>
+          ⚠️ <strong>Attention:</strong> Le code s'exécute côté serveur et client. 
+          Évitez les boucles infinies et les appels API non autorisés.
+        </div>
       </div>
 
       <div style={styles.group}>
