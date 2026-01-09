@@ -230,6 +230,15 @@ const TemplateCanvas = ({
     };
 
     if (element.type === 'text') {
+      let displayText = element.csvColumn || 'Texte';
+      
+      // Show prefix/suffix in editor if enabled
+      if (element.hasTextModifier && element.csvColumn) {
+        const prefix = element.textPrefix || '';
+        const suffix = element.textSuffix || '';
+        displayText = `${prefix}${element.csvColumn}${suffix}`;
+      }
+      
       return (
         <div
           key={element.id}
@@ -247,7 +256,7 @@ const TemplateCanvas = ({
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          {element.csvColumn || 'Texte'}
+          {displayText}
           {renderResizeHandles()}
         </div>
       );
@@ -306,6 +315,56 @@ const TemplateCanvas = ({
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
+          {renderResizeHandles()}
+        </div>
+      );
+    }
+
+    if (element.type === 'freeText') {
+      return (
+        <div
+          key={element.id}
+          style={{
+            ...baseStyle,
+            fontSize: `${element.fontSize}px`,
+            fontFamily: element.fontFamily,
+            fontWeight: element.fontWeight,
+            fontStyle: element.fontStyle,
+            color: element.color,
+            textAlign: element.textAlign,
+            padding: '4px',
+            overflow: 'hidden',
+            backgroundColor: 'rgba(255,255,255,0.9)',
+            whiteSpace: 'pre-wrap',
+          }}
+          onMouseDown={(e) => handleMouseDown(e, element)}
+        >
+          {element.content || 'Texte libre'}
+          {renderResizeHandles()}
+        </div>
+      );
+    }
+
+    if (element.type === 'jsCode') {
+      return (
+        <div
+          key={element.id}
+          style={{
+            ...baseStyle,
+            fontSize: `${element.fontSize}px`,
+            fontFamily: element.fontFamily,
+            fontWeight: element.fontWeight,
+            fontStyle: element.fontStyle,
+            color: element.color,
+            textAlign: element.textAlign,
+            padding: '4px',
+            overflow: 'hidden',
+            backgroundColor: 'rgba(255,255,200,0.9)',
+            border: isSelected ? '3px solid #2196F3' : '1px dashed #f90',
+          }}
+          onMouseDown={(e) => handleMouseDown(e, element)}
+        >
+          💻 Code JS
           {renderResizeHandles()}
         </div>
       );

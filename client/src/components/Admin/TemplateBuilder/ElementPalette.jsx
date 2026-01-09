@@ -111,6 +111,36 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
     });
   };
 
+  const addFreeTextElement = () => {
+    onAddElement({
+      type: 'freeText',
+      width: 200,
+      height: 40,
+      content: 'Texte libre',
+      fontSize: 14,
+      fontFamily: 'Arial',
+      color: '#000000',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+    });
+  };
+
+  const addJsCodeElement = () => {
+    onAddElement({
+      type: 'jsCode',
+      width: 300,
+      height: 40,
+      code: 'return new Date().toLocaleDateString("fr-FR");',
+      fontSize: 14,
+      fontFamily: 'Arial',
+      color: '#000000',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+    });
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.section}>
@@ -182,6 +212,14 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
       <div style={styles.section}>
         <h4 style={styles.sectionTitle}>Éléments spéciaux</h4>
         <div style={styles.specialElements}>
+          <button onClick={addFreeTextElement} style={styles.elementBtn}>
+            <span style={styles.icon}>📝</span>
+            <span>Texte Libre</span>
+          </button>
+          <button onClick={addJsCodeElement} style={styles.elementBtn}>
+            <span style={styles.icon}>💻</span>
+            <span>Code JavaScript</span>
+          </button>
           <button onClick={addImageElement} style={styles.elementBtn}>
             <span style={styles.icon}>📷</span>
             <span>Image produit</span>
