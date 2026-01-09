@@ -83,12 +83,6 @@ export const templateAPI = {
   delete: (id) => api.delete(`/templates/${id}`),
 };
 
-// Mappings API
-export const mappingAPI = {
-  get: (templateId) => api.get('/mappings', { params: { templateId } }),
-  save: (templateId, mappings) => api.put('/mappings', { templateId, mappings }),
-};
-
 // Settings API
 export const settingsAPI = {
   get: () => api.get('/settings'),

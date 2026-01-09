@@ -59,9 +59,18 @@ function renderElement(element, item, logos, template) {
   }
 
   if (element.type === 'logo') {
-    const logo = logos.find(l => l.id === element.logoId);
-    if (logo) {
-      return `<img src="file://${path.resolve(logo.path)}" alt="Logo" style="${baseStyle} object-fit: contain;" />`;
+    // Support both logoId and logoPath from element
+    let logoPath = element.logoPath;
+    
+    if (!logoPath && element.logoId) {
+      const logo = logos.find(l => l.id === element.logoId);
+      logoPath = logo?.path;
+    }
+    
+    if (logoPath) {
+      // Ensure absolute path for file:// protocol
+      const absolutePath = logoPath.startsWith('/')  ? logoPath : path.resolve(logoPath);
+      return `<img src="file://${absolutePath}" alt="Logo" style="${baseStyle} object-fit: contain;" />`;
     }
     return '';
   }
@@ -107,15 +116,18 @@ function buildProductImageUrl(item, element) {
 }
 
 // Build HTML from template and data
-const buildHtml = (items, template, logo, mappings, visibleFields, options = {}) => {
+const buildHtml = (items, template, logo, allLogos, mappings, visibleFields, options = {}) => {
   const templateConfig = template ? JSON.parse(template.config) : null;
+  
+  // Get background color from template config or template column
+  const backgroundColor = template?.background_color || templateConfig?.backgroundColor || '#FFFFFF';
   
   // Default template if none provided
   const defaultHtml = items.map(item => {
     const fields = visibleFields || Object.keys(item);
     
     return `
-      <div class="product-card" style="page-break-after: always; padding: 20px; font-family: Arial, sans-serif;">
+      <div class="product-card" style="page-break-after: always; padding: 20px; font-family: Arial, sans-serif; background-color: ${backgroundColor};">
         ${logo ? `<img src="file://${path.resolve(logo.path)}" alt="Logo" style="max-width: 200px; margin-bottom: 20px;" />` : ''}
         ${fields.map(field => `
           <div style="margin-bottom: 10px;">
@@ -129,8 +141,8 @@ const buildHtml = (items, template, logo, mappings, visibleFields, options = {})
   // If template config exists, use it to build custom HTML
   let customHtml = '';
   if (templateConfig && templateConfig.elements) {
-    // Get all logos for rendering
-    const logos = logo ? [logo] : [];
+    // Use all logos for rendering, fallback to single logo if provided
+    const logos = allLogos && allLogos.length > 0 ? allLogos : (logo ? [logo] : []);
     
     customHtml = items.map((item, index) => {
       const elements = templateConfig.elements.map(element => {
@@ -144,7 +156,7 @@ const buildHtml = (items, template, logo, mappings, visibleFields, options = {})
       const pageBreak = index < items.length - 1 ? 'page-break-after: always;' : '';
 
       return `
-        <div class="product-card" style="position: relative; width: ${pageWidth}mm; height: ${pageHeight}mm; ${pageBreak}">
+        <div class="product-card" style="position: relative; width: ${pageWidth}mm; height: ${pageHeight}mm; background-color: ${backgroundColor}; ${pageBreak}">
           ${elements}
         </div>
       `;
@@ -176,7 +188,7 @@ const buildHtml = (items, template, logo, mappings, visibleFields, options = {})
 
 // Generate PDF
 exports.generatePdf = async (params) => {
-  const { items, template, logo, mappings, visibleFields, options } = params;
+  const { items, template, logo, allLogos, mappings, visibleFields, options } = params;
 
   let browser;
   try {
@@ -196,7 +208,7 @@ exports.generatePdf = async (params) => {
     }
 
     // Build HTML
-    const html = buildHtml(items, template, logo, mappings || [], visibleFields, { productImageBaseUrl });
+    const html = buildHtml(items, template, logo, allLogos, mappings || [], visibleFields, { productImageBaseUrl });
 
     // Set content
     await page.setContent(html, { waitUntil: 'networkidle0' });

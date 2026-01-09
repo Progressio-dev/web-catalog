@@ -1,6 +1,48 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { logoAPI } from '../../services/api';
+import { toast } from 'react-toastify';
 
 const ElementPalette = ({ csvColumns, onAddElement }) => {
+  const [logos, setLogos] = useState([]);
+  const [selectedLogoId, setSelectedLogoId] = useState(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [showLogoUpload, setShowLogoUpload] = useState(false);
+
+  useEffect(() => {
+    fetchLogos();
+  }, []);
+
+  const fetchLogos = async () => {
+    try {
+      const response = await logoAPI.getAll();
+      setLogos(response.data.filter(logo => logo.is_active));
+    } catch (error) {
+      console.error('Error fetching logos:', error);
+    }
+  };
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const name = prompt('Nom du logo:', file.name);
+    if (!name) return;
+
+    setUploadingLogo(true);
+    try {
+      await logoAPI.create(file, name);
+      toast.success('Logo uploadé avec succès');
+      await fetchLogos();
+      setShowLogoUpload(false);
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast.error('Erreur lors de l\'upload du logo');
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+
   const addTextElement = (column) => {
     onAddElement({
       type: 'text',
@@ -18,9 +60,16 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
   };
 
   const addLogoElement = () => {
+    if (!selectedLogoId) {
+      toast.warning('Veuillez sélectionner un logo');
+      return;
+    }
+
+    const selectedLogo = logos.find(logo => logo.id === parseInt(selectedLogoId));
     onAddElement({
       type: 'logo',
-      logoId: null,
+      logoId: selectedLogoId,
+      logoPath: selectedLogo?.path || '',
       width: 150,
       height: 50,
     });
@@ -85,12 +134,54 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
       </div>
 
       <div style={styles.section}>
+        <h4 style={styles.sectionTitle}>Logo</h4>
+        <div style={styles.logoSection}>
+          <label style={styles.uploadButton}>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleLogoUpload}
+              disabled={uploadingLogo}
+              style={styles.fileInput}
+            />
+            <span style={styles.icon}>📤</span>
+            <span>{uploadingLogo ? 'Upload...' : '+ Upload Logo'}</span>
+          </label>
+          
+          {logos.length > 0 && (
+            <>
+              <select
+                value={selectedLogoId || ''}
+                onChange={(e) => setSelectedLogoId(e.target.value)}
+                style={styles.logoSelect}
+              >
+                <option value="">Sélectionner un logo</option>
+                {logos.map((logo) => (
+                  <option key={logo.id} value={logo.id}>
+                    {logo.name}
+                  </option>
+                ))}
+              </select>
+              
+              <button 
+                onClick={addLogoElement} 
+                style={{
+                  ...styles.elementBtn,
+                  opacity: selectedLogoId ? 1 : 0.5,
+                }}
+                disabled={!selectedLogoId}
+              >
+                <span style={styles.icon}>🖼️</span>
+                <span>Ajouter au canvas</span>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={styles.section}>
         <h4 style={styles.sectionTitle}>Éléments spéciaux</h4>
         <div style={styles.specialElements}>
-          <button onClick={addLogoElement} style={styles.elementBtn}>
-            <span style={styles.icon}>🖼️</span>
-            <span>Logo</span>
-          </button>
           <button onClick={addImageElement} style={styles.elementBtn}>
             <span style={styles.icon}>📷</span>
             <span>Image produit</span>
@@ -175,6 +266,35 @@ const styles = {
     fontSize: '13px',
     fontWeight: '500',
     transition: 'all 0.2s ease',
+  },
+  logoSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  uploadButton: {
+    padding: '10px',
+    backgroundColor: '#4CAF50',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    fontSize: '13px',
+    fontWeight: '600',
+    justifyContent: 'center',
+  },
+  fileInput: {
+    display: 'none',
+  },
+  logoSelect: {
+    padding: '10px',
+    fontSize: '13px',
+    border: '1px solid #ddd',
+    borderRadius: '5px',
+    backgroundColor: 'white',
   },
 };
 

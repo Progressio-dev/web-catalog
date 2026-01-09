@@ -31,7 +31,16 @@ exports.getTemplate = async (req, res) => {
 // Create template
 exports.createTemplate = async (req, res) => {
   try {
-    const { name, config } = req.body;
+    const { 
+      name, 
+      config, 
+      page_format, 
+      page_orientation, 
+      page_width, 
+      page_height, 
+      csv_separator,
+      background_color 
+    } = req.body;
 
     if (!name || !config) {
       return res.status(400).json({ error: 'Name and config are required' });
@@ -40,8 +49,20 @@ exports.createTemplate = async (req, res) => {
     const configJson = typeof config === 'string' ? config : JSON.stringify(config);
 
     const result = await dbRun(
-      'INSERT INTO templates (name, config) VALUES (?, ?)',
-      [name, configJson]
+      `INSERT INTO templates (
+        name, config, page_format, page_orientation, 
+        page_width, page_height, csv_separator, background_color
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name, 
+        configJson,
+        page_format || 'A4',
+        page_orientation || 'portrait',
+        page_width,
+        page_height,
+        csv_separator || ',',
+        background_color || '#FFFFFF'
+      ]
     );
 
     const newTemplate = await dbGet('SELECT * FROM templates WHERE id = ?', [result.lastID]);
@@ -56,7 +77,17 @@ exports.createTemplate = async (req, res) => {
 exports.updateTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, config, is_active } = req.body;
+    const { 
+      name, 
+      config, 
+      is_active, 
+      page_format, 
+      page_orientation, 
+      page_width, 
+      page_height, 
+      csv_separator,
+      background_color 
+    } = req.body;
 
     const template = await dbGet('SELECT * FROM templates WHERE id = ?', [id]);
     
@@ -65,12 +96,40 @@ exports.updateTemplate = async (req, res) => {
     }
 
     const configJson = config ? (typeof config === 'string' ? config : JSON.stringify(config)) : template.config;
-    const newName = name || template.name;
+    const newName = name !== undefined ? name : template.name;
     const newIsActive = is_active !== undefined ? is_active : template.is_active;
+    const newPageFormat = page_format !== undefined ? page_format : template.page_format;
+    const newPageOrientation = page_orientation !== undefined ? page_orientation : template.page_orientation;
+    const newPageWidth = page_width !== undefined ? page_width : template.page_width;
+    const newPageHeight = page_height !== undefined ? page_height : template.page_height;
+    const newCsvSeparator = csv_separator !== undefined ? csv_separator : template.csv_separator;
+    const newBackgroundColor = background_color !== undefined ? background_color : template.background_color;
 
     await dbRun(
-      'UPDATE templates SET name = ?, config = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [newName, configJson, newIsActive, id]
+      `UPDATE templates SET 
+        name = ?, 
+        config = ?, 
+        is_active = ?,
+        page_format = ?,
+        page_orientation = ?,
+        page_width = ?,
+        page_height = ?,
+        csv_separator = ?,
+        background_color = ?,
+        updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ?`,
+      [
+        newName, 
+        configJson, 
+        newIsActive,
+        newPageFormat,
+        newPageOrientation,
+        newPageWidth,
+        newPageHeight,
+        newCsvSeparator,
+        newBackgroundColor,
+        id
+      ]
     );
 
     const updatedTemplate = await dbGet('SELECT * FROM templates WHERE id = ?', [id]);
@@ -115,8 +174,10 @@ exports.duplicateTemplate = async (req, res) => {
     const newName = `${template.name} (copie)`;
     
     const result = await dbRun(
-      `INSERT INTO templates (name, config, page_format, page_orientation, page_width, page_height, csv_separator, is_active) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO templates (
+        name, config, page_format, page_orientation, 
+        page_width, page_height, csv_separator, background_color, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newName,
         template.config,
@@ -125,6 +186,7 @@ exports.duplicateTemplate = async (req, res) => {
         template.page_width,
         template.page_height,
         template.csv_separator || ',',
+        template.background_color || '#FFFFFF',
         0  // Inactive by default
       ]
     );

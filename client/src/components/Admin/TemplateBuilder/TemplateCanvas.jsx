@@ -16,6 +16,9 @@ const TemplateCanvas = ({
 }) => {
   const [draggingId, setDraggingId] = React.useState(null);
   const [dragOffset, setDragOffset] = React.useState({ x: 0, y: 0 });
+  const [resizingId, setResizingId] = React.useState(null);
+  const [resizeHandle, setResizeHandle] = React.useState(null);
+  const [resizeStart, setResizeStart] = React.useState({ x: 0, y: 0, width: 0, height: 0 });
 
   const pageWidth =
     pageConfig.format === 'Custom'
@@ -31,6 +34,18 @@ const TemplateCanvas = ({
   const canvasWidth = pageWidth * scale;
   const canvasHeight = pageHeight * scale;
 
+  // Handle delete key
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Delete' && selectedElement) {
+        onDeleteElement(selectedElement.id);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedElement, onDeleteElement]);
+
   const handleMouseDown = (e, element) => {
     e.stopPropagation();
     setDraggingId(element.id);
@@ -41,24 +56,102 @@ const TemplateCanvas = ({
     onSelectElement(element);
   };
 
-  const handleMouseMove = (e) => {
-    if (!draggingId) return;
-
-    const newX = e.clientX - dragOffset.x;
-    const newY = e.clientY - dragOffset.y;
-
-    onUpdateElement(draggingId, {
-      x: Math.max(0, Math.min(newX, canvasWidth - 50)),
-      y: Math.max(0, Math.min(newY, canvasHeight - 50)),
+  const handleResizeStart = (e, element, handle) => {
+    e.stopPropagation();
+    setResizingId(element.id);
+    setResizeHandle(handle);
+    setResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+      width: element.width,
+      height: element.height,
+      left: element.x,
+      top: element.y,
     });
+    onSelectElement(element);
+  };
+
+  const handleMouseMove = (e) => {
+    if (draggingId && !resizingId) {
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+
+      onUpdateElement(draggingId, {
+        x: Math.max(0, Math.min(newX, canvasWidth - 50)),
+        y: Math.max(0, Math.min(newY, canvasHeight - 50)),
+      });
+    } else if (resizingId) {
+      const dx = e.clientX - resizeStart.x;
+      const dy = e.clientY - resizeStart.y;
+
+      let updates = {};
+
+      // Calculate new dimensions based on handle
+      switch (resizeHandle) {
+        case 'se': // bottom-right
+          updates = {
+            width: Math.max(20, resizeStart.width + dx),
+            height: Math.max(20, resizeStart.height + dy),
+          };
+          break;
+        case 'sw': // bottom-left
+          updates = {
+            x: resizeStart.left + dx,
+            width: Math.max(20, resizeStart.width - dx),
+            height: Math.max(20, resizeStart.height + dy),
+          };
+          break;
+        case 'ne': // top-right
+          updates = {
+            y: resizeStart.top + dy,
+            width: Math.max(20, resizeStart.width + dx),
+            height: Math.max(20, resizeStart.height - dy),
+          };
+          break;
+        case 'nw': // top-left
+          updates = {
+            x: resizeStart.left + dx,
+            y: resizeStart.top + dy,
+            width: Math.max(20, resizeStart.width - dx),
+            height: Math.max(20, resizeStart.height - dy),
+          };
+          break;
+        case 'n': // top
+          updates = {
+            y: resizeStart.top + dy,
+            height: Math.max(20, resizeStart.height - dy),
+          };
+          break;
+        case 's': // bottom
+          updates = {
+            height: Math.max(20, resizeStart.height + dy),
+          };
+          break;
+        case 'e': // right
+          updates = {
+            width: Math.max(20, resizeStart.width + dx),
+          };
+          break;
+        case 'w': // left
+          updates = {
+            x: resizeStart.left + dx,
+            width: Math.max(20, resizeStart.width - dx),
+          };
+          break;
+      }
+
+      onUpdateElement(resizingId, updates);
+    }
   };
 
   const handleMouseUp = () => {
     setDraggingId(null);
+    setResizingId(null);
+    setResizeHandle(null);
   };
 
   React.useEffect(() => {
-    if (draggingId) {
+    if (draggingId || resizingId) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
       return () => {
@@ -66,7 +159,7 @@ const TemplateCanvas = ({
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [draggingId, dragOffset]);
+  }, [draggingId, resizingId, dragOffset, resizeStart, resizeHandle]);
 
   const renderElement = (element) => {
     const isSelected = selectedElement?.id === element.id;
@@ -77,8 +170,63 @@ const TemplateCanvas = ({
       width: `${element.width}px`,
       height: `${element.height}px`,
       cursor: 'move',
-      border: isSelected ? '2px solid #2196F3' : '1px dashed #ccc',
+      border: isSelected ? '3px solid #2196F3' : '1px dashed #ccc',
       boxSizing: 'border-box',
+    };
+
+    const renderResizeHandles = () => {
+      if (!isSelected) return null;
+
+      const handleSize = 8;
+      const handleStyle = {
+        position: 'absolute',
+        width: `${handleSize}px`,
+        height: `${handleSize}px`,
+        backgroundColor: '#2196F3',
+        border: '1px solid white',
+        borderRadius: '50%',
+        cursor: 'pointer',
+        zIndex: 10,
+      };
+
+      return (
+        <>
+          {/* Corner handles */}
+          <div
+            style={{ ...handleStyle, top: `-${handleSize / 2}px`, left: `-${handleSize / 2}px`, cursor: 'nw-resize' }}
+            onMouseDown={(e) => handleResizeStart(e, element, 'nw')}
+          />
+          <div
+            style={{ ...handleStyle, top: `-${handleSize / 2}px`, right: `-${handleSize / 2}px`, cursor: 'ne-resize' }}
+            onMouseDown={(e) => handleResizeStart(e, element, 'ne')}
+          />
+          <div
+            style={{ ...handleStyle, bottom: `-${handleSize / 2}px`, left: `-${handleSize / 2}px`, cursor: 'sw-resize' }}
+            onMouseDown={(e) => handleResizeStart(e, element, 'sw')}
+          />
+          <div
+            style={{ ...handleStyle, bottom: `-${handleSize / 2}px`, right: `-${handleSize / 2}px`, cursor: 'se-resize' }}
+            onMouseDown={(e) => handleResizeStart(e, element, 'se')}
+          />
+          {/* Edge handles */}
+          <div
+            style={{ ...handleStyle, top: `-${handleSize / 2}px`, left: '50%', transform: 'translateX(-50%)', cursor: 'n-resize' }}
+            onMouseDown={(e) => handleResizeStart(e, element, 'n')}
+          />
+          <div
+            style={{ ...handleStyle, bottom: `-${handleSize / 2}px`, left: '50%', transform: 'translateX(-50%)', cursor: 's-resize' }}
+            onMouseDown={(e) => handleResizeStart(e, element, 's')}
+          />
+          <div
+            style={{ ...handleStyle, left: `-${handleSize / 2}px`, top: '50%', transform: 'translateY(-50%)', cursor: 'w-resize' }}
+            onMouseDown={(e) => handleResizeStart(e, element, 'w')}
+          />
+          <div
+            style={{ ...handleStyle, right: `-${handleSize / 2}px`, top: '50%', transform: 'translateY(-50%)', cursor: 'e-resize' }}
+            onMouseDown={(e) => handleResizeStart(e, element, 'e')}
+          />
+        </>
+      );
     };
 
     if (element.type === 'text') {
@@ -100,11 +248,16 @@ const TemplateCanvas = ({
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
           {element.csvColumn || 'Texte'}
+          {renderResizeHandles()}
         </div>
       );
     }
 
     if (element.type === 'logo' || element.type === 'image') {
+      const content = element.type === 'logo' && element.logoPath 
+        ? <img src={element.logoPath} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        : element.type === 'logo' ? '🖼️ Logo' : '📷 Image';
+
       return (
         <div
           key={element.id}
@@ -119,7 +272,8 @@ const TemplateCanvas = ({
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          {element.type === 'logo' ? '🖼️ Logo' : '📷 Image'}
+          {content}
+          {renderResizeHandles()}
         </div>
       );
     }
@@ -134,7 +288,9 @@ const TemplateCanvas = ({
             height: 'auto',
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
-        />
+        >
+          {renderResizeHandles()}
+        </div>
       );
     }
 
@@ -149,7 +305,9 @@ const TemplateCanvas = ({
             borderRadius: `${element.borderRadius}px`,
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
-        />
+        >
+          {renderResizeHandles()}
+        </div>
       );
     }
 
@@ -164,6 +322,7 @@ const TemplateCanvas = ({
             ...styles.canvas,
             width: `${canvasWidth}px`,
             height: `${canvasHeight}px`,
+            backgroundColor: pageConfig.backgroundColor || '#FFFFFF',
           }}
           onClick={() => onSelectElement(null)}
         >
