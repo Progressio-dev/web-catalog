@@ -105,6 +105,10 @@ const TemplateCanvas = ({
     }
 
     if (element.type === 'logo' || element.type === 'image') {
+      const content = element.type === 'logo' && element.logoPath 
+        ? <img src={element.logoPath} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        : element.type === 'logo' ? '🖼️ Logo' : '📷 Image';
+
       return (
         <div
           key={element.id}
@@ -119,7 +123,7 @@ const TemplateCanvas = ({
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          {element.type === 'logo' ? '🖼️ Logo' : '📷 Image'}
+          {content}
         </div>
       );
     }

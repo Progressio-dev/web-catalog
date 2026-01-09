@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import TemplateList from '../components/Admin/TemplateList';
-import LogoManager from '../components/Admin/LogoManager';
 import SettingsPanel from '../components/Admin/SettingsPanel';
 
 const Admin = () => {
@@ -43,15 +42,6 @@ const Admin = () => {
             Templates
           </button>
           <button
-            onClick={() => setActiveTab('logos')}
-            style={{
-              ...styles.navButton,
-              ...(activeTab === 'logos' ? styles.navButtonActive : {}),
-            }}
-          >
-            Logos
-          </button>
-          <button
             onClick={() => setActiveTab('settings')}
             style={{
               ...styles.navButton,
@@ -67,7 +57,6 @@ const Admin = () => {
 
         <main style={styles.main}>
           {activeTab === 'templates' && <TemplateList />}
-          {activeTab === 'logos' && <LogoManager />}
           {activeTab === 'settings' && <SettingsPanel />}
         </main>
       </div>
