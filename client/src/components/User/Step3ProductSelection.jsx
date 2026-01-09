@@ -146,7 +146,7 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
             ) : (
               <div style={styles.previewBox}>
                 <p style={styles.previewNote}>
-                  ℹ️ Aperçu simplif de la ligne {previewIndex + 1}
+                  ℹ️ Aperçu simplifié de la ligne {previewIndex + 1}
                 </p>
                 <div style={styles.previewData}>
                   {Object.entries(csvData[previewIndex]).map(([key, value]) => (
