@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CsvUploader from './TemplateBuilder/CsvUploader';
 import PageConfigPanel from './TemplateBuilder/PageConfigPanel';
 import ElementPalette from './TemplateBuilder/ElementPalette';
@@ -82,6 +82,16 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   const handleSelectElement = (element) => {
     setSelectedElement(element);
   };
+
+  // Sync selectedElement with latest element data when elements change
+  useEffect(() => {
+    if (selectedElement) {
+      const latestElement = elements.find(el => el.id === selectedElement.id);
+      if (latestElement) {
+        setSelectedElement(latestElement);
+      }
+    }
+  }, [elements]);
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) {

@@ -6,8 +6,6 @@ const PAGE_FORMATS = {
   Letter: { width: 215.9, height: 279.4 },
 };
 
-const CLICK_THRESHOLD = 5; // pixels - max movement to distinguish click from drag
-
 const TemplateCanvas = ({
   pageConfig,
   elements,
@@ -51,6 +49,10 @@ const TemplateCanvas = ({
 
   const handleMouseDown = (e, element) => {
     e.stopPropagation();
+    
+    // ALWAYS select the element immediately
+    onSelectElement(element);
+    
     setMouseDownPos({ x: e.clientX, y: e.clientY });
     setDraggingId(element.id);
     setDragOffset({
@@ -148,21 +150,8 @@ const TemplateCanvas = ({
   };
 
   const handleMouseUp = (e) => {
-    // Check if it was a click (not a drag) - select the element
-    if (draggingId && mouseDownPos && !resizingId) {
-      const distance = Math.sqrt(
-        Math.pow(e.clientX - mouseDownPos.x, 2) + 
-        Math.pow(e.clientY - mouseDownPos.y, 2)
-      );
-      // If mouse moved less than threshold, treat it as a click
-      if (distance < CLICK_THRESHOLD) {
-        const element = elements.find(el => el.id === draggingId);
-        if (element) {
-          onSelectElement(element);
-        }
-      }
-    }
-    
+    // End drag/resize but KEEP the selection
+    // Selection was already set in handleMouseDown
     setDraggingId(null);
     setResizingId(null);
     setResizeHandle(null);
