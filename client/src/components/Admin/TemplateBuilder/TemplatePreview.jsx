@@ -1,4 +1,5 @@
 import React from 'react';
+import { logoAPI } from '../../../services/api';
 
 const PAGE_FORMATS = {
   A4: { width: 210, height: 297 },
@@ -10,6 +11,20 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
   const [zoom, setZoom] = React.useState(1);
   const [currentRowIndex, setCurrentRowIndex] = React.useState(0);
   const [codeResults, setCodeResults] = React.useState({});
+  const [logos, setLogos] = React.useState([]);
+
+  // Fetch logos on mount
+  React.useEffect(() => {
+    const fetchLogos = async () => {
+      try {
+        const response = await logoAPI.getAll();
+        setLogos(response.data.filter(logo => logo.is_active));
+      } catch (error) {
+        console.error('Error fetching logos:', error);
+      }
+    };
+    fetchLogos();
+  }, []);
 
   const pageWidth =
     pageConfig.format === 'Custom'
@@ -130,24 +145,47 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     }
 
     if (element.type === 'logo') {
-      const content = element.logoPath 
-        ? <img src={element.logoPath} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-        : 'Logo';
-
+      // Find logo by ID
+      const logo = logos?.find(l => l.id === element.logoId || l.id === parseInt(element.logoId));
+      
+      if (logo) {
+        // Build correct logo URL - use relative path that works with Vite proxy
+        const logoUrl = logo.path.startsWith('http') 
+          ? logo.path 
+          : logo.path; // Proxy handles /uploads paths
+          
+        return (
+          <div key={element.id} style={baseStyle}>
+            <img 
+              src={logoUrl}
+              alt={logo.name || 'Logo'}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain'
+              }}
+              onError={(e) => {
+                console.error('Logo load error:', logoUrl);
+                // Hide the broken image
+                e.target.style.opacity = '0';
+              }}
+            />
+          </div>
+        );
+      }
+      
+      // Fallback if logo not found
       return (
-        <div
-          key={element.id}
-          style={{
-            ...baseStyle,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#f0f0f0',
-            fontSize: '10px',
-            color: '#999',
-          }}
-        >
-          {content}
+        <div key={element.id} style={{
+          ...baseStyle,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '1px dashed #ccc',
+          fontSize: '10px',
+          color: '#999'
+        }}>
+          Logo non trouvé
         </div>
       );
     }
