@@ -56,7 +56,7 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
       setCurrentItem(selectedRows.length);
 
       // Download the PDF
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `fiches-${template.name}-${Date.now()}.pdf`);
