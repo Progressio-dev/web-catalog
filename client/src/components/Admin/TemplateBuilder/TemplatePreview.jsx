@@ -149,10 +149,18 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
       const logo = logos?.find(l => l.id === element.logoId || l.id === parseInt(element.logoId));
       
       if (logo) {
-        // Build correct logo URL - use relative path that works with Vite proxy
-        const logoUrl = logo.path.startsWith('http') 
-          ? logo.path 
-          : logo.path; // Proxy handles /uploads paths
+        // Build correct logo URL - handle both absolute URLs and relative paths
+        let logoUrl;
+        if (logo.path.startsWith('http://') || logo.path.startsWith('https://')) {
+          // Absolute URL - use as is
+          logoUrl = logo.path;
+        } else if (logo.path.startsWith('/uploads/')) {
+          // Already has /uploads/ prefix - use as is (proxy handles it)
+          logoUrl = logo.path;
+        } else {
+          // Relative path without /uploads/ - add it
+          logoUrl = `/uploads/${logo.path}`;
+        }
           
         return (
           <div key={element.id} style={baseStyle}>
@@ -165,7 +173,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
                 objectFit: 'contain'
               }}
               onError={(e) => {
-                console.error('Logo load error:', logoUrl);
+                console.error('Logo load error:', logoUrl, 'Original path:', logo.path);
                 // Hide the broken image
                 e.target.style.opacity = '0';
               }}

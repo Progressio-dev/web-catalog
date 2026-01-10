@@ -332,8 +332,19 @@ const buildHtml = async (items, template, logo, allLogos, mappings, visibleField
       const elements = await Promise.all(elementPromises);
       const elementsHtml = elements.join('');
 
-      const pageWidth = template.page_format === 'Custom' ? template.page_width : PAGE_FORMATS[template.page_format]?.width || 210;
-      const pageHeight = template.page_format === 'Custom' ? template.page_height : PAGE_FORMATS[template.page_format]?.height || 297;
+      // Get page dimensions exactly as in generatePreviewHtml()
+      let pageWidth = template.page_format === 'Custom' 
+        ? template.page_width 
+        : PAGE_FORMATS[template.page_format]?.width || 210;
+      
+      let pageHeight = template.page_format === 'Custom'
+        ? template.page_height
+        : PAGE_FORMATS[template.page_format]?.height || 297;
+      
+      // Apply orientation (landscape = swap width/height)
+      if (template.page_orientation === 'landscape') {
+        [pageWidth, pageHeight] = [pageHeight, pageWidth];
+      }
 
       // Add page break after each page except the last one
       const pageBreak = index < items.length - 1 ? 'page-break-after: always;' : '';
