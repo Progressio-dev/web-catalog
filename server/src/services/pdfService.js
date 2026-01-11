@@ -223,11 +223,56 @@ async function renderElement(element, item, logos, template) {
   }
 
   if (element.type === 'image') {
+    // Handle legacy logo format (type: 'image' with source: 'logo')
+    if (element.source === 'logo') {
+      // Use the first available logo from the logos array
+      const logo = logos && logos.length > 0 ? logos[0] : null;
+      
+      if (logo && logo.path) {
+        let absolutePath = logo.path;
+        
+        if (!logo.path.startsWith('http') && !path.isAbsolute(logo.path)) {
+          // Remove leading /uploads if present
+          const cleanPath = logo.path.replace(/^\/uploads\//, '');
+          // Use configurable upload directory
+          const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+          absolutePath = path.join(uploadDir, cleanPath);
+        }
+        
+        // Check if file exists
+        if (fs.existsSync(absolutePath)) {
+          const imageStyle = `
+            ${baseStyle}
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          `;
+          
+          const imgStyle = `
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+          `;
+          
+          // Use file:// protocol for local files
+          const src = absolutePath.startsWith('http') 
+            ? absolutePath 
+            : `file://${absolutePath}`;
+          
+          return `<div style="${imageStyle}"><img src="${src}" style="${imgStyle}" /></div>`;
+        }
+      }
+      
+      return `<div style="${baseStyle}">Logo non trouvé</div>`;
+    }
+    
+    // Handle regular product images
     const imageUrl = buildProductImageUrl(item, element);
     if (imageUrl) {
       const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'};`;
       return `<img src="${imageUrl}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
     }
+    // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
     return '';
   }
 

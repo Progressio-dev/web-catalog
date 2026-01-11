@@ -302,9 +302,22 @@ const TemplateCanvas = ({
     }
 
     if (element.type === 'logo' || element.type === 'image') {
-      const content = element.type === 'logo' && element.logoPath 
-        ? <img src={element.logoPath} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-        : element.type === 'logo' ? '🖼️ Logo' : '📷 Image';
+      let content;
+      
+      // Handle logo element with logoPath
+      if (element.type === 'logo' && element.logoPath) {
+        content = <img src={element.logoPath} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+      }
+      // Handle legacy logo format (type: 'image' with source: 'logo')
+      else if (element.type === 'image' && element.source === 'logo') {
+        content = '🖼️ Logo (ancien format)';
+      }
+      // Default placeholders
+      else if (element.type === 'logo') {
+        content = '🖼️ Logo';
+      } else {
+        content = '📷 Image';
+      }
 
       return (
         <div

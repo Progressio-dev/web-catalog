@@ -217,6 +217,57 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
       );
     }
 
+    // Handle legacy logo format (type: 'image' with source: 'logo')
+    if (element.type === 'image' && element.source === 'logo') {
+      // Use the first available logo from the logos array
+      const logo = logos && logos.length > 0 ? logos[0] : null;
+      
+      if (logo && logo.path) {
+        // Build correct logo URL - handle both absolute URLs and relative paths
+        let logoUrl;
+        if (logo.path.startsWith('http://') || logo.path.startsWith('https://')) {
+          logoUrl = logo.path;
+        } else if (logo.path.startsWith('/uploads/')) {
+          logoUrl = logo.path;
+        } else {
+          logoUrl = `/uploads/${logo.path}`;
+        }
+        
+        return (
+          <div key={element.id} style={baseStyle}>
+            <img 
+              src={logoUrl}
+              alt={logo.name || 'Logo'}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain'
+              }}
+              onError={(e) => {
+                console.error('Legacy logo load error:', logoUrl);
+                e.target.style.opacity = '0';
+              }}
+            />
+          </div>
+        );
+      }
+      
+      // Fallback if no logo found
+      return (
+        <div key={element.id} style={{
+          ...baseStyle,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '1px dashed #ccc',
+          fontSize: '10px',
+          color: '#999'
+        }}>
+          Logo non trouvé
+        </div>
+      );
+    }
+
     if (element.type === 'image') {
       return (
         <div
