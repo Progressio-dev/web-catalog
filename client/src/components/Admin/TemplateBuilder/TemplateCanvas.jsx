@@ -20,6 +20,8 @@ const TemplateCanvas = ({
   const [resizeHandle, setResizeHandle] = React.useState(null);
   const [resizeStart, setResizeStart] = React.useState({ x: 0, y: 0, width: 0, height: 0 });
   const [mouseDownPos, setMouseDownPos] = React.useState(null);
+  const [autoScale, setAutoScale] = React.useState(1);
+  const containerRef = React.useRef(null);
 
   // Get base page dimensions in mm
   let pageWidth =
@@ -55,6 +57,37 @@ const TemplateCanvas = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedElement, onDeleteElement]);
+
+  // Calculate automatic zoom to fit canvas in available space
+  React.useEffect(() => {
+    const calculateAutoScale = () => {
+      if (!containerRef.current) return;
+      
+      const containerWidth = containerRef.current.clientWidth;
+      const containerHeight = containerRef.current.clientHeight;
+      
+      // Reserve space for padding (40px total: 20px on each side)
+      const availableWidth = containerWidth - 40;
+      const availableHeight = containerHeight - 40;
+      
+      // Calculate scale based on width and height constraints
+      const scaleX = availableWidth / canvasWidth;
+      const scaleY = availableHeight / canvasHeight;
+      
+      // Use the smaller scale to ensure canvas fits in both dimensions
+      // Also cap the maximum scale at 1 (100%) to avoid enlarging beyond actual size
+      const scale = Math.min(scaleX, scaleY, 1);
+      
+      setAutoScale(scale);
+    };
+    
+    // Calculate on mount and when canvas dimensions change
+    calculateAutoScale();
+    
+    // Recalculate on window resize
+    window.addEventListener('resize', calculateAutoScale);
+    return () => window.removeEventListener('resize', calculateAutoScale);
+  }, [canvasWidth, canvasHeight]);
 
   const handleMouseDown = (e, element) => {
     e.stopPropagation();
@@ -428,7 +461,7 @@ const TemplateCanvas = ({
   };
 
   return (
-    <div style={styles.container}>
+    <div ref={containerRef} style={styles.container}>
       <div style={styles.canvasWrapper}>
         <div
           style={{
@@ -436,6 +469,8 @@ const TemplateCanvas = ({
             width: `${canvasWidth}px`,
             height: `${canvasHeight}px`,
             backgroundColor: pageConfig.backgroundColor || '#FFFFFF',
+            transform: `scale(${autoScale})`,
+            transformOrigin: 'center center',
           }}
           onClick={(e) => {
             // Only deselect if clicking directly on canvas (not on an element)
@@ -453,6 +488,7 @@ const TemplateCanvas = ({
           {/* Page info */}
           <div style={styles.pageInfo}>
             {pageConfig.format} - {pageConfig.orientation} ({pageWidth} x {pageHeight} mm)
+            {autoScale < 1 && ` - Zoom: ${Math.round(autoScale * 100)}%`}
           </div>
         </div>
       </div>
@@ -470,6 +506,7 @@ const styles = {
   canvasWrapper: {
     display: 'flex',
     justifyContent: 'center',
+    alignItems: 'center',
     minHeight: '100%',
   },
   canvas: {
@@ -477,6 +514,7 @@ const styles = {
     boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
     position: 'relative',
     userSelect: 'none',
+    transition: 'transform 0.2s ease-out',
   },
   grid: {
     position: 'absolute',
