@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
 
@@ -11,8 +11,12 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
   const [currentItem, setCurrentItem] = useState(0);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const generationStarted = useRef(false);
 
   useEffect(() => {
+    // Prevent double execution in React Strict Mode
+    if (generationStarted.current) return;
+    generationStarted.current = true;
     generatePdf();
   }, []);
 

@@ -10,7 +10,6 @@ const RowPreview = ({ row, template, logos }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [zoom, setZoom] = useState(0.5);
-  const previewWrapperRef = React.useRef(null);
 
   useEffect(() => {
     const fetchPreview = async () => {
@@ -88,7 +87,7 @@ const RowPreview = ({ row, template, logos }) => {
           style={styles.zoomSlider}
         />
       </div>
-      <div style={styles.previewWrapper} ref={previewWrapperRef}>
+      <div style={styles.previewWrapper}>
         <div
           // SECURITY NOTE: The HTML comes from our own trusted backend service
           // which generates preview content from the template and data.
