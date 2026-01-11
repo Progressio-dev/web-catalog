@@ -382,12 +382,12 @@ const styles = {
   builder: {
     flex: 1,
     display: 'flex',
-    overflow: 'hidden',
+    overflow: 'auto',
+    minWidth: '920px', // Minimum width to fit left sidebar (280px) + canvas (320px min) + right sidebar (320px)
   },
   sidebar: {
-    width: '30%',
-    minWidth: '250px',
-    maxWidth: '350px',
+    flexShrink: 0,
+    width: '280px',
     backgroundColor: 'white',
     borderRight: '1px solid #ddd',
     overflow: 'auto',
@@ -438,9 +438,8 @@ const styles = {
     fontSize: '14px',
   },
   rightSidebar: {
-    width: '30%',
-    minWidth: '300px',
-    maxWidth: '400px',
+    flexShrink: 0,
+    width: '320px',
     backgroundColor: 'white',
     borderLeft: '1px solid #ddd',
     overflow: 'auto',
