@@ -30,7 +30,7 @@ const PAGE_FORMATS = {
 };
 
 // Generate preview HTML for a single item
-exports.generatePreviewHtml = async ({ item, template, logos }) => {
+exports.generatePreviewHtml = async ({ item, template, logos, useHttpUrls = true }) => {
   const templateConfig = template ? JSON.parse(template.config) : null;
   
   if (!templateConfig || !templateConfig.elements) {
@@ -38,7 +38,7 @@ exports.generatePreviewHtml = async ({ item, template, logos }) => {
   }
 
   const elementPromises = templateConfig.elements.map(element => {
-    return renderElement(element, item, logos, template);
+    return renderElement(element, item, logos, template, useHttpUrls);
   });
   
   const elements = await Promise.all(elementPromises);
@@ -97,7 +97,7 @@ exports.generatePreviewHtml = async ({ item, template, logos }) => {
 };
 
 // Render a single element
-async function renderElement(element, item, logos, template) {
+async function renderElement(element, item, logos, template, useHttpUrls = false) {
   // Elements are stored in mm, use them directly with mm units in CSS
   const baseStyle = `
     position: absolute;
@@ -185,15 +185,19 @@ async function renderElement(element, item, logos, template) {
     }
     
     if (logoPath) {
-      // Convert relative path to absolute filesystem path
+      // Convert path to absolute filesystem path
       let absolutePath = logoPath;
       
-      if (!logoPath.startsWith('http') && !path.isAbsolute(logoPath)) {
-        // Remove leading /uploads if present
+      // Convert /uploads/ path or relative path to absolute filesystem path
+      if (logoPath.startsWith('/uploads/')) {
+        // Path is a web URL path, convert to filesystem path
         const cleanPath = logoPath.replace(/^\/uploads\//, '');
-        // Use configurable upload directory
         const uploadDir = getUploadDir();
         absolutePath = path.join(uploadDir, cleanPath);
+      } else if (!logoPath.startsWith('http') && !path.isAbsolute(logoPath)) {
+        // Relative path, make it absolute
+        const uploadDir = getUploadDir();
+        absolutePath = path.join(uploadDir, logoPath);
       }
       
       // Check if file exists
@@ -211,10 +215,10 @@ async function renderElement(element, item, logos, template) {
           object-fit: contain;
         `;
         
-        // Use file:// protocol for local files
-        const src = absolutePath.startsWith('http') 
-          ? absolutePath 
-          : `file://${absolutePath}`;
+        // Use HTTP URL for browser previews, file:// for PDF generation
+        const src = useHttpUrls
+          ? logoPath  // Use the original /uploads/ path for browser
+          : (absolutePath.startsWith('http') ? absolutePath : `file://${absolutePath}`);
         
         return `<div style="${imageStyle}"><img src="${src}" style="${imgStyle}" /></div>`;
       }
@@ -232,12 +236,16 @@ async function renderElement(element, item, logos, template) {
       if (logo && logo.path) {
         let absolutePath = logo.path;
         
-        if (!logo.path.startsWith('http') && !path.isAbsolute(logo.path)) {
-          // Remove leading /uploads if present
+        // Convert /uploads/ path or relative path to absolute filesystem path
+        if (logo.path.startsWith('/uploads/')) {
+          // Path is a web URL path, convert to filesystem path
           const cleanPath = logo.path.replace(/^\/uploads\//, '');
-          // Use configurable upload directory
           const uploadDir = getUploadDir();
           absolutePath = path.join(uploadDir, cleanPath);
+        } else if (!logo.path.startsWith('http') && !path.isAbsolute(logo.path)) {
+          // Relative path, make it absolute
+          const uploadDir = getUploadDir();
+          absolutePath = path.join(uploadDir, logo.path);
         }
         
         // Check if file exists
@@ -255,10 +263,10 @@ async function renderElement(element, item, logos, template) {
             object-fit: contain;
           `;
           
-          // Use file:// protocol for local files
-          const src = absolutePath.startsWith('http') 
-            ? absolutePath 
-            : `file://${absolutePath}`;
+          // Use HTTP URL for browser previews, file:// for PDF generation
+          const src = useHttpUrls
+            ? logo.path  // Use the original /uploads/ path for browser
+            : (absolutePath.startsWith('http') ? absolutePath : `file://${absolutePath}`);
           
           return `<div style="${imageStyle}"><img src="${src}" style="${imgStyle}" /></div>`;
         }
