@@ -381,31 +381,24 @@ const styles = {
   },
   builder: {
     flex: 1,
-    position: 'relative', // Enable absolute positioning for children
+    display: 'flex',
     width: '100%', // Use full available width
     overflow: 'hidden', // Prevent container from scrolling - let canvas container handle its own scrolling
   },
   sidebar: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
+    flexShrink: 0,
     width: '280px',
     backgroundColor: 'white',
     borderRight: '1px solid #ddd',
     overflow: 'auto',
-    zIndex: 1,
   },
   canvasContainer: {
-    position: 'absolute',
-    left: '280px', // Start after left sidebar
-    right: '320px', // End before right sidebar
-    top: 0,
-    bottom: 0,
+    flex: 1,
     display: 'flex',
     flexDirection: 'column',
     overflowX: 'auto', // Enable horizontal scroll for canvas when needed
     overflowY: 'hidden',
+    minWidth: 0, // Allow flex item to shrink below its content width to enable horizontal scrolling when necessary
   },
   canvasHeader: {
     backgroundColor: 'white',
@@ -446,17 +439,13 @@ const styles = {
     fontSize: '14px',
   },
   rightSidebar: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
+    flexShrink: 0,
     width: '320px',
     backgroundColor: 'white',
     borderLeft: '1px solid #ddd',
     overflow: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    zIndex: 1,
   },
   noSelection: {
     padding: '20px',
