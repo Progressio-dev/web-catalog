@@ -164,32 +164,35 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
       // Find logo by ID
       const logo = logos?.find(l => l.id === element.logoId || l.id === parseInt(element.logoId));
       
-      if (logo) {
+      // Use logo from database or fallback to stored path in element
+      let logoPath = logo?.path || element.logoPath;
+      
+      if (logoPath) {
         // Build correct logo URL - handle both absolute URLs and relative paths
         let logoUrl;
-        if (logo.path.startsWith('http://') || logo.path.startsWith('https://')) {
+        if (logoPath.startsWith('http://') || logoPath.startsWith('https://')) {
           // Absolute URL - use as is
-          logoUrl = logo.path;
-        } else if (logo.path.startsWith('/uploads/')) {
+          logoUrl = logoPath;
+        } else if (logoPath.startsWith('/uploads/')) {
           // Already has /uploads/ prefix - use as is (proxy handles it)
-          logoUrl = logo.path;
+          logoUrl = logoPath;
         } else {
           // Relative path without /uploads/ - add it
-          logoUrl = `/uploads/${logo.path}`;
+          logoUrl = `/uploads/${logoPath}`;
         }
           
         return (
           <div key={element.id} style={baseStyle}>
             <img 
               src={logoUrl}
-              alt={logo.name || 'Logo'}
+              alt={logo?.name || 'Logo'}
               style={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'contain'
               }}
               onError={(e) => {
-                console.error('Logo load error:', logoUrl, 'Original path:', logo.path);
+                console.error('Logo load error:', logoUrl, 'Original path:', logoPath);
                 // Hide the broken image
                 e.target.style.opacity = '0';
               }}
