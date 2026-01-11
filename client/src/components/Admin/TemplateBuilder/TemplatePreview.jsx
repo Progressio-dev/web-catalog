@@ -112,7 +112,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
 
   const renderPreviewElement = (element) => {
     // Convert mm to px for rendering with zoom
-    const MM_TO_PX = 2.5;
+    // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px
+    const MM_TO_PX = 3.779528;
     const xPx = (element.x || 0) * MM_TO_PX * zoom;
     const yPx = (element.y || 0) * MM_TO_PX * zoom;
     const widthPx = (element.width || 0) * MM_TO_PX * zoom;
@@ -308,7 +309,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
   };
 
   // Scaling for preview - convert mm to pixels with zoom
-  const MM_TO_PX = 2.5;
+  // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px
+  const MM_TO_PX = 3.779528;
   const previewWidth = pageWidth * MM_TO_PX * zoom;
   const previewHeight = pageHeight * MM_TO_PX * zoom;
 
