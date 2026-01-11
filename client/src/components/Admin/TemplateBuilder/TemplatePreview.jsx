@@ -89,18 +89,13 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
   };
 
   // Execute all JS code elements when data changes
-  // Only re-execute when code content or displayData changes, not on position/size changes
-  // Memoize the code elements signature to avoid creating new strings on every render
-  const jsElementsSignature = React.useMemo(() => {
-    return elements
-      .filter(el => el.type === 'jsCode')
-      .map(el => ({ id: el.id, code: el.code }));
-  }, [elements]);
-
   React.useEffect(() => {
     const executeAllJsElements = async () => {
       const results = {};
       const jsElements = elements.filter(el => el.type === 'jsCode');
+      
+      // Only execute if there are JS elements
+      if (jsElements.length === 0) return;
       
       for (const element of jsElements) {
         if (element.code) {
@@ -116,7 +111,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     if (displayData) {
       executeAllJsElements();
     }
-  }, [jsElementsSignature, displayData]);
+  }, [elements, displayData]);
 
   const renderPreviewElement = React.useCallback((element) => {
     // Convert mm to px for rendering with zoom
