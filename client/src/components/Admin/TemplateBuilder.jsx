@@ -35,6 +35,8 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   // Uses smarter detection based on page dimensions
   const migratePxToMm = (elements, pageFormat, orientation, customWidth, customHeight) => {
     const MM_TO_PX = 2.5;
+    // Detection multiplier: if element dimension/position > page dimension * this value, assume px
+    const DETECTION_MULTIPLIER = 2;
     
     // Get page dimensions in mm
     let pageWidth = pageFormat === 'Custom' 
@@ -49,32 +51,18 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
       [pageWidth, pageHeight] = [pageHeight, pageWidth];
     }
     
-    // Detection threshold: if width or x position > pageWidth*2, assume px
-    // This is more reliable than a fixed threshold of 50
-    const detectionMultiplier = 2;
-    
     return elements.map(element => {
       // Check if values look like they're in px
       // Use page dimensions as reference - if element dimensions are > page dimensions,
       // they're likely in px (since mm elements should fit within page)
-      const widthLooksLikePx = (element.width || 0) > (pageWidth * detectionMultiplier);
-      const heightLooksLikePx = (element.height || 0) > (pageHeight * detectionMultiplier);
-      const xLooksLikePx = (element.x || 0) > (pageWidth * detectionMultiplier);
-      const yLooksLikePx = (element.y || 0) > (pageHeight * detectionMultiplier);
+      const widthLooksLikePx = (element.width || 0) > (pageWidth * DETECTION_MULTIPLIER);
+      const heightLooksLikePx = (element.height || 0) > (pageHeight * DETECTION_MULTIPLIER);
+      const xLooksLikePx = (element.x || 0) > (pageWidth * DETECTION_MULTIPLIER);
+      const yLooksLikePx = (element.y || 0) > (pageHeight * DETECTION_MULTIPLIER);
       
       const needsMigration = widthLooksLikePx || heightLooksLikePx || xLooksLikePx || yLooksLikePx;
       
       if (needsMigration) {
-        console.log(`Migrating element ${element.id} from px to mm`, {
-          before: { x: element.x, y: element.y, width: element.width, height: element.height },
-          after: {
-            x: (element.x || 0) / MM_TO_PX,
-            y: (element.y || 0) / MM_TO_PX,
-            width: (element.width || 0) / MM_TO_PX,
-            height: (element.height || 0) / MM_TO_PX,
-          },
-        });
-        
         return {
           ...element,
           x: (element.x || 0) / MM_TO_PX,
