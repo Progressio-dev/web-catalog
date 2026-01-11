@@ -3,9 +3,14 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
+const { getUploadDir } = require('./config/paths');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Get upload directory path
+const UPLOAD_DIR = getUploadDir();
+console.log('Upload directory:', UPLOAD_DIR);
 
 // Middleware
 app.use(cors({
@@ -16,7 +21,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 // Import routes
 const authRoutes = require('./routes/auth');

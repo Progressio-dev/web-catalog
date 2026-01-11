@@ -2,6 +2,7 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 const { dbGet } = require('../config/database');
+const { getUploadDir, getGeneratedDir } = require('../config/paths');
 
 /**
  * SECURITY NOTE: JavaScript Code Execution
@@ -191,7 +192,7 @@ async function renderElement(element, item, logos, template) {
         // Remove leading /uploads if present
         const cleanPath = logoPath.replace(/^\/uploads\//, '');
         // Use configurable upload directory
-        const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+        const uploadDir = getUploadDir();
         absolutePath = path.join(uploadDir, cleanPath);
       }
       
@@ -235,7 +236,7 @@ async function renderElement(element, item, logos, template) {
           // Remove leading /uploads if present
           const cleanPath = logo.path.replace(/^\/uploads\//, '');
           // Use configurable upload directory
-          const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+          const uploadDir = getUploadDir();
           absolutePath = path.join(uploadDir, cleanPath);
         }
         
