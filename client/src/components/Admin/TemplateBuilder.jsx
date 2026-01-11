@@ -382,8 +382,8 @@ const styles = {
   builder: {
     flex: 1,
     display: 'flex',
-    overflow: 'auto',
-    minWidth: '920px', // Minimum width to fit left sidebar (280px) + canvas (320px min) + right sidebar (320px)
+    width: '100%', // Use full width instead of min-width constraint
+    overflow: 'hidden', // Let children handle their own overflow
   },
   sidebar: {
     flexShrink: 0,
@@ -396,8 +396,9 @@ const styles = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
-    minWidth: 0, // Allow flex item to shrink below content size
+    overflowX: 'auto', // Enable horizontal scroll for canvas when needed
+    overflowY: 'hidden',
+    minWidth: 0, // Allow flex item to shrink and enable scrolling
   },
   canvasHeader: {
     backgroundColor: 'white',
