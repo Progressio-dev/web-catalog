@@ -90,6 +90,13 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
 
   // Execute all JS code elements when data changes
   // Only re-execute when code content or displayData changes, not on position/size changes
+  // Memoize the code elements signature to avoid creating new strings on every render
+  const jsElementsSignature = React.useMemo(() => {
+    return elements
+      .filter(el => el.type === 'jsCode')
+      .map(el => ({ id: el.id, code: el.code }));
+  }, [elements]);
+
   React.useEffect(() => {
     const executeAllJsElements = async () => {
       const results = {};
@@ -109,13 +116,9 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     if (displayData) {
       executeAllJsElements();
     }
-  }, [
-    // Only re-run when the code content changes, not position/size
-    JSON.stringify(elements.map(el => ({ id: el.id, type: el.type, code: el.code }))),
-    displayData
-  ]);
+  }, [jsElementsSignature, displayData]);
 
-  const renderPreviewElement = (element) => {
+  const renderPreviewElement = React.useCallback((element) => {
     // Convert mm to px for rendering with zoom
     // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px
     const MM_TO_PX = 3.779528;
@@ -365,7 +368,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     }
 
     return null;
-  };
+  }, [displayData, zoom, codeResults, logos]);
 
   // Scaling for preview - convert mm to pixels with zoom
   // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px
@@ -376,7 +379,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
   // Memoize rendered elements to prevent flickering on navigation
   const renderedElements = React.useMemo(() => {
     return elements.map((element) => renderPreviewElement(element));
-  }, [elements, displayData, zoom, codeResults, logos]);
+  }, [elements, renderPreviewElement]);
 
   return (
     <div style={styles.container}>
