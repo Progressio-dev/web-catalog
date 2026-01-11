@@ -89,6 +89,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
   };
 
   // Execute all JS code elements when data changes
+  // Only re-execute when code content or displayData changes, not on position/size changes
   React.useEffect(() => {
     const executeAllJsElements = async () => {
       const results = {};
@@ -108,7 +109,11 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     if (displayData) {
       executeAllJsElements();
     }
-  }, [elements, displayData]);
+  }, [
+    // Only re-run when the code content changes, not position/size
+    JSON.stringify(elements.map(el => ({ id: el.id, type: el.type, code: el.code }))),
+    displayData
+  ]);
 
   const renderPreviewElement = (element) => {
     // Convert mm to px for rendering with zoom
@@ -368,6 +373,11 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
   const previewWidth = pageWidth * MM_TO_PX * zoom;
   const previewHeight = pageHeight * MM_TO_PX * zoom;
 
+  // Memoize rendered elements to prevent flickering on navigation
+  const renderedElements = React.useMemo(() => {
+    return elements.map((element) => renderPreviewElement(element));
+  }, [elements, displayData, zoom, codeResults, logos]);
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -442,7 +452,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
             backgroundColor: pageConfig.backgroundColor || '#FFFFFF',
           }}
         >
-          {elements.map((element) => renderPreviewElement(element))}
+          {renderedElements}
         </div>
       </div>
     </div>
