@@ -290,6 +290,7 @@ const TemplateCanvas = ({
             padding: '4px',
             overflow: 'hidden',
             backgroundColor: 'rgba(255,255,255,0.9)',
+            boxSizing: 'border-box',
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
@@ -373,6 +374,7 @@ const TemplateCanvas = ({
             overflow: 'hidden',
             backgroundColor: 'rgba(255,255,255,0.9)',
             whiteSpace: 'pre-wrap',
+            boxSizing: 'border-box',
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
@@ -398,6 +400,7 @@ const TemplateCanvas = ({
             overflow: 'hidden',
             backgroundColor: 'rgba(255,255,200,0.9)',
             border: isSelected ? '3px solid #2196F3' : '1px dashed #f90',
+            boxSizing: 'border-box',
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >

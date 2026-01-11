@@ -148,8 +148,10 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
             fontStyle: element.fontStyle,
             color: element.color,
             textAlign: element.textAlign,
+            padding: `${4 * zoom}px`,
             wordWrap: element.wordWrap ? 'break-word' : 'normal',
             overflow: 'hidden',
+            boxSizing: 'border-box',
           }}
         >
           {content}
@@ -268,8 +270,10 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
             fontStyle: element.fontStyle,
             color: element.color,
             textAlign: element.textAlign,
+            padding: `${4 * zoom}px`,
             whiteSpace: 'pre-wrap',
             overflow: 'hidden',
+            boxSizing: 'border-box',
           }}
         >
           {element.content || 'Texte libre'}
@@ -290,7 +294,9 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
             fontStyle: element.fontStyle,
             color: element.color,
             textAlign: element.textAlign,
+            padding: `${4 * zoom}px`,
             overflow: 'hidden',
+            boxSizing: 'border-box',
           }}
         >
           {result}

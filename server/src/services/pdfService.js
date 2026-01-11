@@ -125,6 +125,8 @@ async function renderElement(element, item, logos, template) {
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
       text-align: ${element.textAlign || 'left'};
+      padding: 4px;
+      box-sizing: border-box;
       ${element.wordWrap ? 'word-wrap: break-word; overflow-wrap: break-word;' : 'white-space: nowrap;'}
       text-decoration: ${element.textDecoration || 'none'};
     `;
@@ -141,6 +143,8 @@ async function renderElement(element, item, logos, template) {
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
       text-align: ${element.textAlign || 'left'};
+      padding: 4px;
+      box-sizing: border-box;
       white-space: pre-wrap;
     `;
     return `<div style="${textStyle}">${content}</div>`;
@@ -164,6 +168,8 @@ async function renderElement(element, item, logos, template) {
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
       text-align: ${element.textAlign || 'left'};
+      padding: 4px;
+      box-sizing: border-box;
     `;
     return `<div style="${textStyle}">${result}</div>`;
   }

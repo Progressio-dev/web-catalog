@@ -23,15 +23,43 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     backgroundColor: template?.background_color || '#FFFFFF',
   });
   const [csvSeparator, setCsvSeparator] = useState(template?.csv_separator || ',');
+  
+  // Page format definitions (in mm)
+  const PAGE_FORMATS = {
+    A4: { width: 210, height: 297 },
+    A5: { width: 148, height: 210 },
+    Letter: { width: 215.9, height: 279.4 },
+  };
+  
   // Migration helper: convert legacy px values to mm
-  // Threshold for detecting legacy px values (if width/height > this value, assume px)
-  const LEGACY_PX_THRESHOLD = 50;
-  const migratePxToMm = (elements) => {
+  // Uses smarter detection based on page dimensions
+  const migratePxToMm = (elements, pageFormat, orientation, customWidth, customHeight) => {
     const MM_TO_PX = 2.5;
+    // Detection strategy: if element dimension/position > page dimension, assume px
+    // This catches typical px values (e.g., 275px = 110mm) which exceed page width (210mm)
+    
+    // Get page dimensions in mm
+    let pageWidth = pageFormat === 'Custom' 
+      ? customWidth 
+      : PAGE_FORMATS[pageFormat]?.width || 210;
+    let pageHeight = pageFormat === 'Custom'
+      ? customHeight
+      : PAGE_FORMATS[pageFormat]?.height || 297;
+    
+    // Apply orientation
+    if (orientation === 'landscape') {
+      [pageWidth, pageHeight] = [pageHeight, pageWidth];
+    }
+    
     return elements.map(element => {
-      // Check if values look like they're in px (typically > 50 for width/height)
-      // This is a heuristic: if width > 50, assume it's in px and convert
-      const needsMigration = (element.width > LEGACY_PX_THRESHOLD) || (element.height > LEGACY_PX_THRESHOLD);
+      // Check if values look like they're in px by comparing to page dimensions
+      // If width > pageWidth, it's likely in px (e.g., 275px > 210mm for A4)
+      const widthLooksLikePx = (element.width || 0) > pageWidth;
+      const heightLooksLikePx = (element.height || 0) > pageHeight;
+      const xLooksLikePx = (element.x || 0) > pageWidth;
+      const yLooksLikePx = (element.y || 0) > pageHeight;
+      
+      const needsMigration = widthLooksLikePx || heightLooksLikePx || xLooksLikePx || yLooksLikePx;
       
       if (needsMigration) {
         return {
@@ -50,8 +78,14 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     if (template?.config) {
       const config = JSON.parse(template.config);
       const rawElements = config.elements || [];
-      // Apply migration for legacy templates
-      return migratePxToMm(rawElements);
+      // Apply migration for legacy templates with page config
+      return migratePxToMm(
+        rawElements,
+        template.page_format || 'A4',
+        template.page_orientation || 'portrait',
+        template.page_width,
+        template.page_height
+      );
     }
     return [];
   });
