@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import RowPreview from './RowPreview';
 import { logoAPI } from '../../services/api';
 
@@ -59,6 +59,13 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
   };
 
   const displayColumns = getDisplayColumns();
+
+  // Memoize logos to prevent unnecessary re-renders
+  // Note: Logos are only fetched once on component mount and don't change during the session.
+  // We track by ID to detect if logos are added/removed, which is the only expected change.
+  // If logo properties (name, url) change, they require a page refresh anyway.
+  const logoIds = logos.map(l => l.id).join(',');
+  const memoizedLogos = useMemo(() => logos, [logoIds]);
 
   return (
     <div style={styles.container}>
@@ -174,7 +181,7 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
               <RowPreview 
                 row={csvData[previewIndex]}
                 template={template}
-                logos={logos}
+                logos={memoizedLogos}
               />
             )}
           </div>

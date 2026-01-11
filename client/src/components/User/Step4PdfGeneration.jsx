@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
 
@@ -11,8 +11,12 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
   const [currentItem, setCurrentItem] = useState(0);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const generationStarted = useRef(false);
 
   useEffect(() => {
+    // Prevent double execution in React Strict Mode
+    if (generationStarted.current) return;
+    generationStarted.current = true;
     generatePdf();
   }, []);
 
@@ -24,11 +28,12 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
 
     let progressInterval = null;
     try {
-      // Simulate progress for better UX
+      // Simulate progress for better UX - go to 85% then slow down
       progressInterval = setInterval(() => {
         setProgress(prev => {
-          if (prev >= 90) {
-            return prev;
+          if (prev >= 85) {
+            // Slow down progress between 85-95% to show we're waiting for server
+            return Math.min(prev + 1, 95);
           }
           return prev + 10;
         });
@@ -38,7 +43,7 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
       // Prepare selected data
       const selectedData = selectedRows.map(index => csvData[index]);
 
-      // Call PDF generation API
+      // Call PDF generation API with timeout
       const response = await api.post(
         '/generate-pdf',
         {
@@ -48,6 +53,7 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
         },
         {
           responseType: 'blob',
+          timeout: 120000, // 2 minute timeout for large PDFs
         }
       );
 

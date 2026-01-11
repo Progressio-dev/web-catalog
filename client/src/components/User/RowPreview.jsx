@@ -38,7 +38,11 @@ const RowPreview = ({ row, template, logos }) => {
     };
 
     fetchPreview();
-  }, [row, template, logos]);
+    // Note: 'logos' is intentionally NOT in dependencies because:
+    // 1. It's not used in the fetchPreview function (server handles logos)
+    // 2. Adding it causes unnecessary re-fetches when logos array reference changes
+    // 3. Logo changes require a page refresh to take effect anyway
+  }, [row, template]);
 
   if (loading) {
     return (
@@ -97,8 +101,7 @@ const RowPreview = ({ row, template, logos }) => {
           style={{
             transform: `scale(${zoom})`,
             transformOrigin: 'top left',
-            width: `${100 / zoom}%`,
-            height: `${100 / zoom}%`
+            // Don't override width/height - let the HTML's mm units work naturally
           }}
         />
       </div>
