@@ -94,6 +94,9 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
       const results = {};
       const jsElements = elements.filter(el => el.type === 'jsCode');
       
+      // Only execute if there are JS elements
+      if (jsElements.length === 0) return;
+      
       for (const element of jsElements) {
         if (element.code) {
           results[element.id] = await executeJsCode(element.code, displayData);
@@ -110,7 +113,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     }
   }, [elements, displayData]);
 
-  const renderPreviewElement = (element) => {
+  const renderPreviewElement = React.useCallback((element) => {
     // Convert mm to px for rendering with zoom
     // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px
     const MM_TO_PX = 3.779528;
@@ -360,13 +363,18 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     }
 
     return null;
-  };
+  }, [displayData, zoom, codeResults, logos]);
 
   // Scaling for preview - convert mm to pixels with zoom
   // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px
   const MM_TO_PX = 3.779528;
   const previewWidth = pageWidth * MM_TO_PX * zoom;
   const previewHeight = pageHeight * MM_TO_PX * zoom;
+
+  // Memoize rendered elements to prevent flickering on navigation
+  const renderedElements = React.useMemo(() => {
+    return elements.map((element) => renderPreviewElement(element));
+  }, [elements, renderPreviewElement]);
 
   return (
     <div style={styles.container}>
@@ -442,7 +450,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
             backgroundColor: pageConfig.backgroundColor || '#FFFFFF',
           }}
         >
-          {elements.map((element) => renderPreviewElement(element))}
+          {renderedElements}
         </div>
       </div>
     </div>

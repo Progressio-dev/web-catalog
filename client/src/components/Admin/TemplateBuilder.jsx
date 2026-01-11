@@ -33,7 +33,12 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   
   // Migration helper: convert legacy px values to mm
   // Uses smarter detection based on page dimensions
-  const migratePxToMm = (elements, pageFormat, orientation, customWidth, customHeight) => {
+  const migratePxToMm = (elements, pageFormat, orientation, customWidth, customHeight, alreadyMigrated = false) => {
+    // Skip migration if already done (check for migration flag in config)
+    if (alreadyMigrated) {
+      return elements;
+    }
+    
     // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px
     const MM_TO_PX = 3.779528;
     // Detection strategy: if element dimension/position > page dimension, assume px
@@ -79,13 +84,16 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     if (template?.config) {
       const config = JSON.parse(template.config);
       const rawElements = config.elements || [];
+      // Check if migration was already done (templates saved after migration have this flag)
+      const alreadyMigrated = config.mmMigrated === true;
       // Apply migration for legacy templates with page config
       return migratePxToMm(
         rawElements,
         template.page_format || 'A4',
         template.page_orientation || 'portrait',
         template.page_width,
-        template.page_height
+        template.page_height,
+        alreadyMigrated
       );
     }
     return [];
@@ -172,6 +180,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
         elements, 
         backgroundColor: pageConfig.backgroundColor,
         csvTestData, // Save first 5 rows for preview during editing
+        mmMigrated: true, // Mark as migrated to prevent re-migration
       };
       
       const payload = {
@@ -384,11 +393,11 @@ const styles = {
     overflow: 'auto',
   },
   canvasContainer: {
-    width: '40%',
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    minWidth: 0, // Allow flex item to shrink below content size
   },
   canvasHeader: {
     backgroundColor: 'white',
