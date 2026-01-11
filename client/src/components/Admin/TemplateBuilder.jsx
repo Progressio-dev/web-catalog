@@ -35,8 +35,8 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   // Uses smarter detection based on page dimensions
   const migratePxToMm = (elements, pageFormat, orientation, customWidth, customHeight) => {
     const MM_TO_PX = 2.5;
-    // Detection multiplier: if element dimension/position > page dimension * this value, assume px
-    const DETECTION_MULTIPLIER = 2;
+    // Detection strategy: if element dimension/position > page dimension, assume px
+    // This catches typical px values (e.g., 275px = 110mm) which exceed page width (210mm)
     
     // Get page dimensions in mm
     let pageWidth = pageFormat === 'Custom' 
@@ -52,13 +52,12 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     }
     
     return elements.map(element => {
-      // Check if values look like they're in px
-      // Use page dimensions as reference - if element dimensions are > page dimensions,
-      // they're likely in px (since mm elements should fit within page)
-      const widthLooksLikePx = (element.width || 0) > (pageWidth * DETECTION_MULTIPLIER);
-      const heightLooksLikePx = (element.height || 0) > (pageHeight * DETECTION_MULTIPLIER);
-      const xLooksLikePx = (element.x || 0) > (pageWidth * DETECTION_MULTIPLIER);
-      const yLooksLikePx = (element.y || 0) > (pageHeight * DETECTION_MULTIPLIER);
+      // Check if values look like they're in px by comparing to page dimensions
+      // If width > pageWidth, it's likely in px (e.g., 275px > 210mm for A4)
+      const widthLooksLikePx = (element.width || 0) > pageWidth;
+      const heightLooksLikePx = (element.height || 0) > pageHeight;
+      const xLooksLikePx = (element.x || 0) > pageWidth;
+      const yLooksLikePx = (element.y || 0) > pageHeight;
       
       const needsMigration = widthLooksLikePx || heightLooksLikePx || xLooksLikePx || yLooksLikePx;
       
