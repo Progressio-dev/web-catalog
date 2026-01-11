@@ -5,6 +5,40 @@ const { dbGet } = require('../config/database');
 const { getUploadDir, getGeneratedDir } = require('../config/paths');
 
 /**
+ * Convert an image file to a base64 data URL
+ * @param {string} filePath - Absolute path to the image file
+ * @returns {string|null} - Data URL or null if file doesn't exist
+ */
+function imageToDataUrl(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+    
+    const imageBuffer = fs.readFileSync(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    
+    // Determine MIME type based on file extension
+    let mimeType = 'image/png'; // default
+    if (ext === '.jpg' || ext === '.jpeg') {
+      mimeType = 'image/jpeg';
+    } else if (ext === '.gif') {
+      mimeType = 'image/gif';
+    } else if (ext === '.svg') {
+      mimeType = 'image/svg+xml';
+    } else if (ext === '.webp') {
+      mimeType = 'image/webp';
+    }
+    
+    const base64Image = imageBuffer.toString('base64');
+    return `data:${mimeType};base64,${base64Image}`;
+  } catch (error) {
+    console.error('Error converting image to data URL:', error);
+    return null;
+  }
+}
+
+/**
  * SECURITY NOTE: JavaScript Code Execution
  * 
  * This service executes user-provided JavaScript code for dynamic content generation.
@@ -215,10 +249,20 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
           object-fit: contain;
         `;
         
-        // Use HTTP URL for browser previews, file:// for PDF generation
-        const src = useHttpUrls
-          ? logoPath  // Use the original /uploads/ path for browser
-          : (absolutePath.startsWith('http') ? absolutePath : `file://${absolutePath}`);
+        // Use HTTP URL for browser previews, data URL for PDF generation
+        let src;
+        if (useHttpUrls) {
+          // Use the original /uploads/ path for browser
+          src = logoPath;
+        } else {
+          // For PDF generation, convert to base64 data URL to avoid file:// URL issues
+          if (absolutePath.startsWith('http')) {
+            src = absolutePath;
+          } else {
+            const dataUrl = imageToDataUrl(absolutePath);
+            src = dataUrl || `file://${absolutePath}`; // Fallback to file:// if conversion fails
+          }
+        }
         
         return `<div style="${imageStyle}"><img src="${src}" style="${imgStyle}" /></div>`;
       }
@@ -263,10 +307,20 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
             object-fit: contain;
           `;
           
-          // Use HTTP URL for browser previews, file:// for PDF generation
-          const src = useHttpUrls
-            ? logo.path  // Use the original /uploads/ path for browser
-            : (absolutePath.startsWith('http') ? absolutePath : `file://${absolutePath}`);
+          // Use HTTP URL for browser previews, data URL for PDF generation
+          let src;
+          if (useHttpUrls) {
+            // Use the original /uploads/ path for browser
+            src = logo.path;
+          } else {
+            // For PDF generation, convert to base64 data URL to avoid file:// URL issues
+            if (absolutePath.startsWith('http')) {
+              src = absolutePath;
+            } else {
+              const dataUrl = imageToDataUrl(absolutePath);
+              src = dataUrl || `file://${absolutePath}`; // Fallback to file:// if conversion fails
+            }
+          }
           
           return `<div style="${imageStyle}"><img src="${src}" style="${imgStyle}" /></div>`;
         }
@@ -367,9 +421,36 @@ const buildHtml = async (items, template, logo, allLogos, mappings, visibleField
   const defaultHtml = items.map(item => {
     const fields = visibleFields || Object.keys(item);
     
+    // Convert logo to data URL for PDF rendering
+    let logoHtml = '';
+    if (logo && logo.path) {
+      let absoluteLogoPath = logo.path;
+      
+      // Convert to absolute path if needed
+      if (logo.path.startsWith('/uploads/')) {
+        const cleanPath = logo.path.replace(/^\/uploads\//, '');
+        const uploadDir = getUploadDir();
+        absoluteLogoPath = path.join(uploadDir, cleanPath);
+      } else if (!logo.path.startsWith('http') && !path.isAbsolute(logo.path)) {
+        const uploadDir = getUploadDir();
+        absoluteLogoPath = path.join(uploadDir, logo.path);
+      }
+      
+      // Use data URL for PDF generation
+      let logoSrc;
+      if (absoluteLogoPath.startsWith('http')) {
+        logoSrc = absoluteLogoPath;
+      } else {
+        const dataUrl = imageToDataUrl(absoluteLogoPath);
+        logoSrc = dataUrl || `file://${path.resolve(absoluteLogoPath)}`;
+      }
+      
+      logoHtml = `<img src="${logoSrc}" alt="Logo" style="max-width: 200px; margin-bottom: 20px;" />`;
+    }
+    
     return `
       <div class="product-card" style="page-break-after: always; padding: 20px; font-family: Arial, sans-serif; background-color: ${backgroundColor};">
-        ${logo ? `<img src="file://${path.resolve(logo.path)}" alt="Logo" style="max-width: 200px; margin-bottom: 20px;" />` : ''}
+        ${logoHtml}
         ${fields.map(field => `
           <div style="margin-bottom: 10px;">
             <strong>${field}:</strong> ${item[field] || ''}
