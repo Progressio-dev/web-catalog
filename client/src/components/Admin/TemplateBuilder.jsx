@@ -34,7 +34,8 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   // Migration helper: convert legacy px values to mm
   // Uses smarter detection based on page dimensions
   const migratePxToMm = (elements, pageFormat, orientation, customWidth, customHeight) => {
-    const MM_TO_PX = 2.5;
+    // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px
+    const MM_TO_PX = 3.779528;
     // Detection strategy: if element dimension/position > page dimension, assume px
     // This catches typical px values (e.g., 275px = 110mm) which exceed page width (210mm)
     
