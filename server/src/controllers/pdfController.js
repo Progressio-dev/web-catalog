@@ -148,7 +148,9 @@ exports.generatePdf = async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="catalog-${Date.now()}.pdf"`);
     res.setHeader('Content-Length', pdfBuffer.length);
-    res.send(pdfBuffer);
+    
+    // Use res.end() instead of res.send() for binary data to prevent JSON serialization
+    res.end(pdfBuffer, 'binary');
   } catch (error) {
     console.error('Generate PDF error:', error);
     res.status(500).json({ error: 'Échec de la génération du PDF' });
