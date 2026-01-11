@@ -10,6 +10,7 @@ const RowPreview = ({ row, template, logos }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [zoom, setZoom] = useState(0.5);
+  const previewWrapperRef = React.useRef(null);
 
   useEffect(() => {
     const fetchPreview = async () => {
@@ -38,7 +39,7 @@ const RowPreview = ({ row, template, logos }) => {
     };
 
     fetchPreview();
-  }, [row, template, logos]);
+  }, [row, template]); // Remove 'logos' dependency to prevent unnecessary re-fetches
 
   if (loading) {
     return (
@@ -87,7 +88,7 @@ const RowPreview = ({ row, template, logos }) => {
           style={styles.zoomSlider}
         />
       </div>
-      <div style={styles.previewWrapper}>
+      <div style={styles.previewWrapper} ref={previewWrapperRef}>
         <div
           // SECURITY NOTE: The HTML comes from our own trusted backend service
           // which generates preview content from the template and data.
@@ -97,8 +98,7 @@ const RowPreview = ({ row, template, logos }) => {
           style={{
             transform: `scale(${zoom})`,
             transformOrigin: 'top left',
-            width: `${100 / zoom}%`,
-            height: `${100 / zoom}%`
+            // Don't override width/height - let the HTML's mm units work naturally
           }}
         />
       </div>

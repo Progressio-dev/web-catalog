@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import RowPreview from './RowPreview';
 import { logoAPI } from '../../services/api';
 
@@ -59,6 +59,9 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
   };
 
   const displayColumns = getDisplayColumns();
+
+  // Memoize logos to prevent unnecessary re-renders
+  const memoizedLogos = useMemo(() => logos, [logos.length]);
 
   return (
     <div style={styles.container}>
@@ -174,7 +177,7 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
               <RowPreview 
                 row={csvData[previewIndex]}
                 template={template}
-                logos={logos}
+                logos={memoizedLogos}
               />
             )}
           </div>
