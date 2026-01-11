@@ -61,7 +61,9 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
   const displayColumns = getDisplayColumns();
 
   // Memoize logos to prevent unnecessary re-renders when content changes
-  const memoizedLogos = useMemo(() => logos, [JSON.stringify(logos.map(l => l.id))]);
+  // Using join instead of JSON.stringify for better performance
+  const logoIds = logos.map(l => l.id).join(',');
+  const memoizedLogos = useMemo(() => logos, [logoIds]);
 
   return (
     <div style={styles.container}>
