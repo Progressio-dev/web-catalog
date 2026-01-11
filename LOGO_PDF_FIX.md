@@ -21,6 +21,7 @@ Convert logo images to base64 data URLs before embedding them in the PDF HTML. T
 1. **Eliminates file:// URL issues**: Data URLs are embedded directly in the HTML, avoiding any file system or network loading
 2. **Ensures reliability**: The image data is guaranteed to be available when Puppeteer renders the PDF
 3. **Maintains compatibility**: The front-end preview continues to use HTTP URLs (`/uploads/...`) which work correctly with the development server
+4. **Proper error handling**: If base64 conversion fails, logs a warning and renders an empty placeholder instead of a broken image
 
 ## Changes Made
 
@@ -29,12 +30,19 @@ Convert logo images to base64 data URLs before embedding them in the PDF HTML. T
 ```javascript
 function imageToDataUrl(filePath) {
   // Reads image file from disk
-  // Detects MIME type based on file extension
+  // Detects MIME type based on file extension using lookup table
   // Converts to base64 and returns data URL
+  // Returns null if file doesn't exist or read fails
+  // Logs warnings/errors for debugging
 }
 ```
 
 Supports: PNG, JPEG, GIF, SVG, WebP
+
+**Error Handling:**
+- Returns `null` if file doesn't exist
+- Returns `null` if file read fails
+- Logs warning/error messages for debugging
 
 ### 2. Updated Logo Rendering Logic
 
@@ -71,8 +79,14 @@ data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
 
 If base64 conversion fails (e.g., file doesn't exist or read error):
 1. Returns `null` from `imageToDataUrl()`
-2. Falls back to `file://` URL (original behavior)
-3. If file doesn't exist, displays "Logo non trouvé"
+2. Logs a warning message with the file path
+3. Renders an empty placeholder div with an HTML comment
+4. Does NOT fall back to `file://` URLs (which were the source of the problem)
+
+This ensures:
+- No broken images in the PDF
+- Clear error messages in logs for debugging
+- Consistent behavior without unpredictable fallbacks
 
 ## Impact
 
@@ -101,9 +115,13 @@ To verify the fix:
 
 - Images are read from the trusted upload directory only
 - File existence is checked before reading
-- MIME types are determined by file extension (trusted input)
-- Base64 conversion errors are caught and logged
+- MIME types are determined by file extension using a lookup table
+- Base64 conversion errors are caught and logged with appropriate messages
 - No user-controlled paths are used in file operations
+- Failed conversions result in empty placeholders, not error messages exposed to users
+- No fallback to potentially problematic `file://` URLs
+
+**CodeQL Analysis**: ✅ 0 alerts - No security vulnerabilities detected
 
 ## Future Improvements
 
@@ -113,5 +131,8 @@ To verify the fix:
 
 ---
 
-**Date**: January 11, 2026
-**Status**: ✅ Implemented and committed
+**Date**: January 11, 2026  
+**Status**: ✅ Implemented, reviewed, and security-checked  
+**Code Review**: ✅ All feedback addressed  
+**Security Scan**: ✅ 0 vulnerabilities (CodeQL)
+
