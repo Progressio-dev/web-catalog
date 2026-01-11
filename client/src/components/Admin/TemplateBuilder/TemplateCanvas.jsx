@@ -39,7 +39,7 @@ const TemplateCanvas = ({
   // Convert mm to pixels for rendering (96 DPI standard)
   // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px
   const MM_TO_PX = 3.779528;
-  const MIN_ELEMENT_SIZE_MM = 8; // Minimum element size in mm (20px / 2.5)
+  const MIN_ELEMENT_SIZE_MM = 8; // Minimum element size in mm (~30px at 96 DPI)
   const MIN_EDGE_MARGIN_MM = 20; // Minimum margin from page edge in mm
   const canvasWidth = pageWidth * MM_TO_PX;
   const canvasHeight = pageHeight * MM_TO_PX;
