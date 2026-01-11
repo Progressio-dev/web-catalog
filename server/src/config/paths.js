@@ -7,8 +7,10 @@ const path = require('path');
  */
 function getUploadDir() {
   if (process.env.UPLOAD_DIR) {
-    return path.resolve(process.cwd(), process.env.UPLOAD_DIR);
+    const resolved = path.resolve(process.cwd(), process.env.UPLOAD_DIR);
+    return resolved;
   }
+  // Default: server/uploads directory relative to server/src
   return path.join(__dirname, '../../uploads');
 }
 
@@ -19,8 +21,10 @@ function getUploadDir() {
  */
 function getGeneratedDir() {
   if (process.env.GENERATED_DIR) {
-    return path.resolve(process.cwd(), process.env.GENERATED_DIR);
+    const resolved = path.resolve(process.cwd(), process.env.GENERATED_DIR);
+    return resolved;
   }
+  // Default: server/generated directory relative to server/src
   return path.join(__dirname, '../../generated');
 }
 
