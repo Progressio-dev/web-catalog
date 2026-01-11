@@ -225,7 +225,7 @@ async function renderElement(element, item, logos, template) {
   if (element.type === 'image') {
     // Handle legacy logo format (type: 'image' with source: 'logo')
     if (element.source === 'logo') {
-      // Find the first active logo or any available logo
+      // Use the first available logo from the logos array
       const logo = logos && logos.length > 0 ? logos[0] : null;
       
       if (logo && logo.path) {
@@ -272,6 +272,7 @@ async function renderElement(element, item, logos, template) {
       const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'};`;
       return `<img src="${imageUrl}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
     }
+    // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
     return '';
   }
 

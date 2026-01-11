@@ -219,7 +219,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
 
     // Handle legacy logo format (type: 'image' with source: 'logo')
     if (element.type === 'image' && element.source === 'logo') {
-      // Find the first active logo or any available logo
+      // Use the first available logo from the logos array
       const logo = logos && logos.length > 0 ? logos[0] : null;
       
       if (logo && logo.path) {
