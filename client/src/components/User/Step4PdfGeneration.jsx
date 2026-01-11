@@ -55,6 +55,15 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
       setProgress(100);
       setCurrentItem(selectedRows.length);
 
+      // Check if response is JSON error instead of PDF
+      const contentType = response.headers['content-type'];
+      if (contentType && contentType.includes('application/json')) {
+        // Parse JSON error response
+        const text = await response.data.text();
+        const error = JSON.parse(text);
+        throw new Error(error.error || 'Erreur lors de la génération du PDF');
+      }
+
       // Download the PDF
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
@@ -70,9 +79,33 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
       toast.success(`PDF généré avec succès ! (${selectedRows.length} fiches)`);
     } catch (error) {
       console.error('PDF generation error:', error);
+      clearInterval(progressInterval);
       setGenerating(false);
-      setError(error.response?.data?.error || 'Erreur lors de la génération du PDF');
-      toast.error('Erreur lors de la génération du PDF');
+      
+      // Try to extract error message from response
+      let errorMessage = 'Erreur lors de la génération du PDF';
+      if (error.response?.data) {
+        try {
+          // If data is a Blob, try to read it as text
+          if (error.response.data instanceof Blob) {
+            const text = await error.response.data.text();
+            const jsonError = JSON.parse(text);
+            errorMessage = jsonError.error || errorMessage;
+          } else if (typeof error.response.data === 'object') {
+            errorMessage = error.response.data.error || errorMessage;
+          }
+        } catch (e) {
+          // If parsing fails, use error message if available
+          if (error.message) {
+            errorMessage = error.message;
+          }
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 

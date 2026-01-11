@@ -26,14 +26,20 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     fetchLogos();
   }, []);
 
-  const pageWidth =
+  // Get base page dimensions in mm
+  let pageWidth =
     pageConfig.format === 'Custom'
       ? pageConfig.width
       : PAGE_FORMATS[pageConfig.format]?.width || 210;
-  const pageHeight =
+  let pageHeight =
     pageConfig.format === 'Custom'
       ? pageConfig.height
       : PAGE_FORMATS[pageConfig.format]?.height || 297;
+
+  // Apply orientation (landscape = swap width/height)
+  if (pageConfig.orientation === 'landscape') {
+    [pageWidth, pageHeight] = [pageHeight, pageWidth];
+  }
 
   // Use the current row's data or fallback to the passed sampleData
   const displayData = allSampleData && allSampleData.length > 0 
@@ -105,12 +111,19 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
   }, [elements, displayData]);
 
   const renderPreviewElement = (element) => {
+    // Convert mm to px for rendering with zoom
+    const MM_TO_PX = 2.5;
+    const xPx = (element.x || 0) * MM_TO_PX * zoom;
+    const yPx = (element.y || 0) * MM_TO_PX * zoom;
+    const widthPx = (element.width || 0) * MM_TO_PX * zoom;
+    const heightPx = (element.height || 0) * MM_TO_PX * zoom;
+    
     const baseStyle = {
       position: 'absolute',
-      left: `${element.x}px`,
-      top: `${element.y}px`,
-      width: `${element.width}px`,
-      height: `${element.height}px`,
+      left: `${xPx}px`,
+      top: `${yPx}px`,
+      width: `${widthPx}px`,
+      height: `${heightPx}px`,
     };
 
     if (element.type === 'text') {
@@ -129,7 +142,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
           key={element.id}
           style={{
             ...baseStyle,
-            fontSize: `${element.fontSize}px`,
+            fontSize: `${(element.fontSize || 12) * zoom}px`,
             fontFamily: element.fontFamily,
             fontWeight: element.fontWeight,
             fontStyle: element.fontStyle,
@@ -223,7 +236,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
           key={element.id}
           style={{
             ...baseStyle,
-            borderBottom: `${element.thickness}px ${element.style} ${element.color}`,
+            borderBottom: `${(element.thickness || 1) * zoom}px ${element.style} ${element.color}`,
           }}
         />
       );
@@ -236,8 +249,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
           style={{
             ...baseStyle,
             backgroundColor: element.backgroundColor,
-            border: `${element.borderWidth}px ${element.borderStyle} ${element.borderColor}`,
-            borderRadius: `${element.borderRadius}px`,
+            border: `${(element.borderWidth || 1) * zoom}px ${element.borderStyle} ${element.borderColor}`,
+            borderRadius: `${(element.borderRadius || 0) * zoom}px`,
           }}
         />
       );
@@ -249,7 +262,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
           key={element.id}
           style={{
             ...baseStyle,
-            fontSize: `${element.fontSize}px`,
+            fontSize: `${(element.fontSize || 14) * zoom}px`,
             fontFamily: element.fontFamily,
             fontWeight: element.fontWeight,
             fontStyle: element.fontStyle,
@@ -271,7 +284,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
           key={element.id}
           style={{
             ...baseStyle,
-            fontSize: `${element.fontSize}px`,
+            fontSize: `${(element.fontSize || 14) * zoom}px`,
             fontFamily: element.fontFamily,
             fontWeight: element.fontWeight,
             fontStyle: element.fontStyle,
@@ -288,10 +301,10 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) =>
     return null;
   };
 
-  // Scaling for preview - convert mm to pixels
-  const scale = 2.5 * zoom;
-  const previewWidth = pageWidth * scale;
-  const previewHeight = pageHeight * scale;
+  // Scaling for preview - convert mm to pixels with zoom
+  const MM_TO_PX = 2.5;
+  const previewWidth = pageWidth * MM_TO_PX * zoom;
+  const previewHeight = pageHeight * MM_TO_PX * zoom;
 
   return (
     <div style={styles.container}>

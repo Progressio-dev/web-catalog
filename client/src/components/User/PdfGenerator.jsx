@@ -19,6 +19,16 @@ const PdfGenerator = ({ selectedItems, logoId, visibleFields }) => {
         visibleFields,
       });
 
+      // Check if response is JSON error instead of PDF
+      const contentType = response.headers['content-type'];
+      if (contentType && contentType.includes('application/json')) {
+        // Parse JSON error response
+        const text = await response.data.text();
+        const error = JSON.parse(text);
+        toast.error(error.error || 'Erreur lors de la génération du PDF');
+        return;
+      }
+
       // Create blob and download
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
@@ -33,7 +43,25 @@ const PdfGenerator = ({ selectedItems, logoId, visibleFields }) => {
       toast.success('PDF généré avec succès');
     } catch (error) {
       console.error('Error generating PDF:', error);
-      toast.error('Erreur lors de la génération du PDF');
+      
+      // Try to extract error message from response
+      let errorMessage = 'Erreur lors de la génération du PDF';
+      if (error.response?.data) {
+        try {
+          // If data is a Blob, try to read it as text
+          if (error.response.data instanceof Blob) {
+            const text = await error.response.data.text();
+            const jsonError = JSON.parse(text);
+            errorMessage = jsonError.error || errorMessage;
+          } else if (typeof error.response.data === 'object') {
+            errorMessage = error.response.data.error || errorMessage;
+          }
+        } catch (e) {
+          // If parsing fails, use default message
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsGenerating(false);
     }
