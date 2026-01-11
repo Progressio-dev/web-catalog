@@ -23,9 +23,38 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     backgroundColor: template?.background_color || '#FFFFFF',
   });
   const [csvSeparator, setCsvSeparator] = useState(template?.csv_separator || ',');
-  const [elements, setElements] = useState(
-    template?.config ? (JSON.parse(template.config).elements || []) : []
-  );
+  // Migration helper: convert legacy px values to mm
+  // Threshold for detecting legacy px values (if width/height > this value, assume px)
+  const LEGACY_PX_THRESHOLD = 50;
+  const migratePxToMm = (elements) => {
+    const MM_TO_PX = 2.5;
+    return elements.map(element => {
+      // Check if values look like they're in px (typically > 50 for width/height)
+      // This is a heuristic: if width > 50, assume it's in px and convert
+      const needsMigration = (element.width > LEGACY_PX_THRESHOLD) || (element.height > LEGACY_PX_THRESHOLD);
+      
+      if (needsMigration) {
+        return {
+          ...element,
+          x: (element.x || 0) / MM_TO_PX,
+          y: (element.y || 0) / MM_TO_PX,
+          width: (element.width || 0) / MM_TO_PX,
+          height: (element.height || 0) / MM_TO_PX,
+        };
+      }
+      return element;
+    });
+  };
+
+  const [elements, setElements] = useState(() => {
+    if (template?.config) {
+      const config = JSON.parse(template.config);
+      const rawElements = config.elements || [];
+      // Apply migration for legacy templates
+      return migratePxToMm(rawElements);
+    }
+    return [];
+  });
   const [selectedElement, setSelectedElement] = useState(null);
   const [templateName, setTemplateName] = useState(template?.name || '');
   const [saving, setSaving] = useState(false);
@@ -62,8 +91,8 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     const newElement = {
       ...element,
       id: `element_${Date.now()}`,
-      x: 50,
-      y: 50 + (elements.length * 30),
+      x: 20,  // mm (was 50px / 2.5 = 20mm)
+      y: 20 + (elements.length * 12),  // mm (was 50 + n*30 px, now in mm)
     };
     setElements([...elements, newElement]);
   };

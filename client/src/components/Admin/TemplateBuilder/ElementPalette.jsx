@@ -47,8 +47,8 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
     onAddElement({
       type: 'text',
       csvColumn: column,
-      width: 200,
-      height: 30,
+      width: 80,  // mm (was 200px / 2.5 = 80mm)
+      height: 12, // mm (was 30px / 2.5 = 12mm)
       fontSize: 14,
       fontFamily: 'Arial',
       color: '#000000',
@@ -70,8 +70,8 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
       type: 'logo',
       logoId: selectedLogoId,
       logoPath: selectedLogo?.path || '',
-      width: 150,
-      height: 50,
+      width: 60,  // mm (was 150px / 2.5 = 60mm)
+      height: 20, // mm (was 50px / 2.5 = 20mm)
     });
   };
 
@@ -81,8 +81,8 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
       csvColumn: null,
       baseUrl: '',
       extension: '.jpg',
-      width: 200,
-      height: 200,
+      width: 80,  // mm (was 200px / 2.5 = 80mm)
+      height: 80, // mm (was 200px / 2.5 = 80mm)
       fit: 'contain',
     });
   };
@@ -90,8 +90,8 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
   const addLineElement = () => {
     onAddElement({
       type: 'line',
-      width: 300,
-      height: 2,
+      width: 120, // mm (was 300px / 2.5 = 120mm)
+      height: 0.8, // mm (was 2px / 2.5 = 0.8mm)
       thickness: 1,
       color: '#000000',
       style: 'solid',
@@ -101,8 +101,8 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
   const addRectangleElement = () => {
     onAddElement({
       type: 'rectangle',
-      width: 200,
-      height: 100,
+      width: 80,  // mm (was 200px / 2.5 = 80mm)
+      height: 40, // mm (was 100px / 2.5 = 40mm)
       backgroundColor: 'transparent',
       borderWidth: 1,
       borderColor: '#000000',
@@ -114,8 +114,8 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
   const addFreeTextElement = () => {
     onAddElement({
       type: 'freeText',
-      width: 200,
-      height: 40,
+      width: 80,  // mm (was 200px / 2.5 = 80mm)
+      height: 16, // mm (was 40px / 2.5 = 16mm)
       content: 'Texte libre',
       fontSize: 14,
       fontFamily: 'Arial',
@@ -129,8 +129,8 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
   const addJsCodeElement = () => {
     onAddElement({
       type: 'jsCode',
-      width: 300,
-      height: 40,
+      width: 120, // mm (was 300px / 2.5 = 120mm)
+      height: 16, // mm (was 40px / 2.5 = 16mm)
       code: 'return new Date().toLocaleDateString("fr-FR");',
       fontSize: 14,
       fontFamily: 'Arial',

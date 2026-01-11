@@ -97,12 +97,13 @@ exports.generatePreviewHtml = async ({ item, template, logos }) => {
 
 // Render a single element
 async function renderElement(element, item, logos, template) {
+  // Elements are stored in mm, use them directly with mm units in CSS
   const baseStyle = `
     position: absolute;
-    left: ${element.x || 0}px;
-    top: ${element.y || 0}px;
-    width: ${element.width || 'auto'}px;
-    height: ${element.height || 'auto'}px;
+    left: ${element.x || 0}mm;
+    top: ${element.y || 0}mm;
+    width: ${element.width || 'auto'}mm;
+    height: ${element.height || 'auto'}mm;
   `;
 
   if (element.type === 'text') {

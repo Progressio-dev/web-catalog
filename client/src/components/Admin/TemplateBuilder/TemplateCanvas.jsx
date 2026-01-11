@@ -21,19 +21,27 @@ const TemplateCanvas = ({
   const [resizeStart, setResizeStart] = React.useState({ x: 0, y: 0, width: 0, height: 0 });
   const [mouseDownPos, setMouseDownPos] = React.useState(null);
 
-  const pageWidth =
+  // Get base page dimensions in mm
+  let pageWidth =
     pageConfig.format === 'Custom'
       ? pageConfig.width
       : PAGE_FORMATS[pageConfig.format]?.width || 210;
-  const pageHeight =
+  let pageHeight =
     pageConfig.format === 'Custom'
       ? pageConfig.height
       : PAGE_FORMATS[pageConfig.format]?.height || 297;
 
-  // Convert mm to pixels (roughly 3.78 pixels per mm at 96 DPI)
-  const scale = 2.5;
-  const canvasWidth = pageWidth * scale;
-  const canvasHeight = pageHeight * scale;
+  // Apply orientation (landscape = swap width/height)
+  if (pageConfig.orientation === 'landscape') {
+    [pageWidth, pageHeight] = [pageHeight, pageWidth];
+  }
+
+  // Convert mm to pixels for rendering (roughly 2.5 pixels per mm at 96 DPI)
+  const MM_TO_PX = 2.5;
+  const MIN_ELEMENT_SIZE_MM = 8; // Minimum element size in mm (20px / 2.5)
+  const MIN_EDGE_MARGIN_MM = 20; // Minimum margin from page edge in mm
+  const canvasWidth = pageWidth * MM_TO_PX;
+  const canvasHeight = pageHeight * MM_TO_PX;
 
   // Handle delete key
   React.useEffect(() => {
@@ -55,9 +63,12 @@ const TemplateCanvas = ({
     
     setMouseDownPos({ x: e.clientX, y: e.clientY });
     setDraggingId(element.id);
+    // Element positions are in mm, convert to px for drag calculations
+    const elementXPx = (element.x || 0) * MM_TO_PX;
+    const elementYPx = (element.y || 0) * MM_TO_PX;
     setDragOffset({
-      x: e.clientX - element.x,
-      y: e.clientY - element.y,
+      x: e.clientX - elementXPx,
+      y: e.clientY - elementYPx,
     });
   };
 
@@ -66,24 +77,35 @@ const TemplateCanvas = ({
     setMouseDownPos({ x: e.clientX, y: e.clientY });
     setResizingId(element.id);
     setResizeHandle(handle);
+    // Element dimensions are in mm, convert to px for resize calculations
+    const widthPx = (element.width || 0) * MM_TO_PX;
+    const heightPx = (element.height || 0) * MM_TO_PX;
+    const leftPx = (element.x || 0) * MM_TO_PX;
+    const topPx = (element.y || 0) * MM_TO_PX;
     setResizeStart({
       x: e.clientX,
       y: e.clientY,
-      width: element.width,
-      height: element.height,
-      left: element.x,
-      top: element.y,
+      width: widthPx,
+      height: heightPx,
+      left: leftPx,
+      top: topPx,
     });
   };
 
   const handleMouseMove = (e) => {
     if (draggingId && !resizingId) {
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
+      const newXPx = e.clientX - dragOffset.x;
+      const newYPx = e.clientY - dragOffset.y;
+
+      // Convert px back to mm before saving
+      const newXMm = newXPx / MM_TO_PX;
+      const newYMm = newYPx / MM_TO_PX;
+      const maxXMm = pageWidth - MIN_EDGE_MARGIN_MM;
+      const maxYMm = pageHeight - MIN_EDGE_MARGIN_MM;
 
       onUpdateElement(draggingId, {
-        x: Math.max(0, Math.min(newX, canvasWidth - 50)),
-        y: Math.max(0, Math.min(newY, canvasHeight - 50)),
+        x: Math.max(0, Math.min(newXMm, maxXMm)),
+        y: Math.max(0, Math.min(newYMm, maxYMm)),
       });
     } else if (resizingId) {
       const dx = e.clientX - resizeStart.x;
@@ -91,56 +113,57 @@ const TemplateCanvas = ({
 
       let updates = {};
 
-      // Calculate new dimensions based on handle
+      // Calculate new dimensions in px first, then convert to mm
+      const minSizePx = MIN_ELEMENT_SIZE_MM * MM_TO_PX; // Convert min size to px for calculations
       switch (resizeHandle) {
         case 'se': // bottom-right
           updates = {
-            width: Math.max(20, resizeStart.width + dx),
-            height: Math.max(20, resizeStart.height + dy),
+            width: Math.max(minSizePx, resizeStart.width + dx) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height + dy) / MM_TO_PX,
           };
           break;
         case 'sw': // bottom-left
           updates = {
-            x: resizeStart.left + dx,
-            width: Math.max(20, resizeStart.width - dx),
-            height: Math.max(20, resizeStart.height + dy),
+            x: (resizeStart.left + dx) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width - dx) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height + dy) / MM_TO_PX,
           };
           break;
         case 'ne': // top-right
           updates = {
-            y: resizeStart.top + dy,
-            width: Math.max(20, resizeStart.width + dx),
-            height: Math.max(20, resizeStart.height - dy),
+            y: (resizeStart.top + dy) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width + dx) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height - dy) / MM_TO_PX,
           };
           break;
         case 'nw': // top-left
           updates = {
-            x: resizeStart.left + dx,
-            y: resizeStart.top + dy,
-            width: Math.max(20, resizeStart.width - dx),
-            height: Math.max(20, resizeStart.height - dy),
+            x: (resizeStart.left + dx) / MM_TO_PX,
+            y: (resizeStart.top + dy) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width - dx) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height - dy) / MM_TO_PX,
           };
           break;
         case 'n': // top
           updates = {
-            y: resizeStart.top + dy,
-            height: Math.max(20, resizeStart.height - dy),
+            y: (resizeStart.top + dy) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height - dy) / MM_TO_PX,
           };
           break;
         case 's': // bottom
           updates = {
-            height: Math.max(20, resizeStart.height + dy),
+            height: Math.max(minSizePx, resizeStart.height + dy) / MM_TO_PX,
           };
           break;
         case 'e': // right
           updates = {
-            width: Math.max(20, resizeStart.width + dx),
+            width: Math.max(minSizePx, resizeStart.width + dx) / MM_TO_PX,
           };
           break;
         case 'w': // left
           updates = {
-            x: resizeStart.left + dx,
-            width: Math.max(20, resizeStart.width - dx),
+            x: (resizeStart.left + dx) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width - dx) / MM_TO_PX,
           };
           break;
       }
@@ -171,12 +194,18 @@ const TemplateCanvas = ({
 
   const renderElement = (element) => {
     const isSelected = selectedElement?.id === element.id;
+    // Convert mm to px for rendering
+    const xPx = (element.x || 0) * MM_TO_PX;
+    const yPx = (element.y || 0) * MM_TO_PX;
+    const widthPx = (element.width || 0) * MM_TO_PX;
+    const heightPx = (element.height || 0) * MM_TO_PX;
+    
     const baseStyle = {
       position: 'absolute',
-      left: `${element.x}px`,
-      top: `${element.y}px`,
-      width: `${element.width}px`,
-      height: `${element.height}px`,
+      left: `${xPx}px`,
+      top: `${yPx}px`,
+      width: `${widthPx}px`,
+      height: `${heightPx}px`,
       cursor: 'move',
       border: isSelected ? '3px solid #2196F3' : '1px dashed #ccc',
       boxSizing: 'border-box',
