@@ -38,7 +38,11 @@ const RowPreview = ({ row, template, logos }) => {
     };
 
     fetchPreview();
-  }, [row, template]); // Remove 'logos' dependency to prevent unnecessary re-fetches
+    // Note: 'logos' is intentionally NOT in dependencies because:
+    // 1. It's not used in the fetchPreview function (server handles logos)
+    // 2. Adding it causes unnecessary re-fetches when logos array reference changes
+    // 3. Logo changes require a page refresh to take effect anyway
+  }, [row, template]);
 
   if (loading) {
     return (

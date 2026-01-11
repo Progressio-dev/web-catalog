@@ -60,8 +60,10 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
 
   const displayColumns = getDisplayColumns();
 
-  // Memoize logos to prevent unnecessary re-renders when content changes
-  // Using join instead of JSON.stringify for better performance
+  // Memoize logos to prevent unnecessary re-renders
+  // Note: Logos are only fetched once on component mount and don't change during the session.
+  // We track by ID to detect if logos are added/removed, which is the only expected change.
+  // If logo properties (name, url) change, they require a page refresh anyway.
   const logoIds = logos.map(l => l.id).join(',');
   const memoizedLogos = useMemo(() => logos, [logoIds]);
 
