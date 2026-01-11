@@ -382,8 +382,8 @@ const styles = {
   builder: {
     flex: 1,
     display: 'flex',
-    width: '100%', // Use full width instead of min-width constraint
-    overflow: 'hidden', // Let children handle their own overflow
+    width: '100%', // Use full available width
+    overflow: 'hidden', // Prevent container from scrolling - let canvas container handle its own scrolling
   },
   sidebar: {
     flexShrink: 0,
@@ -398,7 +398,7 @@ const styles = {
     flexDirection: 'column',
     overflowX: 'auto', // Enable horizontal scroll for canvas when needed
     overflowY: 'hidden',
-    minWidth: 0, // Allow flex item to shrink and enable scrolling
+    minWidth: 0, // Allow flex item to shrink below its content width to enable horizontal scrolling when necessary
   },
   canvasHeader: {
     backgroundColor: 'white',
