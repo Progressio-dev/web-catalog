@@ -7,11 +7,17 @@ const { getUploadDir, getGeneratedDir } = require('../config/paths');
 /**
  * Convert an image file to a base64 data URL
  * @param {string} filePath - Absolute path to the image file
- * @returns {string|null} - Data URL or null if file doesn't exist
+ * @returns {string|null} - Data URL or null if file doesn't exist or read fails
+ * 
+ * Error cases that return null:
+ * - File does not exist
+ * - File cannot be read (permission errors)
+ * - File read operation fails for any reason
  */
 function imageToDataUrl(filePath) {
   try {
     if (!fs.existsSync(filePath)) {
+      console.warn(`Image file not found: ${filePath}`);
       return null;
     }
     
@@ -19,21 +25,21 @@ function imageToDataUrl(filePath) {
     const ext = path.extname(filePath).toLowerCase();
     
     // Determine MIME type based on file extension
-    let mimeType = 'image/png'; // default
-    if (ext === '.jpg' || ext === '.jpeg') {
-      mimeType = 'image/jpeg';
-    } else if (ext === '.gif') {
-      mimeType = 'image/gif';
-    } else if (ext === '.svg') {
-      mimeType = 'image/svg+xml';
-    } else if (ext === '.webp') {
-      mimeType = 'image/webp';
-    }
+    const mimeTypeMap = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.webp': 'image/webp'
+    };
+    
+    const mimeType = mimeTypeMap[ext] || 'image/png';
     
     const base64Image = imageBuffer.toString('base64');
     return `data:${mimeType};base64,${base64Image}`;
   } catch (error) {
-    console.error('Error converting image to data URL:', error);
+    console.error(`Error converting image to data URL (${filePath}):`, error.message);
     return null;
   }
 }
@@ -260,7 +266,13 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
             src = absolutePath;
           } else {
             const dataUrl = imageToDataUrl(absolutePath);
-            src = dataUrl || `file://${absolutePath}`; // Fallback to file:// if conversion fails
+            if (!dataUrl) {
+              // Log warning and use a transparent placeholder
+              console.warn(`Failed to convert logo to data URL: ${absolutePath}. Logo will not appear in PDF.`);
+              // Return empty div instead of fallback to problematic file:// URL
+              return `<div style="${baseStyle}"><!-- Logo conversion failed --></div>`;
+            }
+            src = dataUrl;
           }
         }
         
@@ -318,7 +330,13 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
               src = absolutePath;
             } else {
               const dataUrl = imageToDataUrl(absolutePath);
-              src = dataUrl || `file://${absolutePath}`; // Fallback to file:// if conversion fails
+              if (!dataUrl) {
+                // Log warning and use a transparent placeholder
+                console.warn(`Failed to convert logo to data URL: ${absolutePath}. Logo will not appear in PDF.`);
+                // Return empty div instead of fallback to problematic file:// URL
+                return `<div style="${baseStyle}"><!-- Logo conversion failed --></div>`;
+              }
+              src = dataUrl;
             }
           }
           
@@ -442,10 +460,18 @@ const buildHtml = async (items, template, logo, allLogos, mappings, visibleField
         logoSrc = absoluteLogoPath;
       } else {
         const dataUrl = imageToDataUrl(absoluteLogoPath);
-        logoSrc = dataUrl || `file://${path.resolve(absoluteLogoPath)}`;
+        if (!dataUrl) {
+          // Log warning if conversion fails
+          console.warn(`Failed to convert logo to data URL: ${absoluteLogoPath}. Logo will not appear in PDF.`);
+          logoSrc = null; // Don't render logo if conversion fails
+        } else {
+          logoSrc = dataUrl;
+        }
       }
       
-      logoHtml = `<img src="${logoSrc}" alt="Logo" style="max-width: 200px; margin-bottom: 20px;" />`;
+      if (logoSrc) {
+        logoHtml = `<img src="${logoSrc}" alt="Logo" style="max-width: 200px; margin-bottom: 20px;" />`;
+      }
     }
     
     return `
