@@ -22,12 +22,12 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
     setError(null);
     setSuccess(false);
 
+    let progressInterval = null;
     try {
       // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 90) {
-            clearInterval(progressInterval);
             return prev;
           }
           return prev + 10;
@@ -52,6 +52,7 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
       );
 
       clearInterval(progressInterval);
+      progressInterval = null;
       setProgress(100);
       setCurrentItem(selectedRows.length);
 
@@ -79,7 +80,9 @@ const Step4PdfGeneration = ({ template, csvData, selectedRows, onRestart, onBack
       toast.success(`PDF généré avec succès ! (${selectedRows.length} fiches)`);
     } catch (error) {
       console.error('PDF generation error:', error);
-      clearInterval(progressInterval);
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
       setGenerating(false);
       
       // Try to extract error message from response

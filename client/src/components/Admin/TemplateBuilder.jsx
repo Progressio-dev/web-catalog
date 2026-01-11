@@ -24,12 +24,14 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   });
   const [csvSeparator, setCsvSeparator] = useState(template?.csv_separator || ',');
   // Migration helper: convert legacy px values to mm
+  // Threshold for detecting legacy px values (if width/height > this value, assume px)
+  const LEGACY_PX_THRESHOLD = 50;
   const migratePxToMm = (elements) => {
     const MM_TO_PX = 2.5;
     return elements.map(element => {
       // Check if values look like they're in px (typically > 50 for width/height)
       // This is a heuristic: if width > 50, assume it's in px and convert
-      const needsMigration = (element.width > 50) || (element.height > 50);
+      const needsMigration = (element.width > LEGACY_PX_THRESHOLD) || (element.height > LEGACY_PX_THRESHOLD);
       
       if (needsMigration) {
         return {

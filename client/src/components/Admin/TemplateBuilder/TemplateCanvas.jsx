@@ -38,6 +38,8 @@ const TemplateCanvas = ({
 
   // Convert mm to pixels for rendering (roughly 2.5 pixels per mm at 96 DPI)
   const MM_TO_PX = 2.5;
+  const MIN_ELEMENT_SIZE_MM = 8; // Minimum element size in mm (20px / 2.5)
+  const MIN_EDGE_MARGIN_MM = 20; // Minimum margin from page edge in mm
   const canvasWidth = pageWidth * MM_TO_PX;
   const canvasHeight = pageHeight * MM_TO_PX;
 
@@ -98,8 +100,8 @@ const TemplateCanvas = ({
       // Convert px back to mm before saving
       const newXMm = newXPx / MM_TO_PX;
       const newYMm = newYPx / MM_TO_PX;
-      const maxXMm = pageWidth - 20; // 20mm min from edge
-      const maxYMm = pageHeight - 20;
+      const maxXMm = pageWidth - MIN_EDGE_MARGIN_MM;
+      const maxYMm = pageHeight - MIN_EDGE_MARGIN_MM;
 
       onUpdateElement(draggingId, {
         x: Math.max(0, Math.min(newXMm, maxXMm)),
@@ -112,55 +114,56 @@ const TemplateCanvas = ({
       let updates = {};
 
       // Calculate new dimensions in px first, then convert to mm
+      const minSizePx = MIN_ELEMENT_SIZE_MM * MM_TO_PX; // Convert min size to px for calculations
       switch (resizeHandle) {
         case 'se': // bottom-right
           updates = {
-            width: Math.max(20, resizeStart.width + dx) / MM_TO_PX,
-            height: Math.max(20, resizeStart.height + dy) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width + dx) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height + dy) / MM_TO_PX,
           };
           break;
         case 'sw': // bottom-left
           updates = {
             x: (resizeStart.left + dx) / MM_TO_PX,
-            width: Math.max(20, resizeStart.width - dx) / MM_TO_PX,
-            height: Math.max(20, resizeStart.height + dy) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width - dx) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height + dy) / MM_TO_PX,
           };
           break;
         case 'ne': // top-right
           updates = {
             y: (resizeStart.top + dy) / MM_TO_PX,
-            width: Math.max(20, resizeStart.width + dx) / MM_TO_PX,
-            height: Math.max(20, resizeStart.height - dy) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width + dx) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height - dy) / MM_TO_PX,
           };
           break;
         case 'nw': // top-left
           updates = {
             x: (resizeStart.left + dx) / MM_TO_PX,
             y: (resizeStart.top + dy) / MM_TO_PX,
-            width: Math.max(20, resizeStart.width - dx) / MM_TO_PX,
-            height: Math.max(20, resizeStart.height - dy) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width - dx) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height - dy) / MM_TO_PX,
           };
           break;
         case 'n': // top
           updates = {
             y: (resizeStart.top + dy) / MM_TO_PX,
-            height: Math.max(20, resizeStart.height - dy) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height - dy) / MM_TO_PX,
           };
           break;
         case 's': // bottom
           updates = {
-            height: Math.max(20, resizeStart.height + dy) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height + dy) / MM_TO_PX,
           };
           break;
         case 'e': // right
           updates = {
-            width: Math.max(20, resizeStart.width + dx) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width + dx) / MM_TO_PX,
           };
           break;
         case 'w': // left
           updates = {
             x: (resizeStart.left + dx) / MM_TO_PX,
-            width: Math.max(20, resizeStart.width - dx) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width - dx) / MM_TO_PX,
           };
           break;
       }
