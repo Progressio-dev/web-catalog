@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import RowPreview from './RowPreview';
+import { logoAPI } from '../../services/api';
 
 /**
  * Step3ProductSelection - Product selection table with preview
@@ -8,6 +9,22 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
   const [selectAll, setSelectAll] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [hoveredRow, setHoveredRow] = useState(null);
+  const [logos, setLogos] = useState([]);
+
+  useEffect(() => {
+    fetchLogos();
+  }, []);
+
+  const fetchLogos = async () => {
+    try {
+      const response = await logoAPI.getAll();
+      setLogos(response.data);
+    } catch (error) {
+      console.error('Error fetching logos:', error);
+      // Continue with empty logos array if fetch fails
+      setLogos([]);
+    }
+  };
 
   const handleSelectAll = () => {
     if (selectAll) {
@@ -157,7 +174,7 @@ const Step3ProductSelection = ({ template, csvData, selectedRows, onRowsSelected
               <RowPreview 
                 row={csvData[previewIndex]}
                 template={template}
-                logos={[]}
+                logos={logos}
               />
             )}
           </div>

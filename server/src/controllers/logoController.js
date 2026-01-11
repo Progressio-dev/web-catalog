@@ -1,6 +1,7 @@
 const { dbAll, dbGet, dbRun } = require('../config/database');
 const fs = require('fs');
 const path = require('path');
+const { getUploadDir } = require('../config/paths');
 
 // Get all logos (active only for public, all for admin)
 exports.getLogos = async (req, res) => {
@@ -99,7 +100,7 @@ exports.deleteLogo = async (req, res) => {
     }
 
     // Delete file from disk
-    const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+    const uploadDir = getUploadDir();
     const filePath = path.join(uploadDir, logo.filename);
     
     if (fs.existsSync(filePath)) {

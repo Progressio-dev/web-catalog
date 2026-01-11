@@ -4,11 +4,12 @@ const multer = require('multer');
 const path = require('path');
 const logoController = require('../controllers/logoController');
 const authMiddleware = require('../middleware/authMiddleware');
+const { getUploadDir } = require('../config/paths');
 
 // Configure multer for logo uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+    const uploadDir = getUploadDir();
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
