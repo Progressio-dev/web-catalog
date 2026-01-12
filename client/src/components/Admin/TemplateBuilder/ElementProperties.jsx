@@ -236,7 +236,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         <label style={styles.checkbox}>
           <input
             type="checkbox"
-            checked={element.urlEncodeValue !== false}
+            checked={element.urlEncodeValue !== false && element.urlEncodeValue !== 'false'}
             onChange={(e) => onUpdate({ urlEncodeValue: e.target.checked })}
           />
           Encoder la valeur CSV dans l'URL

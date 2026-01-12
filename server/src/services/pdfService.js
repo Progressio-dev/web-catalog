@@ -513,7 +513,6 @@ async function fetchProductImageUrl(reference, options = {}) {
           redirect: 'follow',
           signal: controller.signal
         });
-        clearTimeout(timeoutId);
 
         if (response.ok) {
           const html = await response.text();
@@ -521,6 +520,7 @@ async function fetchProductImageUrl(reference, options = {}) {
           const node = $(options.imageSelector).first();
           const imageAttribute = options.imageAttribute || 'src';
           let src = node.attr(imageAttribute);
+          // If the preferred attribute is missing, gracefully fallback to classic src
           if (!src && imageAttribute !== 'src') {
             src = node.attr('src');
           }
@@ -533,8 +533,9 @@ async function fetchProductImageUrl(reference, options = {}) {
           console.warn(`Failed to fetch product page (${response.status}): ${pageUrl}`);
         }
       } catch (error) {
-        clearTimeout(timeoutId);
         console.error(`Error fetching product image for ${reference}:`, error.message);
+      } finally {
+        clearTimeout(timeoutId);
       }
     }
   }
@@ -553,7 +554,6 @@ async function fetchProductImageUrl(reference, options = {}) {
       redirect: 'follow',
       signal: controller.signal
     });
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.warn(`Failed to fetch product page (${response.status}): ${productUrl}`);
@@ -576,10 +576,11 @@ async function fetchProductImageUrl(reference, options = {}) {
     productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
   } catch (error) {
-    clearTimeout(timeoutId);
     console.error(`Error fetching product image for ${reference}:`, error.message);
     productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
