@@ -8,7 +8,7 @@ const PAGE_FORMATS = {
 };
 
 const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) => {
-  const [zoom, setZoom] = React.useState(1);
+  const [zoom, setZoom] = React.useState(0.75);
   const [currentRowIndex, setCurrentRowIndex] = React.useState(0);
   const [codeResults, setCodeResults] = React.useState({});
   const [logos, setLogos] = React.useState([]);
