@@ -397,7 +397,7 @@ const styles = {
   canvasContainer: {
     display: 'flex',
     flexDirection: 'column',
-    minWidth: 760, // Enforce minimum width to prevent crushing
+    minWidth: '760px', // Enforce minimum width to prevent crushing
     overflowX: 'auto',
     overflowY: 'hidden',
   },
