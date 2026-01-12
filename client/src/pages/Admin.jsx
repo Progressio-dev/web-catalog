@@ -48,7 +48,7 @@ const Admin = () => {
               ...(activeTab === 'settings' ? styles.navButtonActive : {}),
             }}
           >
-            Paramètres (optionnel)
+            Paramètres globaux (repli)
           </button>
           <a href="/" style={styles.homeLink}>
             ← Retour à l'accueil

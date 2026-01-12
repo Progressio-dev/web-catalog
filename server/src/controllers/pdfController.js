@@ -118,7 +118,8 @@ exports.getProductImage = async (req, res) => {
       imageAttribute,
       urlEncodeValue,
       baseUrl,
-      extension
+      extension,
+      csvColumn
     } = req.query;
 
     const shouldEncode = urlEncodeValue !== 'false' && urlEncodeValue !== false;
@@ -129,6 +130,7 @@ exports.getProductImage = async (req, res) => {
       imageAttribute,
       baseUrl,
       extension,
+      csvColumn,
       urlEncodeValue: shouldEncode
     };
 
