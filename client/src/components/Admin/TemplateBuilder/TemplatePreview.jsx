@@ -187,6 +187,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
                 imageSelector: el.imageSelector,
                 imageAttribute: el.imageAttribute,
                 urlEncodeValue: shouldEncodeValue(el.urlEncodeValue),
+                csvColumn: el.csvColumn,
                 baseUrl: el.baseUrl,
                 extension: el.extension
               }

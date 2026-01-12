@@ -6,6 +6,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
   const fonts = availableFonts.length > 0
     ? availableFonts
     : ['Arial', 'Times New Roman', 'Helvetica', 'Courier New', 'Georgia'];
+  const tokenExampleString = '{value}, {{value}}, %VALUE%, %REFERENCE%, %REF%, %{COLONNE}%';
 
   const renderTextProperties = () => (
     <>
@@ -197,21 +198,21 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
       </div>
 
       <div style={styles.group}>
-        <label style={styles.label}>URL de la page produit (template):</label>
+        <label style={styles.label}>URL (page ou image) avec variable CSV:</label>
         <input
           type="text"
           value={element.pageUrlTemplate || ''}
           onChange={(e) => onUpdate({ pageUrlTemplate: e.target.value })}
-          placeholder="https://www.exemple.com/article/{{value}}"
+          placeholder="https://www.exemple.com/article/%REFERENCE%"
           style={styles.input}
         />
         <p style={styles.hint}>
-          Utilisez <code>{'{value}'}</code> ou <code>{'{{value}}'}</code> pour insérer la valeur CSV.
+          Tokens possibles: <code>{tokenExampleString}</code>. Laissez le sélecteur vide si l'URL cible déjà l'image finale.
         </p>
       </div>
 
       <div style={styles.group}>
-        <label style={styles.label}>Sélecteur CSS de l'image / zone (div):</label>
+        <label style={styles.label}>Sélecteur CSS de l'image / zone (div) (optionnel):</label>
         <input
           type="text"
           value={element.imageSelector || ''}
@@ -219,6 +220,9 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           placeholder=".photoItem img"
           style={styles.input}
         />
+        <p style={styles.hint}>
+          Exemple: <code>.photoItem img</code>. Laisser vide si l'URL ci-dessus pointe directement vers l'image.
+        </p>
       </div>
 
       <div style={styles.group}>

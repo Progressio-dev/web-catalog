@@ -83,18 +83,64 @@ function buildImageCacheKey(reference, options = {}) {
     options.imageAttribute || 'src',
     options.urlEncodeValue ? 'enc' : 'raw',
     options.baseUrl || '',
-    options.extension || ''
+    options.extension || '',
+    options.csvColumn || ''
   ];
   return parts.join('|');
 }
 
-function applyValueToTemplate(template, value, encodeValue) {
+/**
+ * Escape regex special chars inside a string.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeRegExp(str = '') {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeColumnName(columnName) {
+  return columnName ? columnName.replace(/\s+/g, '_') : null;
+}
+
+const GENERIC_TOKEN_PATTERNS = [
+  /{{\s*value\s*}}/gi,
+  /{\s*value\s*}/gi,
+  /%VALUE%/gi,
+  /%REFERENCE%/gi,
+  /%REF%/gi,
+  /%s/gi,
+];
+
+/**
+ * Inject CSV value into a URL template.
+ * Supports generic tokens ({value}, %VALUE%) and column-based tokens (ex: %REFERENCE%).
+ * @param {string} template
+ * @param {string} value
+ * @param {boolean} encodeValue
+ * @param {string} [columnName] Column used to allow tokens based on label (ex: %REFERENCE% or %{CODE_ARTICLE}%).
+ * @returns {string|null}
+ */
+function applyValueToTemplate(template, value, encodeValue, columnName) {
   const safeValue = encodeValue ? encodeURIComponent(value) : value;
   if (!template) return null;
-  return template
-    .replace(/{{\s*value\s*}}/gi, safeValue)
-    .replace(/{\s*value\s*}/gi, safeValue)
-    .replace('%s', safeValue);
+
+  // Normalize column name to allow tokens without spaces (ex: %CODE_PRODUIT%)
+  const normalizedColumn = normalizeColumnName(columnName);
+  const tokens = [...GENERIC_TOKEN_PATTERNS];
+
+  if (columnName) {
+    const escapedCol = escapeRegExp(columnName);
+    const escapedNormalized = normalizedColumn ? escapeRegExp(normalizedColumn) : null;
+    // Allow matching tokens that use original column label or its underscored variant
+    tokens.push(new RegExp(`{{\\s*${escapedCol}\\s*}}`, 'gi'));
+    tokens.push(new RegExp(`%${escapedCol}%`, 'gi'));
+    if (escapedNormalized && escapedNormalized !== escapedCol) {
+      tokens.push(new RegExp(`{{\\s*${escapedNormalized}\\s*}}`, 'gi'));
+      tokens.push(new RegExp(`%${escapedNormalized}%`, 'gi'));
+    }
+  }
+
+  return tokens.reduce((acc, pattern) => acc.replace(pattern, safeValue), template);
 }
 
 function normalizeImageUrl(src, pageUrl) {
@@ -497,9 +543,20 @@ async function fetchProductImageUrl(reference, options = {}) {
     return cached.url;
   }
 
-  // 1) Custom scraping based on template + selector
+  const shouldEncode = shouldUrlEncodeValue(options.urlEncodeValue);
+  const pageUrlFromTemplate = options.pageUrlTemplate
+    ? applyValueToTemplate(options.pageUrlTemplate, reference, shouldEncode, options.csvColumn)
+    : null;
+
+  // 1) Direct URL templating (when no selector is provided)
+  if (pageUrlFromTemplate && (!options.imageSelector || !options.imageSelector.trim())) {
+    productImageCache.set(cacheKey, { url: pageUrlFromTemplate, timestamp: now });
+    return pageUrlFromTemplate;
+  }
+
+  // 2) Custom scraping based on template + selector
   if (options.pageUrlTemplate && options.imageSelector && options.imageSelector.trim()) {
-    const pageUrl = applyValueToTemplate(options.pageUrlTemplate, reference, shouldUrlEncodeValue(options.urlEncodeValue));
+    const pageUrl = pageUrlFromTemplate;
     if (pageUrl) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -540,7 +597,7 @@ async function fetchProductImageUrl(reference, options = {}) {
     }
   }
 
-  // 2) Default legacy scraping (placedespros)
+  // 3) Default legacy scraping (placedespros)
   const productUrl = `https://www.placedespros.com/article/art-${encodeURIComponent(reference)}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -597,6 +654,7 @@ async function buildProductImageUrl(item, element, options = {}) {
     imageSelector: element.imageSelector,
     imageAttribute: element.imageAttribute,
     urlEncodeValue: shouldUrlEncodeValue(element.urlEncodeValue),
+    csvColumn: element.csvColumn,
     baseUrl: element.baseUrl || options.productImageBaseUrl,
     extension: element.extension
   });
