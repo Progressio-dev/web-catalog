@@ -31,24 +31,30 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
     ].join('|');
   }, [shouldEncodeValue, imageCacheVersion]);
 
+  // Create a stable hash of image element properties
+  const imageElementsHash = React.useMemo(() => {
+    return JSON.stringify(
+      elements
+        .filter(el => el.type === 'image')
+        .map(el => ({
+          id: el.id,
+          csvColumn: el.csvColumn,
+          pageUrlTemplate: el.pageUrlTemplate,
+          imageSelector: el.imageSelector,
+          imageAttribute: el.imageAttribute,
+          baseUrl: el.baseUrl,
+          extension: el.extension,
+          urlEncodeValue: el.urlEncodeValue
+        }))
+    );
+  }, [elements]);
+
   // Effect to detect when image elements change and clear cache
   React.useEffect(() => {
     // Increment cache version when image element properties change
     // This will cause all image URLs to be re-fetched
     setImageCacheVersion(v => v + 1);
-  }, [
-    // Track changes to image element properties
-    JSON.stringify(elements.filter(el => el.type === 'image').map(el => ({
-      id: el.id,
-      csvColumn: el.csvColumn,
-      pageUrlTemplate: el.pageUrlTemplate,
-      imageSelector: el.imageSelector,
-      imageAttribute: el.imageAttribute,
-      baseUrl: el.baseUrl,
-      extension: el.extension,
-      urlEncodeValue: el.urlEncodeValue
-    })))
-  ]);
+  }, [imageElementsHash]);
 
   React.useEffect(() => {
     const styleId = 'template-preview-custom-fonts';

@@ -1,5 +1,65 @@
 import React from 'react';
 
+// Helper function to escape regex special characters
+const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Generic token patterns (defined once, reused)
+const GENERIC_PATTERNS = [
+  [/{{\s*value\s*}}/gi, 'VALUE'],
+  [/{\s*value\s*}/gi, 'VALUE'],
+  [/%VALUE%/gi, 'VALUE'],
+  [/%REFERENCE%/gi, 'VALUE'],
+  [/%REF%/gi, 'VALUE'],
+  [/%s/gi, 'VALUE'],
+];
+
+// Helper function to simulate URL with token replacement
+// Defined outside component to avoid recreation on every render
+const simulateUrlWithTokens = (template, columnName, sampleValue = 'EXEMPLE-REF-123', encodeValue = true) => {
+  if (!template) return '';
+  
+  const safeValue = encodeValue ? encodeURIComponent(sampleValue) : sampleValue;
+  let result = template;
+  
+  // Apply generic patterns
+  GENERIC_PATTERNS.forEach(([pattern]) => {
+    result = result.replace(pattern, safeValue);
+  });
+  
+  // Column-specific tokens
+  if (columnName) {
+    const normalizedColumn = columnName.replace(/\s+/g, '_');
+    const escapedCol = escapeRegExp(columnName);
+    const escapedNormalized = escapeRegExp(normalizedColumn);
+    
+    // Use simple replace with literal strings when possible for better performance
+    const patterns = [
+      `%${columnName}%`,
+      `{{${columnName}}}`,
+      `{{ ${columnName} }}`,
+    ];
+    
+    patterns.forEach(pattern => {
+      result = result.replace(new RegExp(escapeRegExp(pattern), 'gi'), safeValue);
+    });
+    
+    // Handle normalized version if different
+    if (normalizedColumn !== columnName) {
+      const normalizedPatterns = [
+        `%${normalizedColumn}%`,
+        `{{${normalizedColumn}}}`,
+        `{{ ${normalizedColumn} }}`,
+      ];
+      
+      normalizedPatterns.forEach(pattern => {
+        result = result.replace(new RegExp(escapeRegExp(pattern), 'gi'), safeValue);
+      });
+    }
+  }
+  
+  return result;
+};
+
 const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableFonts = [], pageSize }) => {
   if (!element) return null;
 
@@ -8,45 +68,6 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     : ['Arial', 'Times New Roman', 'Helvetica', 'Courier New', 'Georgia'];
   const tokenExampleString = '{value}, {{value}}, %VALUE%, %REFERENCE%, %REF%, %{COLONNE}%';
 
-  // Helper function to simulate URL with token replacement
-  const simulateUrlWithTokens = (template, columnName, sampleValue = 'EXEMPLE-REF-123', encodeValue = true) => {
-    if (!template) return '';
-    
-    // Normalize column name (replace spaces with underscores for token matching)
-    const normalizedColumn = columnName ? columnName.replace(/\s+/g, '_') : '';
-    const safeValue = encodeValue ? encodeURIComponent(sampleValue) : sampleValue;
-    
-    // Generic tokens
-    let result = template;
-    const genericPatterns = [
-      [/{{\s*value\s*}}/gi, safeValue],
-      [/{\s*value\s*}/gi, safeValue],
-      [/%VALUE%/gi, safeValue],
-      [/%REFERENCE%/gi, safeValue],
-      [/%REF%/gi, safeValue],
-      [/%s/gi, safeValue],
-    ];
-    
-    // Apply generic patterns
-    genericPatterns.forEach(([pattern, replacement]) => {
-      result = result.replace(pattern, replacement);
-    });
-    
-    // Column-specific tokens (support both original and normalized names)
-    if (columnName) {
-      // Original column name with spaces
-      result = result.replace(new RegExp(`{{\\s*${columnName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*}}`, 'gi'), safeValue);
-      result = result.replace(new RegExp(`%${columnName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}%`, 'gi'), safeValue);
-      
-      // Normalized column name (underscores instead of spaces)
-      if (normalizedColumn !== columnName) {
-        result = result.replace(new RegExp(`{{\\s*${normalizedColumn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*}}`, 'gi'), safeValue);
-        result = result.replace(new RegExp(`%${normalizedColumn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}%`, 'gi'), safeValue);
-      }
-    }
-    
-    return result;
-  };
 
   const renderTextProperties = () => (
     <>
