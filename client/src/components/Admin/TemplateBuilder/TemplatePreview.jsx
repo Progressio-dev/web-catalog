@@ -541,17 +541,20 @@ const styles = {
   },
   previewWrapper: {
     flex: 1,
-    overflow: 'auto',
+    overflowY: 'auto',
+    overflowX: 'auto',
     padding: '20px',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'flex-start',
+    minHeight: 0, // Allow flex item to shrink
   },
   preview: {
     position: 'relative',
     backgroundColor: 'white',
     boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-    margin: '0 auto',
+    transformOrigin: 'top center',
+    flexShrink: 0, // Prevent preview from shrinking
   },
 };
 
