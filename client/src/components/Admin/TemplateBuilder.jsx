@@ -388,7 +388,6 @@ const styles = {
     minHeight: 0, // Allow grid item to shrink in vertical direction
   },
   sidebar: {
-    width: '280px',
     backgroundColor: 'white',
     borderRight: '1px solid #ddd',
     overflowY: 'auto',
@@ -443,7 +442,6 @@ const styles = {
     fontSize: '14px',
   },
   rightSidebar: {
-    width: '360px',
     backgroundColor: 'white',
     borderLeft: '1px solid #ddd',
     overflowY: 'auto',
