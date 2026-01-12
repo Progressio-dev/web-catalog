@@ -69,6 +69,21 @@ const PAGE_FORMATS = {
   'Custom': { width: null, height: null } // defined by user
 };
 
+function buildFontFaces(customFonts = []) {
+  return (customFonts || [])
+    .map(
+      (font) => `
+      @font-face {
+        font-family: '${font.name}';
+        src: url(${font.dataUrl}) format('${font.format || 'truetype'}');
+        font-weight: ${font.weight || 'normal'};
+        font-style: ${font.style || 'normal'};
+      }
+    `
+    )
+    .join('\n');
+}
+
 // Generate preview HTML for a single item
 exports.generatePreviewHtml = async ({ item, template, logos, useHttpUrls = true }) => {
   const templateConfig = template ? JSON.parse(template.config) : null;
@@ -101,6 +116,8 @@ exports.generatePreviewHtml = async ({ item, template, logos, useHttpUrls = true
   // Get background color from template
   const backgroundColor = template?.background_color || templateConfig?.backgroundColor || '#FFFFFF';
 
+  const fontFaces = buildFontFaces(templateConfig?.customFonts);
+
   // Use same HTML structure as buildHtml() with mm units and proper CSS
   return `
     <!DOCTYPE html>
@@ -108,6 +125,7 @@ exports.generatePreviewHtml = async ({ item, template, logos, useHttpUrls = true
     <head>
       <meta charset="UTF-8">
       <style>
+        ${fontFaces}
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
           margin: 0; 
@@ -528,12 +546,14 @@ const buildHtml = async (items, template, logo, allLogos, mappings, visibleField
     customHtml = pages.join('');
   }
 
+  const fontFaces = buildFontFaces(templateConfig?.customFonts);
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="UTF-8">
       <style>
+        ${fontFaces}
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; }
         .product-card:last-child { page-break-after: auto; }
