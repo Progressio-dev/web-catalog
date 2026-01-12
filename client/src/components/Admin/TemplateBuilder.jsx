@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import CsvUploader from './TemplateBuilder/CsvUploader';
 import PageConfigPanel from './TemplateBuilder/PageConfigPanel';
 import ElementPalette from './TemplateBuilder/ElementPalette';
@@ -13,6 +13,16 @@ import { toast } from 'react-toastify';
  * Workflow: CSV Upload → Page Config → Drag & Drop → Preview → Save
  */
 const TemplateBuilder = ({ template, onSave, onCancel }) => {
+  const parsedConfig = useMemo(() => {
+    if (!template?.config) return null;
+    try {
+      return JSON.parse(template.config);
+    } catch (error) {
+      console.error('Error parsing template config:', error);
+      return null;
+    }
+  }, [template]);
+
   const [step, setStep] = useState(template ? 2 : 1); // Skip CSV upload if editing
   const [csvData, setCsvData] = useState(null);
   const [pageConfig, setPageConfig] = useState({
@@ -23,6 +33,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     backgroundColor: template?.background_color || '#FFFFFF',
   });
   const [csvSeparator, setCsvSeparator] = useState(template?.csv_separator || ',');
+  const [customFonts, setCustomFonts] = useState(() => parsedConfig?.customFonts || []);
   
   // Page format definitions (in mm)
   const PAGE_FORMATS = {
@@ -81,44 +92,159 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   };
 
   const [elements, setElements] = useState(() => {
-    if (template?.config) {
-      const config = JSON.parse(template.config);
-      const rawElements = config.elements || [];
-      // Check if migration was already done (templates saved after migration have this flag)
-      const alreadyMigrated = config.mmMigrated === true;
-      // Apply migration for legacy templates with page config
-      return migratePxToMm(
-        rawElements,
-        template.page_format || 'A4',
-        template.page_orientation || 'portrait',
-        template.page_width,
-        template.page_height,
-        alreadyMigrated
-      );
-    }
-    return [];
+    const rawElements = parsedConfig?.elements || [];
+    const alreadyMigrated = parsedConfig?.mmMigrated === true;
+    return migratePxToMm(
+      rawElements,
+      template?.page_format || 'A4',
+      template?.page_orientation || 'portrait',
+      template?.page_width,
+      template?.page_height,
+      alreadyMigrated
+    );
   });
   const [selectedElement, setSelectedElement] = useState(null);
   const [templateName, setTemplateName] = useState(template?.name || '');
   const [saving, setSaving] = useState(false);
   const [isEditMode] = useState(!!template);
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const historyIndexRef = useRef(0);
+
+  const BASE_FONTS = [
+    'Arial',
+    'Times New Roman',
+    'Helvetica',
+    'Courier New',
+    'Georgia',
+    'Roboto',
+    'Open Sans',
+    'Montserrat',
+    'Lato',
+    'Poppins',
+    'Inter',
+    'Source Sans Pro',
+  ];
+  const MAX_HISTORY = 50;
+
+  const availableFonts = useMemo(() => {
+    const customNames = (customFonts || []).map((font) => font.name);
+    return Array.from(new Set([...BASE_FONTS, ...customNames]));
+  }, [customFonts]);
+
+  const pageSize = useMemo(() => {
+    let width =
+      pageConfig.format === 'Custom'
+        ? pageConfig.width
+        : PAGE_FORMATS[pageConfig.format]?.width || 210;
+    let height =
+      pageConfig.format === 'Custom'
+        ? pageConfig.height
+        : PAGE_FORMATS[pageConfig.format]?.height || 297;
+
+    if (pageConfig.orientation === 'landscape') {
+      [width, height] = [height, width];
+    }
+    return { width, height };
+  }, [pageConfig]);
 
   // Extract CSV test data if saved in config
   React.useEffect(() => {
-    if (template?.config) {
-      try {
-        const config = JSON.parse(template.config);
-        if (config.csvTestData) {
-          setCsvData({
-            columns: Object.keys(config.csvTestData[0] || {}),
-            preview: config.csvTestData,
-          });
-        }
-      } catch (error) {
-        console.error('Error parsing template config:', error);
+    if (parsedConfig?.csvTestData) {
+      setCsvData({
+        columns: Object.keys(parsedConfig.csvTestData[0] || {}),
+        preview: parsedConfig.csvTestData,
+      });
+    }
+  }, [parsedConfig]);
+
+  useEffect(() => {
+    setHistory([elements]);
+    setHistoryIndex(0);
+    historyIndexRef.current = 0;
+  }, [template?.id]);
+
+  useEffect(() => {
+    const styleId = 'template-builder-custom-fonts';
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    const fontFaces = (customFonts || [])
+      .map(
+        (font) => `
+      @font-face {
+        font-family: '${font.name}';
+        src: url(${font.dataUrl}) format('${font.format || 'truetype'}');
+        font-weight: ${font.weight || 'normal'};
+        font-style: ${font.style || 'normal'};
+      }
+    `
+      )
+      .join('\n');
+
+    styleEl.textContent = fontFaces;
+
+    return () => {
+      if (styleEl) {
+        styleEl.textContent = '';
+      }
+    };
+  }, [customFonts]);
+
+  const pushHistory = (nextElements) => {
+    setHistory((prev) => {
+      const base = prev.length ? prev : [elements];
+      const trimmed = base.slice(0, historyIndexRef.current + 1);
+      const updated = [...trimmed, nextElements].slice(-MAX_HISTORY);
+      historyIndexRef.current = updated.length - 1;
+      return updated;
+    });
+    setHistoryIndex(historyIndexRef.current);
+  };
+
+  const updateElements = (updater, skipHistory = false) => {
+    setElements((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      if (!skipHistory) {
+        pushHistory(next);
+      }
+      return next;
+    });
+  };
+
+  const handleUndo = () => {
+    if (historyIndexRef.current <= 0) return;
+    const newIndex = historyIndexRef.current - 1;
+    historyIndexRef.current = newIndex;
+    setHistoryIndex(newIndex);
+    const target = history[newIndex];
+    if (target) {
+      updateElements(target, true);
+      if (selectedElement) {
+        const latest = target.find((el) => el.id === selectedElement.id);
+        setSelectedElement(latest || null);
       }
     }
-  }, [template]);
+  };
+
+  const handleRedo = () => {
+    if (historyIndexRef.current >= history.length - 1) return;
+    const newIndex = historyIndexRef.current + 1;
+    historyIndexRef.current = newIndex;
+    setHistoryIndex(newIndex);
+    const target = history[newIndex];
+    if (target) {
+      updateElements(target, true);
+      if (selectedElement) {
+        const latest = target.find((el) => el.id === selectedElement.id);
+        setSelectedElement(latest || null);
+      }
+    }
+  };
 
   const handleCsvUploaded = (data) => {
     setCsvData(data);
@@ -130,22 +256,72 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     setStep(3);
   };
 
-  const handleAddElement = (element) => {
-    const newElement = {
-      ...element,
-      id: `element_${Date.now()}`,
-      x: 20,  // mm (was 50px / 2.5 = 20mm)
-      y: 20 + (elements.length * 12),  // mm (was 50 + n*30 px, now in mm)
+  const getFontFormat = (fileName) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    if (ext === 'otf') return 'opentype';
+    if (ext === 'woff') return 'woff';
+    if (ext === 'woff2') return 'woff2';
+    return 'truetype';
+  };
+
+  const handleFontInputChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const fontName = file.name.replace(/\.[^/.]+$/, '');
+      const fontData = {
+        name: fontName,
+        dataUrl: reader.result,
+        format: getFontFormat(file.name),
+      };
+      setCustomFonts((prev) => {
+        const withoutDuplicate = prev.filter((font) => font.name !== fontName);
+        return [...withoutDuplicate, fontData];
+      });
+      toast.success(`Police "${fontName}" ajoutée`);
     };
-    setElements([...elements, newElement]);
+    reader.onerror = () => {
+      toast.error('Erreur lors du chargement de la police');
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
+  const handleRemoveFont = (name) => {
+    setCustomFonts((prev) => prev.filter((font) => font.name !== name));
+  };
+
+  const handleAddElement = (element) => {
+    let newElement;
+    updateElements((prev) => {
+      newElement = {
+        ...element,
+        id: `element_${Date.now()}`,
+        x: 20,  // mm (was 50px / 2.5 = 20mm)
+        y: 20 + (prev.length * 12),  // mm (was 50 + n*30 px, now in mm)
+      };
+      return [...prev, newElement];
+    });
+    if (newElement) {
+      setSelectedElement(newElement);
+    }
   };
 
   const handleUpdateElement = (id, updates) => {
-    setElements(elements.map(el => el.id === id ? { ...el, ...updates } : el));
+    let nextElements = [];
+    updateElements((prev) => {
+      nextElements = prev.map(el => el.id === id ? { ...el, ...updates } : el);
+      return nextElements;
+    });
+    if (selectedElement?.id === id && nextElements.length) {
+      setSelectedElement(nextElements.find((el) => el.id === id) || null);
+    }
   };
 
   const handleDeleteElement = (id) => {
-    setElements(elements.filter(el => el.id !== id));
+    updateElements((prev) => prev.filter(el => el.id !== id));
     if (selectedElement?.id === id) {
       setSelectedElement(null);
     }
@@ -154,17 +330,6 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   const handleSelectElement = (element) => {
     setSelectedElement(element);
   };
-
-  // Sync selectedElement with latest element data when elements change
-  useEffect(() => {
-    if (selectedElement) {
-      const latestElement = elements.find(el => el.id === selectedElement.id);
-      // Only update if the element data has actually changed to prevent loops
-      if (latestElement && latestElement !== selectedElement) {
-        setSelectedElement(latestElement);
-      }
-    }
-  }, [elements, selectedElement]);
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) {
@@ -181,6 +346,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
         backgroundColor: pageConfig.backgroundColor,
         csvTestData, // Save first 5 rows for preview during editing
         mmMigrated: true, // Mark as migrated to prevent re-migration
+        customFonts,
       };
       
       const payload = {
@@ -212,6 +378,9 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
       setSaving(false);
     }
   };
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
 
   return (
     <div style={styles.container}>
@@ -292,6 +461,22 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
                   Annuler
                 </button>
                 <button
+                  onClick={handleUndo}
+                  disabled={!canUndo}
+                  style={{ ...styles.btnSecondary, ...(canUndo ? {} : styles.btnDisabled) }}
+                  title="Annuler la dernière modification"
+                >
+                  ↺ Annuler
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={!canRedo}
+                  style={{ ...styles.btnSecondary, ...(canRedo ? {} : styles.btnDisabled) }}
+                  title="Rétablir"
+                >
+                  ↻ Rétablir
+                </button>
+                <button
                   onClick={handleSaveTemplate}
                   disabled={saving}
                   style={styles.btnPrimary}
@@ -313,12 +498,55 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
 
           {/* Right sidebar - Properties & Preview (30%) */}
           <div style={styles.rightSidebar}>
+            <div style={styles.fontManager}>
+              <div style={styles.fontHeader}>
+                <div>
+                  <div style={styles.fontTitle}>Polices</div>
+                  <div style={styles.fontSubtitle}>Disponibles dans l'éditeur, l'aperçu et le PDF</div>
+                </div>
+                <label style={styles.fontUploadBtn}>
+                  <input
+                    type="file"
+                    accept=".ttf,.otf,.woff,.woff2"
+                    onChange={handleFontInputChange}
+                    style={styles.fileInput}
+                  />
+                  + Ajouter
+                </label>
+              </div>
+              <div style={styles.fontChips}>
+                {availableFonts.map((font) => {
+                  const isCustom = customFonts.some((f) => f.name === font);
+                  return (
+                    <span
+                      key={font}
+                      style={{ ...styles.fontChip, ...(isCustom ? styles.fontChipCustom : {}) }}
+                    >
+                      {font}
+                      {isCustom && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFont(font)}
+                          style={styles.fontChipRemove}
+                          title="Supprimer cette police"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
             {selectedElement ? (
               <ElementProperties
                 element={selectedElement}
                 onUpdate={(updates) => handleUpdateElement(selectedElement.id, updates)}
                 onDelete={() => handleDeleteElement(selectedElement.id)}
                 csvColumns={csvData?.columns || []}
+                availableFonts={availableFonts}
+                pageSize={pageSize}
               />
             ) : (
               <div style={styles.noSelection}>
@@ -332,6 +560,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
                 pageConfig={pageConfig}
                 sampleData={csvData.preview[0]}
                 allSampleData={csvData.preview}
+                customFonts={customFonts}
               />
             )}
           </div>
@@ -441,6 +670,10 @@ const styles = {
     cursor: 'pointer',
     fontSize: '14px',
   },
+  btnDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+  },
   rightSidebar: {
     backgroundColor: 'white',
     borderLeft: '1px solid #ddd',
@@ -448,6 +681,68 @@ const styles = {
     overflowX: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+  },
+  fontManager: {
+    padding: '15px',
+    borderBottom: '1px solid #eee',
+    backgroundColor: '#fafafa',
+  },
+  fontHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '10px',
+    gap: '10px',
+  },
+  fontTitle: {
+    fontWeight: 'bold',
+    fontSize: '14px',
+  },
+  fontSubtitle: {
+    fontSize: '12px',
+    color: '#666',
+  },
+  fontUploadBtn: {
+    padding: '6px 10px',
+    backgroundColor: '#2196F3',
+    color: 'white',
+    borderRadius: '4px',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '12px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  fileInput: {
+    display: 'none',
+  },
+  fontChips: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+  },
+  fontChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    backgroundColor: '#e8f0fe',
+    color: '#1a73e8',
+    padding: '4px 8px',
+    borderRadius: '12px',
+    fontSize: '12px',
+  },
+  fontChipCustom: {
+    backgroundColor: '#e8f5e9',
+    color: '#2e7d32',
+  },
+  fontChipRemove: {
+    border: 'none',
+    background: 'transparent',
+    color: 'inherit',
+    cursor: 'pointer',
+    fontSize: '12px',
+    lineHeight: 1,
   },
   noSelection: {
     padding: '20px',

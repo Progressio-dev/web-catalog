@@ -7,11 +7,42 @@ const PAGE_FORMATS = {
   Letter: { width: 215.9, height: 279.4 },
 };
 
-const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) => {
+const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, customFonts = [] }) => {
   const [zoom, setZoom] = React.useState(0.75);
   const [currentRowIndex, setCurrentRowIndex] = React.useState(0);
   const [codeResults, setCodeResults] = React.useState({});
   const [logos, setLogos] = React.useState([]);
+
+  React.useEffect(() => {
+    const styleId = 'template-preview-custom-fonts';
+    let styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    const fontFaces = (customFonts || [])
+      .map(
+        (font) => `
+      @font-face {
+        font-family: '${font.name}';
+        src: url(${font.dataUrl}) format('${font.format || 'truetype'}');
+        font-weight: ${font.weight || 'normal'};
+        font-style: ${font.style || 'normal'};
+      }
+    `
+      )
+      .join('\n');
+
+    styleEl.textContent = fontFaces;
+
+    return () => {
+      if (styleEl && !(customFonts && customFonts.length)) {
+        styleEl.textContent = '';
+      }
+    };
+  }, [customFonts]);
 
   // Fetch logos on mount
   React.useEffect(() => {

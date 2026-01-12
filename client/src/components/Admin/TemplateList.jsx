@@ -86,7 +86,7 @@ const TemplateList = () => {
     return (
       <TemplateBuilder
         template={editingTemplate}
-        onSave={handleBuilderClose}
+        onSave={fetchTemplates}
         onCancel={handleBuilderClose}
       />
     );

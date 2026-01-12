@@ -1,7 +1,11 @@
 import React from 'react';
 
-const ElementProperties = ({ element, onUpdate, onDelete, csvColumns }) => {
+const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableFonts = [], pageSize }) => {
   if (!element) return null;
+
+  const fonts = availableFonts.length > 0
+    ? availableFonts
+    : ['Arial', 'Times New Roman', 'Helvetica', 'Courier New', 'Georgia'];
 
   const renderTextProperties = () => (
     <>
@@ -28,11 +32,11 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns }) => {
           onChange={(e) => onUpdate({ fontFamily: e.target.value })}
           style={styles.select}
         >
-          <option value="Arial">Arial</option>
-          <option value="Times New Roman">Times New Roman</option>
-          <option value="Helvetica">Helvetica</option>
-          <option value="Courier New">Courier New</option>
-          <option value="Georgia">Georgia</option>
+          {fonts.map((font) => (
+            <option key={font} value={font}>
+              {font}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -249,11 +253,11 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns }) => {
           onChange={(e) => onUpdate({ fontFamily: e.target.value })}
           style={styles.select}
         >
-          <option value="Arial">Arial</option>
-          <option value="Times New Roman">Times New Roman</option>
-          <option value="Helvetica">Helvetica</option>
-          <option value="Courier New">Courier New</option>
-          <option value="Georgia">Georgia</option>
+          {fonts.map((font) => (
+            <option key={font} value={font}>
+              {font}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -398,17 +402,78 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns }) => {
       </div>
 
       <div style={styles.group}>
+        <label style={styles.label}>Style:</label>
+        <div style={styles.buttonGroup}>
+          <button
+            onClick={() =>
+              onUpdate({ fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })
+            }
+            style={{
+              ...styles.toggleBtn,
+              ...(element.fontWeight === 'bold' ? styles.toggleBtnActive : {}),
+            }}
+          >
+            <strong>B</strong>
+          </button>
+          <button
+            onClick={() =>
+              onUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })
+            }
+            style={{
+              ...styles.toggleBtn,
+              ...(element.fontStyle === 'italic' ? styles.toggleBtnActive : {}),
+            }}
+          >
+            <em>I</em>
+          </button>
+        </div>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Alignement:</label>
+        <div style={styles.buttonGroup}>
+          <button
+            onClick={() => onUpdate({ textAlign: 'left' })}
+            style={{
+              ...styles.toggleBtn,
+              ...(element.textAlign === 'left' ? styles.toggleBtnActive : {}),
+            }}
+          >
+            ⬅
+          </button>
+          <button
+            onClick={() => onUpdate({ textAlign: 'center' })}
+            style={{
+              ...styles.toggleBtn,
+              ...(element.textAlign === 'center' ? styles.toggleBtnActive : {}),
+            }}
+          >
+            ⬌
+          </button>
+          <button
+            onClick={() => onUpdate({ textAlign: 'right' })}
+            style={{
+              ...styles.toggleBtn,
+              ...(element.textAlign === 'right' ? styles.toggleBtnActive : {}),
+            }}
+          >
+            ➡
+          </button>
+        </div>
+      </div>
+
+      <div style={styles.group}>
         <label style={styles.label}>Police:</label>
         <select
           value={element.fontFamily || 'Arial'}
           onChange={(e) => onUpdate({ fontFamily: e.target.value })}
           style={styles.select}
         >
-          <option value="Arial">Arial</option>
-          <option value="Times New Roman">Times New Roman</option>
-          <option value="Helvetica">Helvetica</option>
-          <option value="Courier New">Courier New</option>
-          <option value="Georgia">Georgia</option>
+          {fonts.map((font) => (
+            <option key={font} value={font}>
+              {font}
+            </option>
+          ))}
         </select>
       </div>
     </>
@@ -455,6 +520,36 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns }) => {
           style={styles.input}
         />
       </div>
+
+      {pageSize && (
+        <div style={styles.group}>
+          <label style={styles.label}>Aligner le bloc:</label>
+          <div style={styles.buttonGroup}>
+            <button
+              type="button"
+              onClick={() => {
+                if (!pageSize?.width) return;
+                const centeredX = Math.max(0, ((pageSize.width || 0) - (element.width || 0)) / 2);
+                onUpdate({ x: centeredX });
+              }}
+              style={styles.toggleBtn}
+            >
+              Centrer horizontalement
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!pageSize?.height) return;
+                const centeredY = Math.max(0, ((pageSize.height || 0) - (element.height || 0)) / 2);
+                onUpdate({ y: centeredY });
+              }}
+              style={styles.toggleBtn}
+            >
+              Centrer verticalement
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 

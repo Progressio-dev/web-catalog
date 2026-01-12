@@ -10,6 +10,20 @@ const RowPreview = ({ row, template, logos }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [zoom, setZoom] = useState(0.5);
+  const cacheRef = React.useRef(new Map());
+
+  useEffect(() => {
+    cacheRef.current.clear();
+  }, [template?.id]);
+
+  const cacheKey = React.useMemo(() => {
+    if (!row || !template) return null;
+    try {
+      return `${template.id || 'preview'}-${JSON.stringify(row)}`;
+    } catch (err) {
+      return null;
+    }
+  }, [row, template]);
 
   useEffect(() => {
     const fetchPreview = async () => {
@@ -18,8 +32,16 @@ const RowPreview = ({ row, template, logos }) => {
         return;
       }
 
+      if (cacheKey && cacheRef.current.has(cacheKey)) {
+        setPreviewHtml(cacheRef.current.get(cacheKey));
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
       try {
-        setLoading(true);
+        const shouldShowLoader = !cacheKey || (!cacheRef.current.has(cacheKey) && !previewHtml);
+        setLoading(shouldShowLoader);
         setError(null);
         
         const response = await api.post('/preview', {
@@ -28,6 +50,9 @@ const RowPreview = ({ row, template, logos }) => {
         });
         
         setPreviewHtml(response.data.html);
+        if (cacheKey) {
+          cacheRef.current.set(cacheKey, response.data.html);
+        }
       } catch (error) {
         console.error('Preview error:', error);
         setError('Erreur de chargement de l\'aperçu');
@@ -42,7 +67,7 @@ const RowPreview = ({ row, template, logos }) => {
     // 1. It's not used in the fetchPreview function (server handles logos)
     // 2. Adding it causes unnecessary re-fetches when logos array reference changes
     // 3. Logo changes require a page refresh to take effect anyway
-  }, [row, template]);
+  }, [row, template, cacheKey]);
 
   if (loading) {
     return (
