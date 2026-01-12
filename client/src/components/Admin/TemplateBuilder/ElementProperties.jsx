@@ -37,7 +37,8 @@ const parseHtmlToSelector = (htmlString) => {
     const idMatch = htmlString.match(/id=["']([^"']+)["']/);
     const id = idMatch ? idMatch[1] : null;
     
-    // Build selector - prioritize class over id
+    // Build selector - use first class for simplicity
+    // (using all classes would make selectors overly specific)
     let selector = tagName;
     
     if (classes.length > 0) {
@@ -287,8 +288,9 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           rows={3}
         />
         <p style={styles.hint}>
-          Vous pouvez coller directement le code HTML de l'image (ex: <code>&lt;img class="photoItem" src="..."&gt;</code>), 
-          le sélecteur CSS sera extrait automatiquement. Sinon, entrez directement un sélecteur CSS (ex: <code>.photoItem img</code>). 
+          Vous pouvez coller directement le code HTML de l'image (ex: <code>&lt;img class="photoItem" src="..."&gt;</code>). 
+          Lorsque vous quittez le champ, le sélecteur CSS sera extrait automatiquement (ex: <code>img.photoItem</code>).
+          Sinon, entrez directement un sélecteur CSS (ex: <code>.photoItem img</code>). 
           Laisser vide si l'URL ci-dessus pointe directement vers l'image.
         </p>
       </div>
