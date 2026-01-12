@@ -463,13 +463,18 @@ const TemplateCanvas = ({
 const styles = {
   container: {
     flex: 1,
-    overflow: 'auto',
+    overflowY: 'auto',
+    overflowX: 'auto',
     backgroundColor: '#e0e0e0',
     padding: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0, // Allow flex item to shrink
   },
   canvasWrapper: {
     display: 'flex',
     justifyContent: 'center',
+    alignItems: 'flex-start',
     minHeight: '100%',
   },
   canvas: {

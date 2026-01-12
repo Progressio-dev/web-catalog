@@ -381,26 +381,29 @@ const styles = {
   },
   builder: {
     flex: 1,
-    display: 'flex',
-    width: '100%', // Use full available width
-    overflow: 'hidden', // Prevent container from scrolling - let canvas container handle its own scrolling
+    display: 'grid',
+    gridTemplateColumns: '280px minmax(760px, 1fr) 360px',
+    width: '100%',
+    overflow: 'hidden',
+    minHeight: 0, // Allow grid item to shrink in vertical direction
   },
   sidebar: {
-    flexShrink: 0,
-    width: '280px',
     backgroundColor: 'white',
     borderRight: '1px solid #ddd',
-    overflow: 'auto',
+    overflowY: 'auto',
+    overflowX: 'hidden',
   },
   canvasContainer: {
-    flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    overflowX: 'auto', // Enable horizontal scroll for canvas when needed
+    minWidth: '760px', // Enforce minimum width to prevent crushing
+    overflowX: 'auto',
     overflowY: 'hidden',
-    minWidth: 0, // Allow flex item to shrink below its content width to enable horizontal scrolling when necessary
   },
   canvasHeader: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 10,
     backgroundColor: 'white',
     padding: '15px',
     borderBottom: '1px solid #ddd',
@@ -439,11 +442,10 @@ const styles = {
     fontSize: '14px',
   },
   rightSidebar: {
-    flexShrink: 0,
-    width: '320px',
     backgroundColor: 'white',
     borderLeft: '1px solid #ddd',
-    overflow: 'auto',
+    overflowY: 'auto',
+    overflowX: 'hidden',
     display: 'flex',
     flexDirection: 'column',
   },
