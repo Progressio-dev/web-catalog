@@ -200,14 +200,14 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         <label style={styles.label}>URL de la page produit (template):</label>
         <input
           type="text"
-        value={element.pageUrlTemplate || ''}
-        onChange={(e) => onUpdate({ pageUrlTemplate: e.target.value })}
-        placeholder="https://www.exemple.com/article/{{value}}"
-        style={styles.input}
-      />
-      <p style={styles.hint}>
+          value={element.pageUrlTemplate || ''}
+          onChange={(e) => onUpdate({ pageUrlTemplate: e.target.value })}
+          placeholder="https://www.exemple.com/article/{{value}}"
+          style={styles.input}
+        />
+        <p style={styles.hint}>
           Utilisez <code>{'{value}'}</code> ou <code>{'{{value}}'}</code> pour insérer la valeur CSV. L'URL sera visitée pour récupérer l'image.
-      </p>
+        </p>
       </div>
 
       <div style={styles.group}>
