@@ -185,6 +185,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             textAlign: element.textAlign,
             padding: `${4 * zoom}px`,
             wordWrap: element.wordWrap ? 'break-word' : 'normal',
+            whiteSpace: element.wordWrap ? 'pre-wrap' : 'pre',
             overflow: 'hidden',
             boxSizing: 'border-box',
           }}
