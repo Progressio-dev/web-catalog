@@ -63,6 +63,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
   const [previewImageUrl, setPreviewImageUrl] = React.useState(null);
   const [previewLoading, setPreviewLoading] = React.useState(false);
   const [previewError, setPreviewError] = React.useState(null);
+  const [imageLoadError, setImageLoadError] = React.useState(false);
 
   const fonts = availableFonts.length > 0
     ? availableFonts
@@ -75,6 +76,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     if (element.type !== 'image' || !sampleData) {
       setPreviewImageUrl(null);
       setPreviewError(null);
+      setImageLoadError(false);
       return;
     }
 
@@ -82,6 +84,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     if (!element.csvColumn || !element.pageUrlTemplate) {
       setPreviewImageUrl(null);
       setPreviewError(null);
+      setImageLoadError(false);
       return;
     }
 
@@ -89,6 +92,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     if (!refValue) {
       setPreviewImageUrl(null);
       setPreviewError('Aucune valeur dans la colonne CSV pour la première ligne');
+      setImageLoadError(false);
       return;
     }
 
@@ -96,6 +100,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     const fetchImagePreview = async () => {
       setPreviewLoading(true);
       setPreviewError(null);
+      setImageLoadError(false);
 
       console.log('🔍 [Image Preview Debug] Fetching image URL with config:', {
         refValue,
@@ -459,19 +464,24 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
                   </div>
                 </div>
                 <div style={styles.previewImageContainer}>
-                  <img 
-                    src={previewImageUrl} 
-                    alt="Preview" 
-                    style={styles.previewImage}
-                    onError={(e) => {
-                      console.error('❌ [Image Preview Debug] Failed to load image:', previewImageUrl);
-                      e.target.style.display = 'none';
-                      e.target.parentElement.innerHTML = '<div style="color: #f44336; padding: 10px;">❌ Impossible de charger l\'image</div>';
-                    }}
-                    onLoad={() => {
-                      console.log('✅ [Image Preview Debug] Image loaded successfully');
-                    }}
-                  />
+                  {!imageLoadError ? (
+                    <img 
+                      src={previewImageUrl} 
+                      alt="Preview" 
+                      style={styles.previewImage}
+                      onError={(e) => {
+                        console.error('❌ [Image Preview Debug] Failed to load image:', previewImageUrl);
+                        setImageLoadError(true);
+                      }}
+                      onLoad={() => {
+                        console.log('✅ [Image Preview Debug] Image loaded successfully');
+                      }}
+                    />
+                  ) : (
+                    <div style={{ color: '#f44336', padding: '10px' }}>
+                      ❌ Impossible de charger l'image
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
