@@ -76,7 +76,6 @@ const styles = {
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
   headerContent: {
-    maxWidth: '1400px',
     margin: '0 auto',
     display: 'flex',
     justifyContent: 'space-between',
@@ -105,7 +104,6 @@ const styles = {
   },
   content: {
     display: 'flex',
-    maxWidth: '1400px',
     margin: '0 auto',
     minHeight: 'calc(100vh - 64px)',
   },
