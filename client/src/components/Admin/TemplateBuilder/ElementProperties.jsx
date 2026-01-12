@@ -271,13 +271,11 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         <textarea
           value={element.imageSelector || ''}
           onChange={(e) => {
-            const value = e.target.value;
-            // Auto-detect if input is HTML and extract selector
-            const selector = parseHtmlToSelector(value);
-            onUpdate({ imageSelector: selector });
+            // Allow user to type freely
+            onUpdate({ imageSelector: e.target.value });
           }}
           onBlur={(e) => {
-            // On blur, ensure we have the parsed selector
+            // On blur, auto-detect if input is HTML and extract selector
             const value = e.target.value;
             const selector = parseHtmlToSelector(value);
             if (selector !== value) {
