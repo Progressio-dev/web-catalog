@@ -8,7 +8,7 @@ const PAGE_FORMATS = {
 };
 
 const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData }) => {
-  const [zoom, setZoom] = React.useState(1);
+  const [zoom, setZoom] = React.useState(0.5); // Set default zoom to 50%
   const [currentRowIndex, setCurrentRowIndex] = React.useState(0);
   const [codeResults, setCodeResults] = React.useState({});
   const [logos, setLogos] = React.useState([]);
@@ -462,12 +462,17 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    border: '1px solid #ddd',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+    overflow: 'hidden',
   },
   header: {
     padding: '15px',
     borderBottom: '1px solid #ddd',
     backgroundColor: 'white',
+    flexShrink: 0,
   },
   title: {
     fontSize: '16px',
@@ -547,7 +552,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    minHeight: 0, // Allow flex item to shrink
+    backgroundColor: '#f9f9f9',
   },
   preview: {
     position: 'relative',
