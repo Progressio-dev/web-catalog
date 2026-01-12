@@ -121,17 +121,16 @@ exports.getProductImage = async (req, res) => {
       extension
     } = req.query;
 
+    const shouldEncode = urlEncodeValue !== 'false' && urlEncodeValue !== false;
+
     const fetchOptions = {
       pageUrlTemplate,
       imageSelector,
       imageAttribute,
       baseUrl,
-      extension
+      extension,
+      urlEncodeValue: shouldEncode
     };
-
-    if (urlEncodeValue !== undefined) {
-      fetchOptions.urlEncodeValue = urlEncodeValue !== 'false';
-    }
 
     const imageUrl = await pdfService.fetchProductImageUrl(ref, fetchOptions);
     const fallbackUrl = baseUrl ? `${baseUrl}${ref}${extension || ''}` : null;

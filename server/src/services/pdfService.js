@@ -111,6 +111,10 @@ function normalizeImageUrl(src, pageUrl) {
   }
 }
 
+function shouldEncodeValue(flag) {
+  return flag !== false && flag !== 'false';
+}
+
 function buildFontFaces(customFonts = []) {
   return (customFonts || [])
     .map(
@@ -493,7 +497,7 @@ async function fetchProductImageUrl(reference, options = {}) {
 
   // 1) Custom scraping based on template + selector
   if (options.pageUrlTemplate && options.imageSelector) {
-    const pageUrl = applyValueToTemplate(options.pageUrlTemplate, reference, options.urlEncodeValue !== false);
+    const pageUrl = applyValueToTemplate(options.pageUrlTemplate, reference, shouldEncodeValue(options.urlEncodeValue));
     if (pageUrl) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -514,7 +518,10 @@ async function fetchProductImageUrl(reference, options = {}) {
           const $ = cheerio.load(html);
           const node = $(options.imageSelector).first();
           const imageAttribute = options.imageAttribute || 'src';
-          let src = node.attr(imageAttribute) || node.attr('src');
+          let src = node.attr(imageAttribute);
+          if (!src && imageAttribute !== 'src') {
+            src = node.attr('src');
+          }
           const normalized = normalizeImageUrl(src, pageUrl);
           productImageCache.set(cacheKey, { url: normalized, timestamp: now });
           if (normalized) {
@@ -586,7 +593,7 @@ async function buildProductImageUrl(item, element, options = {}) {
     pageUrlTemplate: element.pageUrlTemplate,
     imageSelector: element.imageSelector,
     imageAttribute: element.imageAttribute,
-    urlEncodeValue: element.urlEncodeValue !== false,
+    urlEncodeValue: shouldEncodeValue(element.urlEncodeValue),
     baseUrl: element.baseUrl || options.productImageBaseUrl,
     extension: element.extension
   });

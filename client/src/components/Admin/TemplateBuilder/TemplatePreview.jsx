@@ -14,6 +14,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
   const [logos, setLogos] = React.useState([]);
   const [imageUrls, setImageUrls] = React.useState({});
 
+  const shouldEncodeValue = React.useCallback((flag) => flag !== false && flag !== 'false', []);
+
   const buildImageKey = React.useCallback((element, refValue) => {
     return [
       element?.id || element?.csvColumn || 'image',
@@ -23,9 +25,9 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
       element?.imageAttribute || 'src',
       element?.baseUrl || '',
       element?.extension || '',
-      element?.urlEncodeValue === false ? 'raw' : 'enc'
+      shouldEncodeValue(element?.urlEncodeValue) ? 'enc' : 'raw'
     ].join('|');
-  }, []);
+  }, [shouldEncodeValue]);
 
   React.useEffect(() => {
     const styleId = 'template-preview-custom-fonts';
@@ -184,7 +186,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
                 pageUrlTemplate: el.pageUrlTemplate,
                 imageSelector: el.imageSelector,
                 imageAttribute: el.imageAttribute,
-                urlEncodeValue: el.urlEncodeValue !== false,
+                urlEncodeValue: shouldEncodeValue(el.urlEncodeValue),
                 baseUrl: el.baseUrl,
                 extension: el.extension
               }
