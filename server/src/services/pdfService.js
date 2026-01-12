@@ -113,7 +113,7 @@ function normalizeImageUrl(src, pageUrl) {
   }
 }
 
-function shouldEncodeValue(flag) {
+function shouldUrlEncodeValue(flag) {
   return flag !== false && flag !== 'false';
 }
 
@@ -498,8 +498,8 @@ async function fetchProductImageUrl(reference, options = {}) {
   }
 
   // 1) Custom scraping based on template + selector
-  if (options.pageUrlTemplate && options.imageSelector) {
-    const pageUrl = applyValueToTemplate(options.pageUrlTemplate, reference, shouldEncodeValue(options.urlEncodeValue));
+  if (options.pageUrlTemplate && options.imageSelector && options.imageSelector.trim()) {
+    const pageUrl = applyValueToTemplate(options.pageUrlTemplate, reference, shouldUrlEncodeValue(options.urlEncodeValue));
     if (pageUrl) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -595,7 +595,7 @@ async function buildProductImageUrl(item, element, options = {}) {
     pageUrlTemplate: element.pageUrlTemplate,
     imageSelector: element.imageSelector,
     imageAttribute: element.imageAttribute,
-    urlEncodeValue: shouldEncodeValue(element.urlEncodeValue),
+    urlEncodeValue: shouldUrlEncodeValue(element.urlEncodeValue),
     baseUrl: element.baseUrl || options.productImageBaseUrl,
     extension: element.extension
   });

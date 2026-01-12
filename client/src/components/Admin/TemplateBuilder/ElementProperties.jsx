@@ -206,7 +206,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           style={styles.input}
         />
         <p style={styles.hint}>
-          Utilisez <code>{'{value}'}</code> ou <code>{'{{value}}'}</code> pour insérer la valeur CSV. L'URL sera visitée pour récupérer l'image.
+          Utilisez <code>{'{value}'}</code> ou <code>{'{{value}}'}</code> pour insérer la valeur CSV.
         </p>
       </div>
 
