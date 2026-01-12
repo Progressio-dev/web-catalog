@@ -13,6 +13,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
   const [codeResults, setCodeResults] = React.useState({});
   const [logos, setLogos] = React.useState([]);
   const [imageUrls, setImageUrls] = React.useState({});
+  const [imageCacheVersion, setImageCacheVersion] = React.useState(0);
 
   const shouldEncodeValue = React.useCallback((flag) => flag !== false && flag !== 'false', []);
 
@@ -25,9 +26,29 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
       element?.imageAttribute || 'src',
       element?.baseUrl || '',
       element?.extension || '',
-      shouldEncodeValue(element?.urlEncodeValue) ? 'enc' : 'raw'
+      shouldEncodeValue(element?.urlEncodeValue) ? 'enc' : 'raw',
+      imageCacheVersion // Add cache version to invalidate on changes
     ].join('|');
-  }, [shouldEncodeValue]);
+  }, [shouldEncodeValue, imageCacheVersion]);
+
+  // Effect to detect when image elements change and clear cache
+  React.useEffect(() => {
+    // Increment cache version when image element properties change
+    // This will cause all image URLs to be re-fetched
+    setImageCacheVersion(v => v + 1);
+  }, [
+    // Track changes to image element properties
+    JSON.stringify(elements.filter(el => el.type === 'image').map(el => ({
+      id: el.id,
+      csvColumn: el.csvColumn,
+      pageUrlTemplate: el.pageUrlTemplate,
+      imageSelector: el.imageSelector,
+      imageAttribute: el.imageAttribute,
+      baseUrl: el.baseUrl,
+      extension: el.extension,
+      urlEncodeValue: el.urlEncodeValue
+    })))
+  ]);
 
   React.useEffect(() => {
     const styleId = 'template-preview-custom-fonts';
@@ -202,7 +223,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
     };
 
     fetchImages();
-  }, [elements, displayData, imageUrls, buildImageKey]);
+  }, [elements, displayData, buildImageKey, shouldEncodeValue]);
 
   const renderPreviewElement = React.useCallback((element) => {
     // Convert mm to px for rendering with zoom
@@ -388,6 +409,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
                 console.error('Erreur de chargement image produit', imageUrl);
                 e.target.style.opacity = '0';
               }}
+              key={`${element.id}-${imageCacheVersion}`}
             />
           ) : (
             'Image'
@@ -469,7 +491,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
     }
 
     return null;
-  }, [displayData, zoom, codeResults, logos, buildImageKey]);
+  }, [displayData, zoom, codeResults, logos, imageUrls, buildImageKey, imageCacheVersion]);
 
   // Scaling for preview - convert mm to pixels with zoom
   // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px

@@ -8,6 +8,46 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     : ['Arial', 'Times New Roman', 'Helvetica', 'Courier New', 'Georgia'];
   const tokenExampleString = '{value}, {{value}}, %VALUE%, %REFERENCE%, %REF%, %{COLONNE}%';
 
+  // Helper function to simulate URL with token replacement
+  const simulateUrlWithTokens = (template, columnName, sampleValue = 'EXEMPLE-REF-123', encodeValue = true) => {
+    if (!template) return '';
+    
+    // Normalize column name (replace spaces with underscores for token matching)
+    const normalizedColumn = columnName ? columnName.replace(/\s+/g, '_') : '';
+    const safeValue = encodeValue ? encodeURIComponent(sampleValue) : sampleValue;
+    
+    // Generic tokens
+    let result = template;
+    const genericPatterns = [
+      [/{{\s*value\s*}}/gi, safeValue],
+      [/{\s*value\s*}/gi, safeValue],
+      [/%VALUE%/gi, safeValue],
+      [/%REFERENCE%/gi, safeValue],
+      [/%REF%/gi, safeValue],
+      [/%s/gi, safeValue],
+    ];
+    
+    // Apply generic patterns
+    genericPatterns.forEach(([pattern, replacement]) => {
+      result = result.replace(pattern, replacement);
+    });
+    
+    // Column-specific tokens (support both original and normalized names)
+    if (columnName) {
+      // Original column name with spaces
+      result = result.replace(new RegExp(`{{\\s*${columnName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*}}`, 'gi'), safeValue);
+      result = result.replace(new RegExp(`%${columnName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}%`, 'gi'), safeValue);
+      
+      // Normalized column name (underscores instead of spaces)
+      if (normalizedColumn !== columnName) {
+        result = result.replace(new RegExp(`{{\\s*${normalizedColumn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*}}`, 'gi'), safeValue);
+        result = result.replace(new RegExp(`%${normalizedColumn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}%`, 'gi'), safeValue);
+      }
+    }
+    
+    return result;
+  };
+
   const renderTextProperties = () => (
     <>
       <div style={styles.group}>
@@ -207,7 +247,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           style={styles.input}
         />
         <p style={styles.hint}>
-          Tokens possibles: <code>{tokenExampleString}</code>. Laissez le sélecteur vide si l'URL cible déjà l'image finale.
+          Tokens possibles: <code>{tokenExampleString}</code>. Les colonnes avec espaces sont supportées (ex: %CODE PRODUIT% ou %CODE_PRODUIT%). Laissez le sélecteur vide si l'URL cible déjà l'image finale.
         </p>
       </div>
 
@@ -281,6 +321,40 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           <option value="fill">Remplir</option>
         </select>
       </div>
+
+      {/* URL Simulation Preview */}
+      {element.csvColumn && element.pageUrlTemplate && (
+        <div style={styles.simulationBox}>
+          <h4 style={styles.simulationTitle}>🔍 Simulation d'URL</h4>
+          <div style={styles.simulationContent}>
+            <p style={styles.simulationLabel}>Colonne sélectionnée:</p>
+            <code style={styles.simulationCode}>{element.csvColumn}</code>
+            
+            <p style={styles.simulationLabel}>Template d'URL:</p>
+            <code style={styles.simulationCode}>{element.pageUrlTemplate}</code>
+            
+            <p style={styles.simulationLabel}>Valeur d'exemple:</p>
+            <code style={styles.simulationCode}>EXEMPLE-REF-123</code>
+            
+            <p style={styles.simulationLabel}>URL générée (simulation):</p>
+            <code style={styles.simulationCodeResult}>
+              {simulateUrlWithTokens(
+                element.pageUrlTemplate, 
+                element.csvColumn, 
+                'EXEMPLE-REF-123',
+                element.urlEncodeValue !== false && element.urlEncodeValue !== 'false'
+              )}
+            </code>
+            
+            {element.csvColumn.includes(' ') && (
+              <div style={styles.simulationNote}>
+                <strong>ℹ️ Note:</strong> La colonne "{element.csvColumn}" contient des espaces. 
+                Vous pouvez utiliser soit <code>%{element.csvColumn}%</code> soit <code>%{element.csvColumn.replace(/\s+/g, '_')}%</code> dans le template.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -731,6 +805,65 @@ const styles = {
     fontSize: '11px',
     color: '#666',
     marginTop: '4px',
+  },
+  simulationBox: {
+    marginTop: '15px',
+    padding: '12px',
+    backgroundColor: '#f0f7ff',
+    border: '2px solid #2196F3',
+    borderRadius: '5px',
+  },
+  simulationTitle: {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#1976D2',
+    marginBottom: '10px',
+  },
+  simulationContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  simulationLabel: {
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#555',
+    marginTop: '5px',
+    marginBottom: '2px',
+  },
+  simulationCode: {
+    display: 'block',
+    padding: '6px 8px',
+    backgroundColor: '#fff',
+    border: '1px solid #ddd',
+    borderRadius: '3px',
+    fontSize: '12px',
+    fontFamily: 'monospace',
+    color: '#333',
+    overflowX: 'auto',
+    wordBreak: 'break-all',
+  },
+  simulationCodeResult: {
+    display: 'block',
+    padding: '8px 10px',
+    backgroundColor: '#e8f5e9',
+    border: '1px solid #4CAF50',
+    borderRadius: '3px',
+    fontSize: '12px',
+    fontFamily: 'monospace',
+    color: '#2e7d32',
+    overflowX: 'auto',
+    wordBreak: 'break-all',
+    fontWeight: '600',
+  },
+  simulationNote: {
+    marginTop: '8px',
+    padding: '8px',
+    backgroundColor: '#fff3cd',
+    borderLeft: '3px solid #ffc107',
+    fontSize: '11px',
+    color: '#856404',
+    lineHeight: '1.4',
   },
 };
 
