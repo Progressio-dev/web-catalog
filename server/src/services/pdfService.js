@@ -69,6 +69,9 @@ const PAGE_FORMATS = {
   'Custom': { width: null, height: null } // defined by user
 };
 
+const PRODUCT_IMAGE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const productImageCache = new Map();
+
 function buildFontFaces(customFonts = []) {
   return (customFonts || [])
     .map(
@@ -368,7 +371,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     }
     
     // Handle regular product images
-    const imageUrl = buildProductImageUrl(item, element);
+    const imageUrl = await buildProductImageUrl(item, element);
     if (imageUrl) {
       const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'};`;
       return `<img src="${imageUrl}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
@@ -438,14 +441,82 @@ async function executeJsCode(code, data) {
   }
 }
 
+// Fetch product image URL from placedespros product page
+async function fetchProductImageUrl(reference) {
+  if (!reference) return null;
+
+  const cached = productImageCache.get(reference);
+  const now = Date.now();
+  if (cached && now - cached.timestamp < PRODUCT_IMAGE_CACHE_TTL_MS) {
+    return cached.url;
+  }
+
+  const productUrl = `https://www.placedespros.com/article/art-${encodeURIComponent(reference)}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch(productUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      },
+      redirect: 'follow',
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch product page (${response.status}): ${productUrl}`);
+      productImageCache.set(reference, { url: null, timestamp: now });
+      return null;
+    }
+
+    const html = await response.text();
+    // Look for the main product image with class "photoItem"
+    const imgRegex = /<img[^>]*class=["'][^"']*photoItem[^"']*["'][^>]*src=["']([^"']+)["'][^>]*>/i;
+    const match = html.match(imgRegex);
+
+    if (match && match[1]) {
+      let src = match[1];
+      if (src.startsWith('//')) {
+        src = `https:${src}`;
+      } else if (src.startsWith('/')) {
+        src = `https://www.placedespros.com${src}`;
+      }
+      productImageCache.set(reference, { url: src, timestamp: now });
+      return src;
+    }
+
+    console.warn(`No product image found for reference ${reference}`);
+    productImageCache.set(reference, { url: null, timestamp: now });
+    return null;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error(`Error fetching product image for ${reference}:`, error.message);
+    productImageCache.set(reference, { url: null, timestamp: now });
+    return null;
+  }
+}
+
 // Build product image URL
-function buildProductImageUrl(item, element) {
-  if (!element.baseUrl || !element.csvColumn) return null;
+async function buildProductImageUrl(item, element) {
+  if (!element.csvColumn) return null;
   
   const value = item[element.csvColumn];
   if (!value) return null;
 
-  return `${element.baseUrl}${value}${element.extension || ''}`;
+  // Preferred: fetch online image from placedespros
+  const onlineUrl = await fetchProductImageUrl(value);
+  if (onlineUrl) return onlineUrl;
+
+  // Fallback to legacy base URL + extension if configured
+  if (element.baseUrl) {
+    return `${element.baseUrl}${value}${element.extension || ''}`;
+  }
+
+  return null;
 }
 
 // Build HTML from template and data
@@ -636,3 +707,6 @@ exports.generatePdf = async (params) => {
     }
   }
 };
+
+// Expose product image fetcher for controllers
+exports.fetchProductImageUrl = fetchProductImageUrl;
