@@ -79,6 +79,10 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
     onAddElement({
       type: 'image',
       csvColumn: null,
+      pageUrlTemplate: '',
+      imageSelector: '',
+      imageAttribute: 'src',
+      urlEncodeValue: true,
       baseUrl: '',
       extension: '.jpg',
       width: 80,  // mm (was 200px / 2.5 = 80mm)

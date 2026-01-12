@@ -48,7 +48,7 @@ const Admin = () => {
               ...(activeTab === 'settings' ? styles.navButtonActive : {}),
             }}
           >
-            Paramètres
+            Paramètres (optionnel)
           </button>
           <a href="/" style={styles.homeLink}>
             ← Retour à l'accueil

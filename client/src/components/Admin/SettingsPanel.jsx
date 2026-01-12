@@ -51,10 +51,10 @@ const SettingsPanel = () => {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>Paramètres</h2>
+      <h2 style={styles.title}>Paramètres globaux (optionnels)</h2>
       
       <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Images Produits</h3>
+        <h3 style={styles.sectionTitle}>Images Produits (repli)</h3>
         <div style={styles.formGroup}>
           <label style={styles.label}>
             URL de base pour les images produits
@@ -67,8 +67,8 @@ const SettingsPanel = () => {
             style={styles.input}
           />
           <p style={styles.hint}>
-            Par défaut les images sont récupérées depuis placedespros.com à partir de la référence produit.
-            Cette URL de base n'est utilisée qu'en solution de repli éventuelle (construction: {settings.product_image_base_url || '<URL_BASE>'}{'<reference>.jpg'}).
+            Les blocs images peuvent maintenant définir leur propre URL de page, sélecteur CSS et attribut pour scrapper l'image.
+            Cette URL de base reste un filet de sécurité si aucun scraping dédié n'est configuré (construction: {settings.product_image_base_url || '<URL_BASE>'}{'<reference>.jpg'}).
           </p>
         </div>
       </div>
