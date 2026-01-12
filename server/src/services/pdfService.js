@@ -186,7 +186,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       text-align: ${element.textAlign || 'left'};
       padding: 4px;
       box-sizing: border-box;
-      ${element.wordWrap ? 'word-wrap: break-word; overflow-wrap: break-word;' : 'white-space: nowrap;'}
+      ${element.wordWrap 
+        ? 'white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;' 
+        : 'white-space: pre;'}
       text-decoration: ${element.textDecoration || 'none'};
     `;
     return `<div style="${textStyle}">${content}</div>`;
