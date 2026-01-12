@@ -547,6 +547,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
                 csvColumns={csvData?.columns || []}
                 availableFonts={availableFonts}
                 pageSize={pageSize}
+                sampleData={csvData?.preview?.[0]}
               />
             ) : (
               <div style={styles.noSelection}>
