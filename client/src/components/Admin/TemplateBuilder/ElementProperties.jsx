@@ -1,4 +1,5 @@
 import React from 'react';
+import api from '../../../services/api';
 
 // Helper function to escape regex special characters
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -55,14 +56,96 @@ const parseHtmlToSelector = (htmlString) => {
   }
 };
 
-const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableFonts = [], pageSize }) => {
+const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableFonts = [], pageSize, sampleData }) => {
   if (!element) return null;
+
+  // State for real-time image URL preview
+  const [previewImageUrl, setPreviewImageUrl] = React.useState(null);
+  const [previewLoading, setPreviewLoading] = React.useState(false);
+  const [previewError, setPreviewError] = React.useState(null);
 
   const fonts = availableFonts.length > 0
     ? availableFonts
     : ['Arial', 'Times New Roman', 'Helvetica', 'Courier New', 'Georgia'];
   const tokenExampleString = '{value}, {{value}}, %VALUE%, %REFERENCE%, %REF%, %{COLONNE}%';
 
+  // Effect to fetch real-time image preview for image elements
+  React.useEffect(() => {
+    // Only run for image elements with sample data
+    if (element.type !== 'image' || !sampleData) {
+      setPreviewImageUrl(null);
+      setPreviewError(null);
+      return;
+    }
+
+    // Need at least a CSV column and page URL template to fetch
+    if (!element.csvColumn || !element.pageUrlTemplate) {
+      setPreviewImageUrl(null);
+      setPreviewError(null);
+      return;
+    }
+
+    const refValue = sampleData[element.csvColumn];
+    if (!refValue) {
+      setPreviewImageUrl(null);
+      setPreviewError('Aucune valeur dans la colonne CSV pour la première ligne');
+      return;
+    }
+
+    // Fetch the image URL
+    const fetchImagePreview = async () => {
+      setPreviewLoading(true);
+      setPreviewError(null);
+
+      console.log('🔍 [Image Preview Debug] Fetching image URL with config:', {
+        refValue,
+        csvColumn: element.csvColumn,
+        pageUrlTemplate: element.pageUrlTemplate,
+        imageSelector: element.imageSelector,
+        imageAttribute: element.imageAttribute,
+        urlEncodeValue: element.urlEncodeValue,
+        baseUrl: element.baseUrl,
+        extension: element.extension
+      });
+
+      try {
+        const response = await api.get(`/product-image/${encodeURIComponent(refValue)}`, {
+          params: {
+            pageUrlTemplate: element.pageUrlTemplate,
+            imageSelector: element.imageSelector,
+            imageAttribute: element.imageAttribute,
+            urlEncodeValue: element.urlEncodeValue !== false && element.urlEncodeValue !== 'false',
+            csvColumn: element.csvColumn,
+            baseUrl: element.baseUrl,
+            extension: element.extension
+          }
+        });
+
+        console.log('✅ [Image Preview Debug] Image URL fetched successfully:', response.data.imageUrl);
+        setPreviewImageUrl(response.data.imageUrl);
+        setPreviewError(null);
+      } catch (error) {
+        console.error('❌ [Image Preview Debug] Error fetching image:', error);
+        const errorMsg = error.response?.data?.error || 'Erreur lors de la récupération de l\'image';
+        setPreviewError(errorMsg);
+        setPreviewImageUrl(null);
+      } finally {
+        setPreviewLoading(false);
+      }
+    };
+
+    fetchImagePreview();
+  }, [
+    element.type,
+    element.csvColumn,
+    element.pageUrlTemplate,
+    element.imageSelector,
+    element.imageAttribute,
+    element.urlEncodeValue,
+    element.baseUrl,
+    element.extension,
+    sampleData
+  ]);
 
   const renderTextProperties = () => (
     <>
@@ -351,6 +434,54 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           <option value="fill">Remplir</option>
         </select>
       </div>
+
+      {/* Real-time Image URL Preview */}
+      {sampleData && element.csvColumn && (
+        <div style={styles.previewSection}>
+          <label style={styles.label}>Aperçu temps réel (1ère ligne CSV):</label>
+          <div style={styles.previewBox}>
+            {previewLoading ? (
+              <div style={styles.previewLoading}>
+                <span>🔄 Chargement de l'image...</span>
+              </div>
+            ) : previewError ? (
+              <div style={styles.previewError}>
+                <span>⚠️ {previewError}</span>
+              </div>
+            ) : previewImageUrl ? (
+              <div>
+                <div style={styles.previewUrlBox}>
+                  <strong>URL détectée:</strong>
+                  <div style={styles.previewUrl}>
+                    <a href={previewImageUrl} target="_blank" rel="noopener noreferrer" style={styles.urlLink}>
+                      {previewImageUrl}
+                    </a>
+                  </div>
+                </div>
+                <div style={styles.previewImageContainer}>
+                  <img 
+                    src={previewImageUrl} 
+                    alt="Preview" 
+                    style={styles.previewImage}
+                    onError={(e) => {
+                      console.error('❌ [Image Preview Debug] Failed to load image:', previewImageUrl);
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = '<div style="color: #f44336; padding: 10px;">❌ Impossible de charger l\'image</div>';
+                    }}
+                    onLoad={() => {
+                      console.log('✅ [Image Preview Debug] Image loaded successfully');
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div style={styles.previewInfo}>
+                <span>ℹ️ Configurez la colonne CSV et l'URL du template pour voir l'aperçu</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 
@@ -801,6 +932,66 @@ const styles = {
     fontSize: '11px',
     color: '#666',
     marginTop: '4px',
+  },
+  previewSection: {
+    marginTop: '15px',
+    padding: '15px',
+    backgroundColor: '#f8f9fa',
+    borderRadius: '5px',
+    border: '1px solid #dee2e6',
+  },
+  previewBox: {
+    marginTop: '10px',
+  },
+  previewLoading: {
+    padding: '15px',
+    textAlign: 'center',
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  previewError: {
+    padding: '15px',
+    backgroundColor: '#fff3cd',
+    border: '1px solid #ffc107',
+    borderRadius: '4px',
+    color: '#856404',
+  },
+  previewInfo: {
+    padding: '15px',
+    backgroundColor: '#e3f2fd',
+    border: '1px solid #2196F3',
+    borderRadius: '4px',
+    color: '#1976d2',
+  },
+  previewUrlBox: {
+    padding: '10px',
+    backgroundColor: '#fff',
+    border: '1px solid #dee2e6',
+    borderRadius: '4px',
+    marginBottom: '10px',
+  },
+  previewUrl: {
+    marginTop: '5px',
+    wordBreak: 'break-all',
+    fontSize: '11px',
+  },
+  urlLink: {
+    color: '#2196F3',
+    textDecoration: 'underline',
+  },
+  previewImageContainer: {
+    padding: '10px',
+    backgroundColor: '#fff',
+    border: '1px solid #dee2e6',
+    borderRadius: '4px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewImage: {
+    maxWidth: '100%',
+    maxHeight: '200px',
+    objectFit: 'contain',
   },
 };
 

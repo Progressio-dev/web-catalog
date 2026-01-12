@@ -536,10 +536,22 @@ async function executeJsCode(code, data) {
 async function fetchProductImageUrl(reference, options = {}) {
   if (!reference) return null;
 
+  console.log('🔍 [Image Scraper Debug] Starting image fetch for reference:', reference);
+  console.log('📋 [Image Scraper Debug] Options:', {
+    pageUrlTemplate: options.pageUrlTemplate,
+    imageSelector: options.imageSelector,
+    imageAttribute: options.imageAttribute,
+    urlEncodeValue: options.urlEncodeValue,
+    csvColumn: options.csvColumn,
+    baseUrl: options.baseUrl,
+    extension: options.extension
+  });
+
   const cacheKey = buildImageCacheKey(reference, options);
   const cached = productImageCache.get(cacheKey);
   const now = Date.now();
   if (cached && now - cached.timestamp < PRODUCT_IMAGE_CACHE_TTL_MS) {
+    console.log('💾 [Image Scraper Debug] Returning cached URL:', cached.url);
     return cached.url;
   }
 
@@ -548,20 +560,25 @@ async function fetchProductImageUrl(reference, options = {}) {
     ? applyValueToTemplate(options.pageUrlTemplate, reference, shouldEncode, options.csvColumn)
     : null;
 
+  console.log('🔗 [Image Scraper Debug] Constructed page URL:', pageUrlFromTemplate);
+
   // 1) Direct URL templating (when no selector is provided)
   if (pageUrlFromTemplate && (!options.imageSelector || !options.imageSelector.trim())) {
+    console.log('✅ [Image Scraper Debug] Direct URL mode (no selector) - returning URL as-is');
     productImageCache.set(cacheKey, { url: pageUrlFromTemplate, timestamp: now });
     return pageUrlFromTemplate;
   }
 
   // 2) Custom scraping based on template + selector
   if (options.pageUrlTemplate && options.imageSelector && options.imageSelector.trim()) {
+    console.log('🕷️ [Image Scraper Debug] Scraping mode - fetching page and looking for selector:', options.imageSelector);
     const pageUrl = pageUrlFromTemplate;
     if (pageUrl) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
       try {
+        console.log('📡 [Image Scraper Debug] Fetching page:', pageUrl);
         const response = await fetch(pageUrl, {
           headers: {
             'User-Agent': DEFAULT_USER_AGENT,
@@ -571,26 +588,41 @@ async function fetchProductImageUrl(reference, options = {}) {
           signal: controller.signal
         });
 
+        console.log('📥 [Image Scraper Debug] Page fetch response status:', response.status);
+
         if (response.ok) {
           const html = await response.text();
+          console.log('📄 [Image Scraper Debug] Page HTML length:', html.length, 'characters');
+          
           const $ = cheerio.load(html);
           const node = $(options.imageSelector).first();
+          console.log('🎯 [Image Scraper Debug] Found node with selector?', node.length > 0);
+          
           const imageAttribute = options.imageAttribute || 'src';
           let src = node.attr(imageAttribute);
+          console.log(`🖼️ [Image Scraper Debug] Image attribute '${imageAttribute}' value:`, src);
+          
           // If the preferred attribute is missing, gracefully fallback to classic src
           if (!src && imageAttribute !== 'src') {
             src = node.attr('src');
+            console.log('🔄 [Image Scraper Debug] Fallback to src attribute:', src);
           }
+          
           const normalized = normalizeImageUrl(src, pageUrl);
+          console.log('🔗 [Image Scraper Debug] Normalized image URL:', normalized);
+          
           productImageCache.set(cacheKey, { url: normalized, timestamp: now });
           if (normalized) {
+            console.log('✅ [Image Scraper Debug] Successfully scraped image URL:', normalized);
             return normalized;
+          } else {
+            console.warn('⚠️ [Image Scraper Debug] Failed to normalize image URL');
           }
         } else {
-          console.warn(`Failed to fetch product page (${response.status}): ${pageUrl}`);
+          console.warn(`❌ [Image Scraper Debug] Failed to fetch product page (${response.status}): ${pageUrl}`);
         }
       } catch (error) {
-        console.error(`Error fetching product image for ${reference}:`, error.message);
+        console.error(`❌ [Image Scraper Debug] Error fetching product image for ${reference}:`, error.message);
       } finally {
         clearTimeout(timeoutId);
       }
@@ -598,11 +630,15 @@ async function fetchProductImageUrl(reference, options = {}) {
   }
 
   // 3) Default legacy scraping (placedespros)
+  console.log('🔄 [Image Scraper Debug] Falling back to legacy placedespros scraping');
   const productUrl = `https://www.placedespros.com/article/art-${encodeURIComponent(reference)}`;
+  console.log('🔗 [Image Scraper Debug] Legacy product URL:', productUrl);
+  
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
+    console.log('📡 [Image Scraper Debug] Fetching legacy page');
     const response = await fetch(productUrl, {
       headers: {
         'User-Agent': DEFAULT_USER_AGENT,
@@ -613,27 +649,32 @@ async function fetchProductImageUrl(reference, options = {}) {
     });
 
     if (!response.ok) {
-      console.warn(`Failed to fetch product page (${response.status}): ${productUrl}`);
+      console.warn(`❌ [Image Scraper Debug] Failed to fetch product page (${response.status}): ${productUrl}`);
       productImageCache.set(cacheKey, { url: null, timestamp: now });
       return null;
     }
 
     const html = await response.text();
+    console.log('📄 [Image Scraper Debug] Legacy page HTML length:', html.length, 'characters');
+    
     // Look for the main product image with class "photoItem"
     const imgRegex = /<img[^>]*class=["'][^"']*photoItem[^"']*["'][^>]*src=["']([^"']+)["'][^>]*>/i;
     const match = html.match(imgRegex);
+    
+    console.log('🎯 [Image Scraper Debug] photoItem image found?', !!match);
 
     if (match && match[1]) {
       const normalized = normalizeImageUrl(match[1], productUrl);
+      console.log('✅ [Image Scraper Debug] Legacy scraping successful. Image URL:', normalized);
       productImageCache.set(cacheKey, { url: normalized, timestamp: now });
       return normalized;
     }
 
-    console.warn(`No product image found for reference ${reference}`);
+    console.warn(`⚠️ [Image Scraper Debug] No product image found for reference ${reference}`);
     productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
   } catch (error) {
-    console.error(`Error fetching product image for ${reference}:`, error.message);
+    console.error(`❌ [Image Scraper Debug] Error fetching product image for ${reference}:`, error.message);
     productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
   } finally {
