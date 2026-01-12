@@ -382,7 +382,7 @@ const styles = {
   builder: {
     flex: 1,
     display: 'grid',
-    gridTemplateColumns: '280px minmax(760px, 1fr) 360px',
+    gridTemplateColumns: '280px minmax(760px, 1fr) 800px',
     width: '100%',
     overflow: 'hidden',
     minHeight: 0, // Allow grid item to shrink in vertical direction
