@@ -67,7 +67,8 @@ const SettingsPanel = () => {
             style={styles.input}
           />
           <p style={styles.hint}>
-            Les images seront construites comme: {settings.product_image_base_url || '<URL_BASE>'}{'<reference>.jpg'}
+            Par défaut les images sont récupérées depuis placedespros.com à partir de la référence produit.
+            Cette URL de base n'est utilisée qu'en solution de repli éventuelle (construction: {settings.product_image_base_url || '<URL_BASE>'}{'<reference>.jpg'}).
           </p>
         </div>
       </div>

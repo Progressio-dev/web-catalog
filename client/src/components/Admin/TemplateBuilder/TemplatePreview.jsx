@@ -1,5 +1,5 @@
 import React from 'react';
-import { logoAPI } from '../../../services/api';
+import api, { logoAPI } from '../../../services/api';
 
 const PAGE_FORMATS = {
   A4: { width: 210, height: 297 },
@@ -12,6 +12,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
   const [currentRowIndex, setCurrentRowIndex] = React.useState(0);
   const [codeResults, setCodeResults] = React.useState({});
   const [logos, setLogos] = React.useState([]);
+  const [imageUrls, setImageUrls] = React.useState({});
 
   React.useEffect(() => {
     const styleId = 'template-preview-custom-fonts';
@@ -143,6 +144,34 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
       executeAllJsElements();
     }
   }, [elements, displayData]);
+
+  // Fetch product images for image elements (online)
+  React.useEffect(() => {
+    const fetchImages = async () => {
+      const imageElements = elements.filter((el) => el.type === 'image' && el.source !== 'logo' && el.csvColumn);
+      if (!displayData || imageElements.length === 0) return;
+
+      const missingRefs = imageElements
+        .map((el) => displayData[el.csvColumn])
+        .filter((ref) => ref && imageUrls[ref] === undefined);
+
+      if (missingRefs.length === 0) return;
+
+      await Promise.all(
+        missingRefs.map(async (refValue) => {
+          try {
+            const response = await api.get(`/product-image/${encodeURIComponent(refValue)}`);
+            setImageUrls((prev) => ({ ...prev, [refValue]: response.data.imageUrl }));
+          } catch (error) {
+            console.error('Erreur récupération image produit:', error);
+            setImageUrls((prev) => ({ ...prev, [refValue]: null }));
+          }
+        })
+      );
+    };
+
+    fetchImages();
+  }, [elements, displayData, imageUrls]);
 
   const renderPreviewElement = React.useCallback((element) => {
     // Convert mm to px for rendering with zoom
@@ -304,6 +333,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
     }
 
     if (element.type === 'image') {
+      const refValue = displayData?.[element.csvColumn];
+      const imageUrl = refValue ? imageUrls[refValue] : null;
       return (
         <div
           key={element.id}
@@ -317,7 +348,19 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             color: '#999',
           }}
         >
-          Image
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={refValue || 'Image produit'}
+              style={{ width: '100%', height: '100%', objectFit: element.fit || 'contain' }}
+              onError={(e) => {
+                console.error('Erreur de chargement image produit', imageUrl);
+                e.target.style.opacity = '0';
+              }}
+            />
+          ) : (
+            'Image'
+          )}
         </div>
       );
     }

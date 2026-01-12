@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 const pdfController = require('../controllers/pdfController');
 const authMiddleware = require('../middleware/authMiddleware');
 const { getUploadDir } = require('../config/paths');
@@ -32,12 +33,25 @@ const upload = multer({
   }
 });
 
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de requêtes, veuillez réessayer plus tard.' }
+});
+
+// Apply rate limiting to all routes
+router.use(globalLimiter);
+
 // Public routes
 router.post('/upload-csv', upload.single('csv'), pdfController.uploadCsv);
 router.post('/generate-pdf', pdfController.generatePdf);
 
 // Protected routes (admin only)
-router.post('/templates/analyze-csv', authMiddleware, pdfController.analyzeCsv);
-router.post('/preview', authMiddleware, pdfController.generatePreview);
+router.use(authMiddleware);
+router.post('/templates/analyze-csv', pdfController.analyzeCsv);
+router.post('/preview', pdfController.generatePreview);
+router.get('/product-image/:ref', pdfController.getProductImage);
 
 module.exports = router;

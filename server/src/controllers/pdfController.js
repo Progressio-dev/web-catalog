@@ -104,6 +104,26 @@ exports.generatePreview = async (req, res) => {
   }
 };
 
+// Resolve online product image URL for a given reference (admin usage)
+exports.getProductImage = async (req, res) => {
+  try {
+    const { ref } = req.params;
+    if (!ref) {
+      return res.status(400).json({ error: 'Référence produit manquante' });
+    }
+
+    const imageUrl = await pdfService.fetchProductImageUrl(ref);
+    if (!imageUrl) {
+      return res.status(404).json({ error: 'Image introuvable pour cette référence' });
+    }
+
+    res.json({ imageUrl });
+  } catch (error) {
+    console.error('Get product image error:', error);
+    res.status(500).json({ error: 'Échec de la récupération de l\'image' });
+  }
+};
+
 // Generate PDF
 exports.generatePdf = async (req, res) => {
   try {
