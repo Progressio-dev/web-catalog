@@ -112,12 +112,34 @@ exports.getProductImage = async (req, res) => {
       return res.status(400).json({ error: 'Référence produit manquante' });
     }
 
-    const imageUrl = await pdfService.fetchProductImageUrl(ref);
-    if (!imageUrl) {
+    const {
+      pageUrlTemplate,
+      imageSelector,
+      imageAttribute,
+      urlEncodeValue,
+      baseUrl,
+      extension
+    } = req.query;
+
+    const shouldEncode = urlEncodeValue !== 'false' && urlEncodeValue !== false;
+
+    const fetchOptions = {
+      pageUrlTemplate,
+      imageSelector,
+      imageAttribute,
+      baseUrl,
+      extension,
+      urlEncodeValue: shouldEncode
+    };
+
+    const imageUrl = await pdfService.fetchProductImageUrl(ref, fetchOptions);
+    const fallbackUrl = baseUrl ? `${baseUrl}${ref}${extension || ''}` : null;
+    
+    if (!imageUrl && !fallbackUrl) {
       return res.status(404).json({ error: 'Image introuvable pour cette référence' });
     }
 
-    res.json({ imageUrl });
+    res.json({ imageUrl: imageUrl || fallbackUrl });
   } catch (error) {
     console.error('Get product image error:', error);
     res.status(500).json({ error: 'Échec de la récupération de l\'image' });

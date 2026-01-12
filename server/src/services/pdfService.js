@@ -1,6 +1,7 @@
 const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
+const cheerio = require('cheerio');
 const { dbGet } = require('../config/database');
 const { getUploadDir, getGeneratedDir } = require('../config/paths');
 
@@ -71,6 +72,50 @@ const PAGE_FORMATS = {
 
 const PRODUCT_IMAGE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const productImageCache = new Map();
+const FETCH_TIMEOUT_MS = 5000;
+const DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
+
+function buildImageCacheKey(reference, options = {}) {
+  const parts = [
+    reference,
+    options.pageUrlTemplate || 'default',
+    options.imageSelector || 'default',
+    options.imageAttribute || 'src',
+    options.urlEncodeValue ? 'enc' : 'raw',
+    options.baseUrl || '',
+    options.extension || ''
+  ];
+  return parts.join('|');
+}
+
+function applyValueToTemplate(template, value, encodeValue) {
+  const safeValue = encodeValue ? encodeURIComponent(value) : value;
+  if (!template) return null;
+  return template
+    .replace(/{{\s*value\s*}}/gi, safeValue)
+    .replace(/{\s*value\s*}/gi, safeValue)
+    .replace('%s', safeValue);
+}
+
+function normalizeImageUrl(src, pageUrl) {
+  if (!src) return null;
+  if (src.startsWith('//')) {
+    return `https:${src}`;
+  }
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return src;
+  }
+  try {
+    const base = new URL(pageUrl);
+    return new URL(src, base).href;
+  } catch {
+    return src;
+  }
+}
+
+function shouldUrlEncodeValue(flag) {
+  return flag !== false && flag !== 'false';
+}
 
 function buildFontFaces(customFonts = []) {
   return (customFonts || [])
@@ -158,7 +203,7 @@ exports.generatePreviewHtml = async ({ item, template, logos, useHttpUrls = true
 };
 
 // Render a single element
-async function renderElement(element, item, logos, template, useHttpUrls = false) {
+async function renderElement(element, item, logos, template, useHttpUrls = false, options = {}) {
   // Elements are stored in mm, use them directly with mm units in CSS
   const baseStyle = `
     position: absolute;
@@ -371,7 +416,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     }
     
     // Handle regular product images
-    const imageUrl = await buildProductImageUrl(item, element);
+    const imageUrl = await buildProductImageUrl(item, element, options);
     if (imageUrl) {
       const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'};`;
       return `<img src="${imageUrl}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
@@ -441,35 +486,78 @@ async function executeJsCode(code, data) {
   }
 }
 
-// Fetch product image URL from placedespros product page
-async function fetchProductImageUrl(reference) {
+// Fetch product image URL (scraping or default source)
+async function fetchProductImageUrl(reference, options = {}) {
   if (!reference) return null;
 
-  const cached = productImageCache.get(reference);
+  const cacheKey = buildImageCacheKey(reference, options);
+  const cached = productImageCache.get(cacheKey);
   const now = Date.now();
   if (cached && now - cached.timestamp < PRODUCT_IMAGE_CACHE_TTL_MS) {
     return cached.url;
   }
 
-  const productUrl = `https://www.placedespros.com/article/art-${encodeURIComponent(reference)}`;
+  // 1) Custom scraping based on template + selector
+  if (options.pageUrlTemplate && options.imageSelector && options.imageSelector.trim()) {
+    const pageUrl = applyValueToTemplate(options.pageUrlTemplate, reference, shouldUrlEncodeValue(options.urlEncodeValue));
+    if (pageUrl) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
+      try {
+        const response = await fetch(pageUrl, {
+          headers: {
+            'User-Agent': DEFAULT_USER_AGENT,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+          },
+          redirect: 'follow',
+          signal: controller.signal
+        });
+
+        if (response.ok) {
+          const html = await response.text();
+          const $ = cheerio.load(html);
+          const node = $(options.imageSelector).first();
+          const imageAttribute = options.imageAttribute || 'src';
+          let src = node.attr(imageAttribute);
+          // If the preferred attribute is missing, gracefully fallback to classic src
+          if (!src && imageAttribute !== 'src') {
+            src = node.attr('src');
+          }
+          const normalized = normalizeImageUrl(src, pageUrl);
+          productImageCache.set(cacheKey, { url: normalized, timestamp: now });
+          if (normalized) {
+            return normalized;
+          }
+        } else {
+          console.warn(`Failed to fetch product page (${response.status}): ${pageUrl}`);
+        }
+      } catch (error) {
+        console.error(`Error fetching product image for ${reference}:`, error.message);
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+
+  // 2) Default legacy scraping (placedespros)
+  const productUrl = `https://www.placedespros.com/article/art-${encodeURIComponent(reference)}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
     const response = await fetch(productUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
+        'User-Agent': DEFAULT_USER_AGENT,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
       },
       redirect: 'follow',
       signal: controller.signal
     });
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.warn(`Failed to fetch product page (${response.status}): ${productUrl}`);
-      productImageCache.set(reference, { url: null, timestamp: now });
+      productImageCache.set(cacheKey, { url: null, timestamp: now });
       return null;
     }
 
@@ -479,41 +567,48 @@ async function fetchProductImageUrl(reference) {
     const match = html.match(imgRegex);
 
     if (match && match[1]) {
-      let src = match[1];
-      if (src.startsWith('//')) {
-        src = `https:${src}`;
-      } else if (src.startsWith('/')) {
-        src = `https://www.placedespros.com${src}`;
-      }
-      productImageCache.set(reference, { url: src, timestamp: now });
-      return src;
+      const normalized = normalizeImageUrl(match[1], productUrl);
+      productImageCache.set(cacheKey, { url: normalized, timestamp: now });
+      return normalized;
     }
 
     console.warn(`No product image found for reference ${reference}`);
-    productImageCache.set(reference, { url: null, timestamp: now });
+    productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
   } catch (error) {
-    clearTimeout(timeoutId);
     console.error(`Error fetching product image for ${reference}:`, error.message);
-    productImageCache.set(reference, { url: null, timestamp: now });
+    productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
 // Build product image URL
-async function buildProductImageUrl(item, element) {
+async function buildProductImageUrl(item, element, options = {}) {
   if (!element.csvColumn) return null;
   
   const value = item[element.csvColumn];
   if (!value) return null;
 
   // Preferred: fetch online image from placedespros
-  const onlineUrl = await fetchProductImageUrl(value);
+  const onlineUrl = await fetchProductImageUrl(value, {
+    pageUrlTemplate: element.pageUrlTemplate,
+    imageSelector: element.imageSelector,
+    imageAttribute: element.imageAttribute,
+    urlEncodeValue: shouldUrlEncodeValue(element.urlEncodeValue),
+    baseUrl: element.baseUrl || options.productImageBaseUrl,
+    extension: element.extension
+  });
   if (onlineUrl) return onlineUrl;
 
   // Fallback to legacy base URL + extension if configured
   if (element.baseUrl) {
     return `${element.baseUrl}${value}${element.extension || ''}`;
+  }
+
+  if (options.productImageBaseUrl) {
+    return `${options.productImageBaseUrl}${value}${element.extension || ''}`;
   }
 
   return null;
@@ -585,7 +680,7 @@ const buildHtml = async (items, template, logo, allLogos, mappings, visibleField
     
     const pagePromises = items.map(async (item, index) => {
       const elementPromises = templateConfig.elements.map(element => {
-        return renderElement(element, item, logos, template);
+        return renderElement(element, item, logos, template, false, options);
       });
       
       const elements = await Promise.all(elementPromises);

@@ -197,7 +197,54 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
       </div>
 
       <div style={styles.group}>
-        <label style={styles.label}>URL de base:</label>
+        <label style={styles.label}>URL de la page produit (template):</label>
+        <input
+          type="text"
+          value={element.pageUrlTemplate || ''}
+          onChange={(e) => onUpdate({ pageUrlTemplate: e.target.value })}
+          placeholder="https://www.exemple.com/article/{{value}}"
+          style={styles.input}
+        />
+        <p style={styles.hint}>
+          Utilisez <code>{'{value}'}</code> ou <code>{'{{value}}'}</code> pour insérer la valeur CSV.
+        </p>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Sélecteur CSS de l'image / zone (div):</label>
+        <input
+          type="text"
+          value={element.imageSelector || ''}
+          onChange={(e) => onUpdate({ imageSelector: e.target.value })}
+          placeholder=".photoItem img"
+          style={styles.input}
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Attribut d'image:</label>
+        <input
+          type="text"
+          value={element.imageAttribute || 'src'}
+          onChange={(e) => onUpdate({ imageAttribute: e.target.value })}
+          placeholder="src ou data-src"
+          style={styles.input}
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.checkbox}>
+          <input
+            type="checkbox"
+            checked={element.urlEncodeValue !== false && element.urlEncodeValue !== 'false'}
+            onChange={(e) => onUpdate({ urlEncodeValue: e.target.checked })}
+          />
+          Encoder la valeur CSV dans l'URL
+        </label>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>URL de base (repli):</label>
         <input
           type="text"
           value={element.baseUrl || ''}
@@ -675,6 +722,11 @@ const styles = {
     backgroundColor: '#f5f5f5',
     borderRadius: '5px',
     fontSize: '12px',
+  },
+  hint: {
+    fontSize: '11px',
+    color: '#666',
+    marginTop: '4px',
   },
 };
 

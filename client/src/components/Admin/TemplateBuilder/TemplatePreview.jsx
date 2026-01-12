@@ -14,6 +14,21 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
   const [logos, setLogos] = React.useState([]);
   const [imageUrls, setImageUrls] = React.useState({});
 
+  const shouldEncodeValue = React.useCallback((flag) => flag !== false && flag !== 'false', []);
+
+  const buildImageKey = React.useCallback((element, refValue) => {
+    return [
+      element?.id || element?.csvColumn || 'image',
+      refValue || '',
+      element?.pageUrlTemplate || '',
+      element?.imageSelector || '',
+      element?.imageAttribute || 'src',
+      element?.baseUrl || '',
+      element?.extension || '',
+      shouldEncodeValue(element?.urlEncodeValue) ? 'enc' : 'raw'
+    ].join('|');
+  }, [shouldEncodeValue]);
+
   React.useEffect(() => {
     const styleId = 'template-preview-custom-fonts';
     let styleEl = document.getElementById(styleId);
@@ -151,27 +166,42 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
       const imageElements = elements.filter((el) => el.type === 'image' && el.source !== 'logo' && el.csvColumn);
       if (!displayData || imageElements.length === 0) return;
 
-      const missingRefs = imageElements
-        .map((el) => displayData[el.csvColumn])
-        .filter((ref) => ref && imageUrls[ref] === undefined);
+      const requests = [];
 
-      if (missingRefs.length === 0) return;
+      imageElements.forEach((el) => {
+        const refValue = displayData[el.csvColumn];
+        if (!refValue) return;
+        const key = buildImageKey(el, refValue);
+        if (imageUrls[key] !== undefined) return;
+        requests.push({ el, refValue, key });
+      });
+
+      if (requests.length === 0) return;
 
       await Promise.all(
-        missingRefs.map(async (refValue) => {
+        requests.map(async ({ el, refValue, key }) => {
           try {
-            const response = await api.get(`/product-image/${encodeURIComponent(refValue)}`);
-            setImageUrls((prev) => ({ ...prev, [refValue]: response.data.imageUrl }));
+            const response = await api.get(`/product-image/${encodeURIComponent(refValue)}`, {
+              params: {
+                pageUrlTemplate: el.pageUrlTemplate,
+                imageSelector: el.imageSelector,
+                imageAttribute: el.imageAttribute,
+                urlEncodeValue: shouldEncodeValue(el.urlEncodeValue),
+                baseUrl: el.baseUrl,
+                extension: el.extension
+              }
+            });
+            setImageUrls((prev) => ({ ...prev, [key]: response.data.imageUrl }));
           } catch (error) {
             console.error('Erreur récupération image produit:', error);
-            setImageUrls((prev) => ({ ...prev, [refValue]: null }));
+            setImageUrls((prev) => ({ ...prev, [key]: null }));
           }
         })
       );
     };
 
     fetchImages();
-  }, [elements, displayData, imageUrls]);
+  }, [elements, displayData, imageUrls, buildImageKey]);
 
   const renderPreviewElement = React.useCallback((element) => {
     // Convert mm to px for rendering with zoom
@@ -334,7 +364,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
 
     if (element.type === 'image') {
       const refValue = displayData?.[element.csvColumn];
-      const imageUrl = refValue ? imageUrls[refValue] : null;
+      const imageUrl = refValue ? imageUrls[buildImageKey(element, refValue)] : null;
       return (
         <div
           key={element.id}
@@ -438,7 +468,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
     }
 
     return null;
-  }, [displayData, zoom, codeResults, logos]);
+  }, [displayData, zoom, codeResults, logos, buildImageKey]);
 
   // Scaling for preview - convert mm to pixels with zoom
   // At 96 DPI: 1 inch = 96px, 1 inch = 25.4mm → 1mm = 96/25.4 ≈ 3.779528px
