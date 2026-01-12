@@ -72,6 +72,8 @@ const PAGE_FORMATS = {
 
 const PRODUCT_IMAGE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const productImageCache = new Map();
+const FETCH_TIMEOUT_MS = 5000;
+const DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
 
 function buildImageCacheKey(reference, options = {}) {
   const parts = [
@@ -500,12 +502,12 @@ async function fetchProductImageUrl(reference, options = {}) {
     const pageUrl = applyValueToTemplate(options.pageUrlTemplate, reference, shouldEncodeValue(options.urlEncodeValue));
     if (pageUrl) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
       try {
         const response = await fetch(pageUrl, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
+            'User-Agent': DEFAULT_USER_AGENT,
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
           },
           redirect: 'follow',
@@ -540,12 +542,12 @@ async function fetchProductImageUrl(reference, options = {}) {
   // 2) Default legacy scraping (placedespros)
   const productUrl = `https://www.placedespros.com/article/art-${encodeURIComponent(reference)}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
     const response = await fetch(productUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
+        'User-Agent': DEFAULT_USER_AGENT,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
       },
       redirect: 'follow',
