@@ -13,43 +13,46 @@ const GENERIC_PATTERNS = [
   [/%s/gi, 'VALUE'],
 ];
 
-// Helper function to simulate URL with token replacement
-// Defined outside component to avoid recreation on every render
-const simulateUrlWithTokens = (template, columnName, sampleValue = 'EXEMPLE-REF-123', encodeValue = true) => {
-  if (!template) return '';
+// Helper function to parse HTML and extract CSS selector
+const parseHtmlToSelector = (htmlString) => {
+  if (!htmlString || !htmlString.trim()) return '';
   
-  const safeValue = encodeValue ? encodeURIComponent(sampleValue) : sampleValue;
-  let result = template;
-  
-  // Apply generic patterns
-  GENERIC_PATTERNS.forEach(([pattern]) => {
-    result = result.replace(pattern, safeValue);
-  });
-  
-  // Column-specific tokens
-  if (columnName) {
-    const normalizedColumn = columnName.replace(/\s+/g, '_');
-    
-    // Use case-insensitive global replace for better performance
-    const replaceToken = (str, token) => {
-      const regex = new RegExp(escapeRegExp(token), 'gi');
-      return str.replace(regex, safeValue);
-    };
-    
-    // Original column name patterns
-    result = replaceToken(result, `%${columnName}%`);
-    result = replaceToken(result, `{{${columnName}}}`);
-    result = replaceToken(result, `{{ ${columnName} }}`);
-    
-    // Normalized column name patterns (if different)
-    if (normalizedColumn !== columnName) {
-      result = replaceToken(result, `%${normalizedColumn}%`);
-      result = replaceToken(result, `{{${normalizedColumn}}}`);
-      result = replaceToken(result, `{{ ${normalizedColumn} }}`);
-    }
+  // Check if input looks like HTML (contains < and >)
+  if (!htmlString.includes('<') || !htmlString.includes('>')) {
+    return htmlString.trim(); // Return as-is if not HTML
   }
   
-  return result;
+  try {
+    // Extract tag name
+    const tagMatch = htmlString.match(/<(\w+)/);
+    if (!tagMatch) return htmlString.trim();
+    
+    const tagName = tagMatch[1];
+    
+    // Extract class attribute
+    const classMatch = htmlString.match(/class=["']([^"']+)["']/);
+    const classes = classMatch ? classMatch[1].split(/\s+/) : [];
+    
+    // Extract id attribute
+    const idMatch = htmlString.match(/id=["']([^"']+)["']/);
+    const id = idMatch ? idMatch[1] : null;
+    
+    // Build selector - use first class for simplicity
+    // (using all classes would make selectors overly specific)
+    let selector = tagName;
+    
+    if (classes.length > 0) {
+      // Use the first class for the selector
+      selector = `${tagName}.${classes[0]}`;
+    } else if (id) {
+      selector = `${tagName}#${id}`;
+    }
+    
+    return selector;
+  } catch (error) {
+    console.error('Error parsing HTML to selector:', error);
+    return htmlString.trim();
+  }
 };
 
 const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableFonts = [], pageSize }) => {
@@ -266,15 +269,29 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
 
       <div style={styles.group}>
         <label style={styles.label}>Sélecteur CSS de l'image / zone (div) (optionnel):</label>
-        <input
-          type="text"
+        <textarea
           value={element.imageSelector || ''}
-          onChange={(e) => onUpdate({ imageSelector: e.target.value })}
-          placeholder=".photoItem img"
-          style={styles.input}
+          onChange={(e) => {
+            // Allow user to type freely
+            onUpdate({ imageSelector: e.target.value });
+          }}
+          onBlur={(e) => {
+            // On blur, auto-detect if input is HTML and extract selector
+            const value = e.target.value;
+            const selector = parseHtmlToSelector(value);
+            if (selector !== value) {
+              onUpdate({ imageSelector: selector });
+            }
+          }}
+          placeholder="Ex: .photoItem img ou collez le HTML: <img class='photoItem' src='...'>"
+          style={{ ...styles.input, resize: 'vertical', minHeight: '60px', fontFamily: 'monospace', fontSize: '12px' }}
+          rows={3}
         />
         <p style={styles.hint}>
-          Exemple: <code>.photoItem img</code>. Laisser vide si l'URL ci-dessus pointe directement vers l'image.
+          Vous pouvez coller directement le code HTML de l'image (ex: <code>&lt;img class="photoItem" src="..."&gt;</code>). 
+          Lorsque vous quittez le champ, le sélecteur CSS sera extrait automatiquement (ex: <code>img.photoItem</code>).
+          Sinon, entrez directement un sélecteur CSS (ex: <code>.photoItem img</code>). 
+          Laisser vide si l'URL ci-dessus pointe directement vers l'image.
         </p>
       </div>
 
@@ -334,40 +351,6 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           <option value="fill">Remplir</option>
         </select>
       </div>
-
-      {/* URL Simulation Preview */}
-      {element.csvColumn && element.pageUrlTemplate && (
-        <div style={styles.simulationBox}>
-          <h4 style={styles.simulationTitle}>🔍 Simulation d'URL</h4>
-          <div style={styles.simulationContent}>
-            <p style={styles.simulationLabel}>Colonne sélectionnée:</p>
-            <code style={styles.simulationCode}>{element.csvColumn}</code>
-            
-            <p style={styles.simulationLabel}>Template d'URL:</p>
-            <code style={styles.simulationCode}>{element.pageUrlTemplate}</code>
-            
-            <p style={styles.simulationLabel}>Valeur d'exemple:</p>
-            <code style={styles.simulationCode}>EXEMPLE-REF-123</code>
-            
-            <p style={styles.simulationLabel}>URL générée (simulation):</p>
-            <code style={styles.simulationCodeResult}>
-              {simulateUrlWithTokens(
-                element.pageUrlTemplate, 
-                element.csvColumn, 
-                'EXEMPLE-REF-123',
-                element.urlEncodeValue !== false && element.urlEncodeValue !== 'false'
-              )}
-            </code>
-            
-            {element.csvColumn.includes(' ') && (
-              <div style={styles.simulationNote}>
-                <strong>ℹ️ Note:</strong> La colonne "{element.csvColumn}" contient des espaces. 
-                Vous pouvez utiliser soit <code>%{element.csvColumn}%</code> soit <code>%{element.csvColumn.replace(/\s+/g, '_')}%</code> dans le template.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </>
   );
 
@@ -818,65 +801,6 @@ const styles = {
     fontSize: '11px',
     color: '#666',
     marginTop: '4px',
-  },
-  simulationBox: {
-    marginTop: '15px',
-    padding: '12px',
-    backgroundColor: '#f0f7ff',
-    border: '2px solid #2196F3',
-    borderRadius: '5px',
-  },
-  simulationTitle: {
-    fontSize: '13px',
-    fontWeight: 'bold',
-    color: '#1976D2',
-    marginBottom: '10px',
-  },
-  simulationContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  simulationLabel: {
-    fontSize: '11px',
-    fontWeight: '600',
-    color: '#555',
-    marginTop: '5px',
-    marginBottom: '2px',
-  },
-  simulationCode: {
-    display: 'block',
-    padding: '6px 8px',
-    backgroundColor: '#fff',
-    border: '1px solid #ddd',
-    borderRadius: '3px',
-    fontSize: '12px',
-    fontFamily: 'monospace',
-    color: '#333',
-    overflowX: 'auto',
-    wordBreak: 'break-all',
-  },
-  simulationCodeResult: {
-    display: 'block',
-    padding: '8px 10px',
-    backgroundColor: '#e8f5e9',
-    border: '1px solid #4CAF50',
-    borderRadius: '3px',
-    fontSize: '12px',
-    fontFamily: 'monospace',
-    color: '#2e7d32',
-    overflowX: 'auto',
-    wordBreak: 'break-all',
-    fontWeight: '600',
-  },
-  simulationNote: {
-    marginTop: '8px',
-    padding: '8px',
-    backgroundColor: '#fff3cd',
-    borderLeft: '3px solid #ffc107',
-    fontSize: '11px',
-    color: '#856404',
-    lineHeight: '1.4',
   },
 };
 
