@@ -49,8 +49,17 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
     );
   }, [elements]);
 
+  // Track if this is the initial render to avoid unnecessary cache invalidation
+  const isInitialRender = React.useRef(true);
+
   // Effect to detect when image elements change and clear cache
   React.useEffect(() => {
+    // Skip cache invalidation on initial render
+    if (isInitialRender.current) {
+      isInitialRender.current = false;
+      return;
+    }
+    
     // Increment cache version when image element properties change
     // This will cause all image URLs to be re-fetched
     setImageCacheVersion(v => v + 1);

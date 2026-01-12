@@ -29,31 +29,23 @@ const simulateUrlWithTokens = (template, columnName, sampleValue = 'EXEMPLE-REF-
   // Column-specific tokens
   if (columnName) {
     const normalizedColumn = columnName.replace(/\s+/g, '_');
-    const escapedCol = escapeRegExp(columnName);
-    const escapedNormalized = escapeRegExp(normalizedColumn);
     
-    // Use simple replace with literal strings when possible for better performance
-    const patterns = [
-      `%${columnName}%`,
-      `{{${columnName}}}`,
-      `{{ ${columnName} }}`,
-    ];
+    // Use case-insensitive global replace for better performance
+    const replaceToken = (str, token) => {
+      const regex = new RegExp(escapeRegExp(token), 'gi');
+      return str.replace(regex, safeValue);
+    };
     
-    patterns.forEach(pattern => {
-      result = result.replace(new RegExp(escapeRegExp(pattern), 'gi'), safeValue);
-    });
+    // Original column name patterns
+    result = replaceToken(result, `%${columnName}%`);
+    result = replaceToken(result, `{{${columnName}}}`);
+    result = replaceToken(result, `{{ ${columnName} }}`);
     
-    // Handle normalized version if different
+    // Normalized column name patterns (if different)
     if (normalizedColumn !== columnName) {
-      const normalizedPatterns = [
-        `%${normalizedColumn}%`,
-        `{{${normalizedColumn}}}`,
-        `{{ ${normalizedColumn} }}`,
-      ];
-      
-      normalizedPatterns.forEach(pattern => {
-        result = result.replace(new RegExp(escapeRegExp(pattern), 'gi'), safeValue);
-      });
+      result = replaceToken(result, `%${normalizedColumn}%`);
+      result = replaceToken(result, `{{${normalizedColumn}}}`);
+      result = replaceToken(result, `{{ ${normalizedColumn} }}`);
     }
   }
   
