@@ -265,81 +265,75 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
 
       {/* Step 3: Template Builder */}
       {step === 3 && (
-        <div style={styles.builderWrapper}>
-          <div style={styles.builder}>
-            {/* Left sidebar - Element Palette */}
-            <div style={styles.sidebar}>
-              <ElementPalette
-                csvColumns={csvData?.columns || []}
-                onAddElement={handleAddElement}
+        <div style={styles.builder}>
+          {/* Left sidebar - Element Palette (30%) */}
+          <div style={styles.sidebar}>
+            <ElementPalette
+              csvColumns={csvData?.columns || []}
+              onAddElement={handleAddElement}
+            />
+          </div>
+
+          {/* Center - Canvas (40%) */}
+          <div style={styles.canvasContainer}>
+            <div style={styles.canvasHeader}>
+              <input
+                type="text"
+                placeholder="Nom du template"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                style={styles.nameInput}
               />
-            </div>
-
-            {/* Center - Canvas */}
-            <div style={styles.canvasColumn}>
-              {/* Action bar at top of canvas - sticky */}
-              <div style={styles.canvasHeader}>
-                <input
-                  type="text"
-                  placeholder="Nom du template"
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
-                  style={styles.nameInput}
-                />
-                <div style={styles.actions}>
-                  <button onClick={() => setStep(2)} style={styles.btnSecondary}>
-                    ← Retour
-                  </button>
-                  <button onClick={onCancel} style={styles.btnSecondary}>
-                    Annuler
-                  </button>
-                  <button
-                    onClick={handleSaveTemplate}
-                    disabled={saving}
-                    style={styles.btnPrimary}
-                  >
-                    {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Canvas with its own scroll area */}
-              <div style={styles.canvasScrollArea}>
-                <TemplateCanvas
-                  pageConfig={pageConfig}
-                  elements={elements}
-                  selectedElement={selectedElement}
-                  onSelectElement={handleSelectElement}
-                  onUpdateElement={handleUpdateElement}
-                  onDeleteElement={handleDeleteElement}
-                />
+              <div style={styles.actions}>
+                <button onClick={() => setStep(2)} style={styles.btnSecondary}>
+                  ← Retour
+                </button>
+                <button onClick={onCancel} style={styles.btnSecondary}>
+                  Annuler
+                </button>
+                <button
+                  onClick={handleSaveTemplate}
+                  disabled={saving}
+                  style={styles.btnPrimary}
+                >
+                  {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+                </button>
               </div>
             </div>
 
-            {/* Right sidebar - Properties & Preview */}
-            <div style={styles.rightSidebar}>
-              {selectedElement ? (
-                <ElementProperties
-                  element={selectedElement}
-                  onUpdate={(updates) => handleUpdateElement(selectedElement.id, updates)}
-                  onDelete={() => handleDeleteElement(selectedElement.id)}
-                  csvColumns={csvData?.columns || []}
-                />
-              ) : (
-                <div style={styles.noSelection}>
-                  <p>Cliquez sur un élément pour le configurer</p>
-                </div>
-              )}
+            <TemplateCanvas
+              pageConfig={pageConfig}
+              elements={elements}
+              selectedElement={selectedElement}
+              onSelectElement={handleSelectElement}
+              onUpdateElement={handleUpdateElement}
+              onDeleteElement={handleDeleteElement}
+            />
+          </div>
 
-              {csvData && csvData.preview && csvData.preview.length > 0 && (
-                <TemplatePreview
-                  elements={elements}
-                  pageConfig={pageConfig}
-                  sampleData={csvData.preview[0]}
-                  allSampleData={csvData.preview}
-                />
-              )}
-            </div>
+          {/* Right sidebar - Properties & Preview (30%) */}
+          <div style={styles.rightSidebar}>
+            {selectedElement ? (
+              <ElementProperties
+                element={selectedElement}
+                onUpdate={(updates) => handleUpdateElement(selectedElement.id, updates)}
+                onDelete={() => handleDeleteElement(selectedElement.id)}
+                csvColumns={csvData?.columns || []}
+              />
+            ) : (
+              <div style={styles.noSelection}>
+                <p>Cliquez sur un élément pour le configurer</p>
+              </div>
+            )}
+
+            {csvData && csvData.preview && csvData.preview.length > 0 && (
+              <TemplatePreview
+                elements={elements}
+                pageConfig={pageConfig}
+                sampleData={csvData.preview[0]}
+                allSampleData={csvData.preview}
+              />
+            )}
           </div>
         </div>
       )}
@@ -385,37 +379,26 @@ const styles = {
     height: '2px',
     backgroundColor: '#e0e0e0',
   },
-  builderWrapper: {
-    flex: 1,
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'stretch',
-    overflow: 'hidden',
-    padding: '20px',
-  },
   builder: {
+    flex: 1,
     display: 'grid',
-    gridTemplateColumns: '280px 1fr 360px',
-    gap: '20px',
+    gridTemplateColumns: '280px minmax(760px, 1fr) 360px',
     width: '100%',
-    maxWidth: '1400px',
-    height: '100%',
     overflow: 'hidden',
+    minHeight: 0, // Allow grid item to shrink in vertical direction
   },
   sidebar: {
     backgroundColor: 'white',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    borderRight: '1px solid #ddd',
     overflowY: 'auto',
     overflowX: 'hidden',
-    height: '100%',
   },
-  canvasColumn: {
+  canvasContainer: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
-    overflow: 'hidden',
+    minWidth: '760px', // Enforce minimum width to prevent crushing
+    overflowX: 'auto',
+    overflowY: 'hidden',
   },
   canvasHeader: {
     position: 'sticky',
@@ -423,23 +406,10 @@ const styles = {
     zIndex: 10,
     backgroundColor: 'white',
     padding: '15px',
-    borderRadius: '8px 8px 0 0',
-    border: '1px solid #ddd',
     borderBottom: '1px solid #ddd',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    flexShrink: 0,
-  },
-  canvasScrollArea: {
-    flex: 1,
-    overflowY: 'auto',
-    overflowX: 'auto',
-    backgroundColor: 'white',
-    border: '1px solid #ddd',
-    borderTop: 'none',
-    borderRadius: '0 0 8px 8px',
   },
   nameInput: {
     padding: '8px 12px',
@@ -472,20 +442,17 @@ const styles = {
     fontSize: '14px',
   },
   rightSidebar: {
+    backgroundColor: 'white',
+    borderLeft: '1px solid #ddd',
+    overflowY: 'auto',
+    overflowX: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
-    overflow: 'hidden',
   },
   noSelection: {
     padding: '20px',
     textAlign: 'center',
     color: '#666',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    border: '1px solid #ddd',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-    marginBottom: '15px',
   },
   editModeNotice: {
     padding: '20px',
