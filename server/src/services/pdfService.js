@@ -885,6 +885,10 @@ exports.generatePdf = async (params) => {
       const settings = await dbGet('SELECT value FROM settings WHERE key = ?', ['product_image_base_url']);
       productImageBaseUrl = settings?.value;
     }
+    // Fallback to environment variable if no DB setting is found
+    if (!productImageBaseUrl && process.env.PRODUCT_IMAGE_BASE_URL) {
+      productImageBaseUrl = process.env.PRODUCT_IMAGE_BASE_URL;
+    }
 
     // Build HTML
     const html = await buildHtml(items, template, logo, allLogos, mappings || [], visibleFields, { productImageBaseUrl });
