@@ -890,15 +890,15 @@ exports.generatePdf = async (params) => {
 
     // Wait for network to become idle but don't block indefinitely
     await page.waitForNetworkIdle({ idleTime: 1000, timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS }).catch(() => {
-      console.warn('PDF generation: network idle wait timed out, continuing rendering.');
+      console.warn(`PDF generation: network idle wait timed out after ${PDF_RESOURCE_WAIT_TIMEOUT_MS}ms, continuing rendering.`);
     });
 
     // Ensure images finished loading (or timeout)
     await page.waitForFunction(() => {
       const images = document.querySelectorAll('img');
       return images.length === 0 || Array.from(images).every(img => img.complete && img.naturalWidth > 0);
-    }, { timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS, polling: 250 }).catch(() => {
-      console.warn('PDF generation: image load wait timed out, proceeding with available content.');
+    }, { timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS, polling: 500 }).catch(() => {
+      console.warn(`PDF generation: image load wait timed out after ${PDF_RESOURCE_WAIT_TIMEOUT_MS}ms, proceeding with available content.`);
     });
 
     // Configure page format based on template
