@@ -695,7 +695,7 @@ async function buildProductImageUrl(item, element, options = {}) {
 
   // If the value already contains a direct web/data URL, use it as-is to avoid unnecessary scraping
   if (typeof value === 'string') {
-    const normalizedDirectUrl = normalizeImageUrl(value);
+    const normalizedDirectUrl = normalizeImageUrl(value, element.baseUrl || options.productImageBaseUrl);
     if (normalizedDirectUrl && (normalizedDirectUrl.startsWith('http') || normalizedDirectUrl.startsWith('data:'))) {
       return normalizedDirectUrl;
     }
@@ -887,9 +887,9 @@ exports.generatePdf = async (params) => {
 
     // Ensure images finished loading (or timeout)
     await page.waitForFunction(() => {
-      const images = Array.from(document.images || []);
-      return images.every(img => img.complete);
-    }, { timeout: 15000 }).catch(() => {
+      const images = document.querySelectorAll('img');
+      return images.length === 0 || Array.from(images).every(img => img.complete);
+    }, { timeout: 15000, polling: 250 }).catch(() => {
       console.warn('PDF generation: image load wait timed out, proceeding with available content.');
     });
 
