@@ -145,6 +145,9 @@ function applyValueToTemplate(template, value, encodeValue, columnName) {
 
 function normalizeImageUrl(src, pageUrl) {
   if (!src) return null;
+  if (src.startsWith('data:')) {
+    return src;
+  }
   if (src.startsWith('//')) {
     return `https:${src}`;
   }
@@ -686,8 +689,17 @@ async function fetchProductImageUrl(reference, options = {}) {
 async function buildProductImageUrl(item, element, options = {}) {
   if (!element.csvColumn) return null;
   
-  const value = item[element.csvColumn];
+  const rawValue = item[element.csvColumn];
+  const value = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
   if (!value) return null;
+
+  // If the value already contains a direct web/data URL, use it as-is to avoid unnecessary scraping
+  if (typeof value === 'string') {
+    const normalizedDirectUrl = normalizeImageUrl(value);
+    if (normalizedDirectUrl && (normalizedDirectUrl.startsWith('http') || normalizedDirectUrl.startsWith('data:'))) {
+      return normalizedDirectUrl;
+    }
+  }
 
   // Preferred: fetch online image from placedespros
   const onlineUrl = await fetchProductImageUrl(value, {
@@ -863,7 +875,23 @@ exports.generatePdf = async (params) => {
     const html = await buildHtml(items, template, logo, allLogos, mappings || [], visibleFields, { productImageBaseUrl });
 
     // Set content
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setDefaultNavigationTimeout(60000);
+    await page.setDefaultTimeout(60000);
+
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+    // Wait for network to become idle but don't block indefinitely
+    await page.waitForNetworkIdle({ idleTime: 1000, timeout: 15000 }).catch(() => {
+      console.warn('PDF generation: network idle wait timed out, continuing rendering.');
+    });
+
+    // Ensure images finished loading (or timeout)
+    await page.waitForFunction(() => {
+      const images = Array.from(document.images || []);
+      return images.every(img => img.complete);
+    }, { timeout: 15000 }).catch(() => {
+      console.warn('PDF generation: image load wait timed out, proceeding with available content.');
+    });
 
     // Configure page format based on template
     const pageConfig = {
