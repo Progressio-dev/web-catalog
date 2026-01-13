@@ -900,10 +900,21 @@ exports.generatePdf = async (params) => {
       console.warn(`PDF generation: network idle wait timed out after ${PDF_RESOURCE_WAIT_TIMEOUT_MS}ms, continuing rendering.`);
     });
 
+    // Attach lightweight error tracking to detect broken images
+    await page.evaluate(() => {
+      document.querySelectorAll('img').forEach(img => {
+        if (img.dataset.pdfErrorListenerAttached) return;
+        img.dataset.pdfErrorListenerAttached = '1';
+        img.addEventListener('error', () => {
+          img.dataset.loadError = '1';
+        }, { once: true });
+      });
+    });
+
     // Ensure images finished loading (or timeout)
     await page.waitForFunction(() => {
       const images = document.querySelectorAll('img');
-      return images.length === 0 || Array.from(images).every(img => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
+      return images.length === 0 || Array.from(images).every(img => img.complete && !img.dataset.loadError && img.naturalWidth > 0 && img.naturalHeight > 0);
     }, { timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS, polling: 500 }).catch(() => {
       console.warn(`PDF generation: image load wait timed out after ${PDF_RESOURCE_WAIT_TIMEOUT_MS}ms, proceeding with available content.`);
     });
