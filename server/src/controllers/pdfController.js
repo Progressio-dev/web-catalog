@@ -119,7 +119,8 @@ exports.getProductImage = async (req, res) => {
       urlEncodeValue,
       baseUrl,
       extension,
-      csvColumn
+      csvColumn,
+      elementId
     } = req.query;
 
     const shouldEncode = urlEncodeValue !== 'false' && urlEncodeValue !== false;
@@ -131,7 +132,8 @@ exports.getProductImage = async (req, res) => {
       baseUrl,
       extension,
       csvColumn,
-      urlEncodeValue: shouldEncode
+      urlEncodeValue: shouldEncode,
+      elementId // Include element ID to prevent cache sharing between blocks
     };
 
     const imageUrl = await pdfService.fetchProductImageUrl(ref, fetchOptions);

@@ -18,16 +18,21 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
   const shouldEncodeValue = React.useCallback((flag) => flag !== false && flag !== 'false', []);
 
   const buildImageKey = React.useCallback((element, refValue) => {
+    // MUST match server-side buildImageCacheKey order
+    // NOTE: imageCacheVersion is client-only for UI cache invalidation
+    // It's appended here to force re-fetch when element properties change
+    // Server doesn't need this as it uses TTL-based cache expiration
     return [
-      element?.id || element?.csvColumn || 'image',
       refValue || '',
-      element?.pageUrlTemplate || '',
-      element?.imageSelector || '',
+      element?.pageUrlTemplate || 'default',
+      element?.imageSelector || 'default',
       element?.imageAttribute || 'src',
+      shouldEncodeValue(element?.urlEncodeValue) ? 'enc' : 'raw',
       element?.baseUrl || '',
       element?.extension || '',
-      shouldEncodeValue(element?.urlEncodeValue) ? 'enc' : 'raw',
-      imageCacheVersion // Add cache version to invalidate on changes
+      element?.csvColumn || '',
+      element?.id || '', // elementId to prevent cache sharing between blocks
+      imageCacheVersion // cache version to invalidate on changes
     ].join('|');
   }, [shouldEncodeValue, imageCacheVersion]);
 
@@ -225,7 +230,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
                 urlEncodeValue: shouldEncodeValue(el.urlEncodeValue),
                 csvColumn: el.csvColumn,
                 baseUrl: el.baseUrl,
-                extension: el.extension
+                extension: el.extension,
+                elementId: el.id // Pass element ID to prevent cache sharing between blocks
               }
             });
             setImageUrls((prev) => ({ ...prev, [key]: response.data.imageUrl }));
@@ -401,7 +407,13 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
 
     if (element.type === 'image') {
       const refValue = displayData?.[element.csvColumn];
-      const imageUrl = refValue ? imageUrls[buildImageKey(element, refValue)] : null;
+      const imageKey = refValue ? buildImageKey(element, refValue) : null;
+      const imageUrl = imageKey ? imageUrls[imageKey] : null;
+      const isLoading = imageKey && imageUrls[imageKey] === undefined;
+      const isFailed = imageKey && imageUrls[imageKey] === null;
+      
+      const [imageLoadError, setImageLoadError] = React.useState(false);
+      
       return (
         <div
           key={element.id}
@@ -411,23 +423,31 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: '#f0f0f0',
-            fontSize: '10px',
+            fontSize: `${10 * zoom}px`,
             color: '#999',
+            textAlign: 'center',
+            padding: `${4 * zoom}px`,
           }}
         >
-          {imageUrl ? (
+          {imageUrl && !imageLoadError ? (
             <img
               src={imageUrl}
               alt={refValue || 'Image produit'}
               style={{ width: '100%', height: '100%', objectFit: element.fit || 'contain' }}
               onError={(e) => {
                 console.error('Erreur de chargement image produit', imageUrl);
-                e.target.style.opacity = '0';
+                setImageLoadError(true);
               }}
               key={`${element.id}-${imageCacheVersion}`}
             />
+          ) : imageLoadError || isFailed ? (
+            <div>❌ Image non disponible</div>
+          ) : isLoading ? (
+            <div>⏳ Chargement...</div>
+          ) : !refValue ? (
+            <div>Aucune référence</div>
           ) : (
-            'Image'
+            <div>Image</div>
           )}
         </div>
       );

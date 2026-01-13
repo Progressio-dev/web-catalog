@@ -20,6 +20,8 @@ const PAGE_FORMATS = {
 const PRODUCT_IMAGE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const productImageCache = new Map();
 const FETCH_TIMEOUT_MS = 5000;
+const FETCH_MAX_RETRIES = 2; // Retry failed fetches up to 2 times
+const FETCH_RETRY_DELAY_MS = 1000; // Wait 1 second between retries
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
 const PDF_NAVIGATION_TIMEOUT_MS = 60000;
 const PDF_RESOURCE_WAIT_TIMEOUT_MS = 15000;
@@ -121,6 +123,31 @@ async function fetchRemoteImageAsDataUrl(url) {
 }
 
 /**
+ * Retry helper for transient network failures
+ * @param {Function} fn - Async function to retry
+ * @param {number} maxRetries - Maximum number of retries
+ * @param {number} delayMs - Delay between retries in milliseconds
+ * @returns {Promise} - Result of the function or throws on final failure
+ */
+async function retryWithDelay(fn, maxRetries = FETCH_MAX_RETRIES, delayMs = FETCH_RETRY_DELAY_MS) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        if (DEBUG_IMAGE_SCRAPING) {
+          console.log(`⚠️ [Image Scraper Debug] Attempt ${attempt + 1} failed, retrying in ${delayMs}ms...`, error.message);
+        }
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  throw lastError;
+}
+
+/**
  * SECURITY NOTE: JavaScript Code Execution
  * 
  * This service executes user-provided JavaScript code for dynamic content generation.
@@ -137,6 +164,29 @@ async function fetchRemoteImageAsDataUrl(url) {
  * - Consider disabling fetch/network access in sandboxed environment
  */
 
+/**
+ * Build placeholder HTML for missing or failed images
+ * @param {string} baseStyle - CSS styles for positioning
+ * @param {string} message - Message to display
+ * @param {string} bgColor - Background color (default: #f0f0f0)
+ * @returns {string} - HTML for placeholder
+ */
+function buildImagePlaceholder(baseStyle, message, bgColor = '#f0f0f0') {
+  const placeholderStyle = `
+    ${baseStyle}
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: ${bgColor};
+    color: #666;
+    font-size: 10px;
+    text-align: center;
+    padding: 4px;
+    border: 1px dashed #ccc;
+  `;
+  return `<div style="${placeholderStyle}">${message}</div>`;
+}
+
 function buildImageCacheKey(reference, options = {}) {
   const parts = [
     reference,
@@ -150,6 +200,20 @@ function buildImageCacheKey(reference, options = {}) {
     options.elementId || '' // Include element ID to prevent cache sharing between blocks
   ];
   return parts.join('|');
+}
+
+/**
+ * Validate that a cached URL is still valid (not empty or invalid)
+ * @param {string|null} url - The cached URL to validate
+ * @returns {boolean} - True if the URL is valid
+ */
+function isValidCachedUrl(url) {
+  if (!url) return false;
+  if (typeof url !== 'string') return false;
+  if (url.trim() === '') return false;
+  // Exclude obviously broken URLs
+  if (url === 'null' || url === 'undefined') return false;
+  return true;
 }
 
 /**
@@ -546,7 +610,21 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
           if (dataUrl) {
             finalSrc = dataUrl;
           } else {
-            console.warn(`Falling back to remote URL for product image: ${imageUrl}`);
+            console.warn(`Failed to inline remote image, will show placeholder: ${imageUrl}`);
+            // Return placeholder if image cannot be inlined
+            const placeholderStyle = `
+              ${baseStyle}
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background-color: #f0f0f0;
+              color: #666;
+              font-size: 10px;
+              text-align: center;
+              padding: 4px;
+              border: 1px dashed #ccc;
+            `;
+            return `<div style="${placeholderStyle}">Image non disponible</div>`;
           }
         } else if (imageUrl.startsWith('/uploads/')) {
           const uploadDir = path.resolve(getUploadDir());
@@ -562,17 +640,35 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
             if (dataUrl) {
               finalSrc = dataUrl;
             } else {
-              console.warn(`Failed to inline local product image: ${absolutePath}`);
+              console.warn(`Failed to inline local product image, will show placeholder: ${absolutePath}`);
+              return buildImagePlaceholder(baseStyle, 'Image non disponible');
             }
           }
         }
       }
 
       const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'};`;
-      return `<img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
+      // Create a hidden placeholder div that shows when image fails to load
+      const hiddenPlaceholder = buildImagePlaceholder(
+        baseStyle.replace(/^/, 'display: none; '),
+        'Image non disponible'
+      );
+      return `
+        <img src="${finalSrc}" alt="Product" style="${imgStyle}" 
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+        ${hiddenPlaceholder}
+      `;
     }
-    // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
-    return '';
+    
+    // Return placeholder if no valid image URL could be built (e.g., missing CSV column data)
+    const csvValue = element.csvColumn ? item[element.csvColumn] : null;
+    if (!csvValue) {
+      // No CSV value - show different message with lighter background
+      return buildImagePlaceholder(baseStyle, 'Aucune référence', '#f8f8f8');
+    }
+    
+    // CSV value exists but no image found
+    return buildImagePlaceholder(baseStyle, 'Image non disponible');
   }
 
   if (element.type === 'line') {
@@ -657,11 +753,22 @@ async function fetchProductImageUrl(reference, options = {}) {
   const cacheKey = buildImageCacheKey(reference, options);
   const cached = productImageCache.get(cacheKey);
   const now = Date.now();
+  
+  // Validate cached entry before using it
   if (cached && now - cached.timestamp < PRODUCT_IMAGE_CACHE_TTL_MS) {
-    if (DEBUG_IMAGE_SCRAPING) {
-      console.log('💾 [Image Scraper Debug] Returning cached URL:', cached.url);
+    // Only return cached value if it's valid
+    if (isValidCachedUrl(cached.url)) {
+      if (DEBUG_IMAGE_SCRAPING) {
+        console.log('💾 [Image Scraper Debug] Returning valid cached URL:', cached.url);
+      }
+      return cached.url;
+    } else {
+      if (DEBUG_IMAGE_SCRAPING) {
+        console.log('⚠️ [Image Scraper Debug] Cached entry is invalid, will re-fetch');
+      }
+      // Remove invalid cache entry
+      productImageCache.delete(cacheKey);
     }
-    return cached.url;
   }
 
   const shouldEncode = shouldUrlEncodeValue(options.urlEncodeValue);
@@ -689,79 +796,85 @@ async function fetchProductImageUrl(reference, options = {}) {
     }
     const pageUrl = pageUrlFromTemplate;
     if (pageUrl) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
+      // Wrap scraping logic with retry for transient failures
       try {
-        if (DEBUG_IMAGE_SCRAPING) {
-          console.log('📡 [Image Scraper Debug] Fetching page:', pageUrl);
-        }
-        const response = await fetch(pageUrl, {
-          headers: {
-            'User-Agent': DEFAULT_USER_AGENT,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-          },
-          redirect: 'follow',
-          signal: controller.signal
+        const scrapedUrl = await retryWithDelay(async () => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+          try {
+            if (DEBUG_IMAGE_SCRAPING) {
+              console.log('📡 [Image Scraper Debug] Fetching page:', pageUrl);
+            }
+            const response = await fetch(pageUrl, {
+              headers: {
+                'User-Agent': DEFAULT_USER_AGENT,
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+              },
+              redirect: 'follow',
+              signal: controller.signal
+            });
+
+            if (DEBUG_IMAGE_SCRAPING) {
+              console.log('📥 [Image Scraper Debug] Page fetch response status:', response.status);
+            }
+
+            if (response.ok) {
+              const html = await response.text();
+              if (DEBUG_IMAGE_SCRAPING) {
+                console.log('📄 [Image Scraper Debug] Page HTML length:', html.length, 'characters');
+              }
+              
+              const $ = cheerio.load(html);
+              const node = $(options.imageSelector).first();
+              if (DEBUG_IMAGE_SCRAPING) {
+                console.log('🎯 [Image Scraper Debug] Found node with selector?', node.length > 0);
+              }
+              
+              const imageAttribute = options.imageAttribute || 'src';
+              let src = node.attr(imageAttribute);
+              if (DEBUG_IMAGE_SCRAPING) {
+                console.log(`🖼️ [Image Scraper Debug] Image attribute '${imageAttribute}' value:`, src);
+              }
+              
+              // If the preferred attribute is missing, gracefully fallback to classic src
+              if (!src && imageAttribute !== 'src') {
+                src = node.attr('src');
+                if (DEBUG_IMAGE_SCRAPING) {
+                  console.log('🔄 [Image Scraper Debug] Fallback to src attribute:', src);
+                }
+              }
+              
+              const normalized = normalizeImageUrl(src, pageUrl);
+              if (DEBUG_IMAGE_SCRAPING) {
+                console.log('🔗 [Image Scraper Debug] Normalized image URL:', normalized);
+              }
+              
+              if (normalized) {
+                return normalized;
+              } else {
+                throw new Error('Failed to normalize image URL');
+              }
+            } else {
+              throw new Error(`HTTP ${response.status}`);
+            }
+          } finally {
+            clearTimeout(timeoutId);
+          }
         });
-
+        
+        // Cache and return successful result
+        productImageCache.set(cacheKey, { url: scrapedUrl, timestamp: now });
         if (DEBUG_IMAGE_SCRAPING) {
-          console.log('📥 [Image Scraper Debug] Page fetch response status:', response.status);
+          console.log('✅ [Image Scraper Debug] Successfully scraped image URL:', scrapedUrl, 'for reference:', reference);
         }
-
-        if (response.ok) {
-          const html = await response.text();
-          if (DEBUG_IMAGE_SCRAPING) {
-            console.log('📄 [Image Scraper Debug] Page HTML length:', html.length, 'characters');
-          }
-          
-          const $ = cheerio.load(html);
-          const node = $(options.imageSelector).first();
-          if (DEBUG_IMAGE_SCRAPING) {
-            console.log('🎯 [Image Scraper Debug] Found node with selector?', node.length > 0);
-          }
-          
-          const imageAttribute = options.imageAttribute || 'src';
-          let src = node.attr(imageAttribute);
-          if (DEBUG_IMAGE_SCRAPING) {
-            console.log(`🖼️ [Image Scraper Debug] Image attribute '${imageAttribute}' value:`, src);
-          }
-          
-          // If the preferred attribute is missing, gracefully fallback to classic src
-          if (!src && imageAttribute !== 'src') {
-            src = node.attr('src');
-            if (DEBUG_IMAGE_SCRAPING) {
-              console.log('🔄 [Image Scraper Debug] Fallback to src attribute:', src);
-            }
-          }
-          
-          const normalized = normalizeImageUrl(src, pageUrl);
-          if (DEBUG_IMAGE_SCRAPING) {
-            console.log('🔗 [Image Scraper Debug] Normalized image URL:', normalized);
-          }
-          
-          productImageCache.set(cacheKey, { url: normalized, timestamp: now });
-          if (normalized) {
-            if (DEBUG_IMAGE_SCRAPING) {
-              console.log('✅ [Image Scraper Debug] Successfully scraped image URL:', normalized, 'for reference:', reference);
-            }
-            return normalized;
-          } else {
-            if (DEBUG_IMAGE_SCRAPING) {
-              console.warn('⚠️ [Image Scraper Debug] Failed to normalize image URL for reference:', reference);
-            }
-          }
-        } else {
-          if (DEBUG_IMAGE_SCRAPING) {
-            console.warn(`❌ [Image Scraper Debug] Failed to fetch product page (${response.status}): ${pageUrl}`);
-          }
-        }
+        return scrapedUrl;
       } catch (error) {
         if (DEBUG_IMAGE_SCRAPING) {
-          console.error(`❌ [Image Scraper Debug] Error fetching product image for ${reference}:`, error.message);
+          console.error(`❌ [Image Scraper Debug] All retry attempts failed for ${reference}:`, error.message);
         }
-      } finally {
-        clearTimeout(timeoutId);
+        // Cache the failure to avoid repeated attempts
+        productImageCache.set(cacheKey, { url: null, timestamp: now });
       }
     }
   }
@@ -775,65 +888,65 @@ async function fetchProductImageUrl(reference, options = {}) {
     console.log('🔗 [Image Scraper Debug] Legacy product URL:', productUrl);
   }
   
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
   try {
-    if (DEBUG_IMAGE_SCRAPING) {
-      console.log('📡 [Image Scraper Debug] Fetching legacy page');
-    }
-    const response = await fetch(productUrl, {
-      headers: {
-        'User-Agent': DEFAULT_USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      },
-      redirect: 'follow',
-      signal: controller.signal
+    const scrapedUrl = await retryWithDelay(async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+      try {
+        if (DEBUG_IMAGE_SCRAPING) {
+          console.log('📡 [Image Scraper Debug] Fetching legacy page');
+        }
+        const response = await fetch(productUrl, {
+          headers: {
+            'User-Agent': DEFAULT_USER_AGENT,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+          },
+          redirect: 'follow',
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const html = await response.text();
+        if (DEBUG_IMAGE_SCRAPING) {
+          console.log('📄 [Image Scraper Debug] Legacy page HTML length:', html.length, 'characters');
+        }
+        
+        // Look for the main product image with class "photoItem"
+        const imgRegex = /<img[^>]*class=["'][^"']*photoItem[^"']*["'][^>]*src=["']([^"']+)["'][^>]*>/i;
+        const match = html.match(imgRegex);
+        
+        if (DEBUG_IMAGE_SCRAPING) {
+          console.log('🎯 [Image Scraper Debug] photoItem image found?', !!match);
+        }
+
+        if (match && match[1]) {
+          const normalized = normalizeImageUrl(match[1], productUrl);
+          if (normalized) {
+            return normalized;
+          }
+        }
+        
+        throw new Error('No product image found');
+      } finally {
+        clearTimeout(timeoutId);
+      }
     });
-
-    if (!response.ok) {
-      if (DEBUG_IMAGE_SCRAPING) {
-        console.warn(`❌ [Image Scraper Debug] Failed to fetch product page (${response.status}): ${productUrl}`);
-      }
-      productImageCache.set(cacheKey, { url: null, timestamp: now });
-      return null;
-    }
-
-    const html = await response.text();
-    if (DEBUG_IMAGE_SCRAPING) {
-      console.log('📄 [Image Scraper Debug] Legacy page HTML length:', html.length, 'characters');
-    }
-    
-    // Look for the main product image with class "photoItem"
-    const imgRegex = /<img[^>]*class=["'][^"']*photoItem[^"']*["'][^>]*src=["']([^"']+)["'][^>]*>/i;
-    const match = html.match(imgRegex);
     
     if (DEBUG_IMAGE_SCRAPING) {
-      console.log('🎯 [Image Scraper Debug] photoItem image found?', !!match);
+      console.log('✅ [Image Scraper Debug] Legacy scraping successful. Image URL:', scrapedUrl, 'for reference:', reference);
     }
-
-    if (match && match[1]) {
-      const normalized = normalizeImageUrl(match[1], productUrl);
-      if (DEBUG_IMAGE_SCRAPING) {
-        console.log('✅ [Image Scraper Debug] Legacy scraping successful. Image URL:', normalized, 'for reference:', reference);
-      }
-      productImageCache.set(cacheKey, { url: normalized, timestamp: now });
-      return normalized;
-    }
-
-    if (DEBUG_IMAGE_SCRAPING) {
-      console.warn(`⚠️ [Image Scraper Debug] No product image found for reference ${reference}`);
-    }
-    productImageCache.set(cacheKey, { url: null, timestamp: now });
-    return null;
+    productImageCache.set(cacheKey, { url: scrapedUrl, timestamp: now });
+    return scrapedUrl;
   } catch (error) {
     if (DEBUG_IMAGE_SCRAPING) {
-      console.error(`❌ [Image Scraper Debug] Error fetching product image for ${reference}:`, error.message);
+      console.error(`❌ [Image Scraper Debug] All legacy scraping attempts failed for ${reference}:`, error.message);
     }
     productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
 
