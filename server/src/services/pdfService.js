@@ -6,6 +6,9 @@ const { dbGet } = require('../config/database');
 const { getUploadDir, getGeneratedDir } = require('../config/paths');
 const MAX_INLINE_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB safety limit
 
+// Enable debug logging via environment variable
+const DEBUG_IMAGE_SCRAPING = process.env.DEBUG_IMAGE_SCRAPING === 'true';
+
 // Page format definitions
 const PAGE_FORMATS = {
   'A4': { width: 210, height: 297 }, // mm
@@ -636,22 +639,26 @@ async function executeJsCode(code, data) {
 async function fetchProductImageUrl(reference, options = {}) {
   if (!reference) return null;
 
-  console.log('🔍 [Image Scraper Debug] Starting image fetch for reference:', reference);
-  console.log('📋 [Image Scraper Debug] Options:', {
-    pageUrlTemplate: options.pageUrlTemplate,
-    imageSelector: options.imageSelector,
-    imageAttribute: options.imageAttribute,
-    urlEncodeValue: options.urlEncodeValue,
-    csvColumn: options.csvColumn,
-    baseUrl: options.baseUrl,
-    extension: options.extension
-  });
+  if (DEBUG_IMAGE_SCRAPING) {
+    console.log('🔍 [Image Scraper Debug] Starting image fetch for reference:', reference);
+    console.log('📋 [Image Scraper Debug] Options:', {
+      pageUrlTemplate: options.pageUrlTemplate,
+      imageSelector: options.imageSelector,
+      imageAttribute: options.imageAttribute,
+      urlEncodeValue: options.urlEncodeValue,
+      csvColumn: options.csvColumn,
+      baseUrl: options.baseUrl,
+      extension: options.extension
+    });
+  }
 
   const cacheKey = buildImageCacheKey(reference, options);
   const cached = productImageCache.get(cacheKey);
   const now = Date.now();
   if (cached && now - cached.timestamp < PRODUCT_IMAGE_CACHE_TTL_MS) {
-    console.log('💾 [Image Scraper Debug] Returning cached URL:', cached.url);
+    if (DEBUG_IMAGE_SCRAPING) {
+      console.log('💾 [Image Scraper Debug] Returning cached URL:', cached.url);
+    }
     return cached.url;
   }
 
@@ -660,25 +667,33 @@ async function fetchProductImageUrl(reference, options = {}) {
     ? applyValueToTemplate(options.pageUrlTemplate, reference, shouldEncode, options.csvColumn)
     : null;
 
-  console.log('🔗 [Image Scraper Debug] Constructed page URL:', pageUrlFromTemplate);
+  if (DEBUG_IMAGE_SCRAPING) {
+    console.log('🔗 [Image Scraper Debug] Constructed page URL:', pageUrlFromTemplate);
+  }
 
   // 1) Direct URL templating (when no selector is provided)
   if (pageUrlFromTemplate && (!options.imageSelector || !options.imageSelector.trim())) {
-    console.log('✅ [Image Scraper Debug] Direct URL mode (no selector) - returning URL as-is');
+    if (DEBUG_IMAGE_SCRAPING) {
+      console.log('✅ [Image Scraper Debug] Direct URL mode (no selector) - returning URL as-is');
+    }
     productImageCache.set(cacheKey, { url: pageUrlFromTemplate, timestamp: now });
     return pageUrlFromTemplate;
   }
 
   // 2) Custom scraping based on template + selector
   if (options.pageUrlTemplate && options.imageSelector && options.imageSelector.trim()) {
-    console.log('🕷️ [Image Scraper Debug] Scraping mode - fetching page and looking for selector:', options.imageSelector);
+    if (DEBUG_IMAGE_SCRAPING) {
+      console.log('🕷️ [Image Scraper Debug] Scraping mode - fetching page and looking for selector:', options.imageSelector);
+    }
     const pageUrl = pageUrlFromTemplate;
     if (pageUrl) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
       try {
-        console.log('📡 [Image Scraper Debug] Fetching page:', pageUrl);
+        if (DEBUG_IMAGE_SCRAPING) {
+          console.log('📡 [Image Scraper Debug] Fetching page:', pageUrl);
+        }
         const response = await fetch(pageUrl, {
           headers: {
             'User-Agent': DEFAULT_USER_AGENT,
@@ -688,41 +703,61 @@ async function fetchProductImageUrl(reference, options = {}) {
           signal: controller.signal
         });
 
-        console.log('📥 [Image Scraper Debug] Page fetch response status:', response.status);
+        if (DEBUG_IMAGE_SCRAPING) {
+          console.log('📥 [Image Scraper Debug] Page fetch response status:', response.status);
+        }
 
         if (response.ok) {
           const html = await response.text();
-          console.log('📄 [Image Scraper Debug] Page HTML length:', html.length, 'characters');
+          if (DEBUG_IMAGE_SCRAPING) {
+            console.log('📄 [Image Scraper Debug] Page HTML length:', html.length, 'characters');
+          }
           
           const $ = cheerio.load(html);
           const node = $(options.imageSelector).first();
-          console.log('🎯 [Image Scraper Debug] Found node with selector?', node.length > 0);
+          if (DEBUG_IMAGE_SCRAPING) {
+            console.log('🎯 [Image Scraper Debug] Found node with selector?', node.length > 0);
+          }
           
           const imageAttribute = options.imageAttribute || 'src';
           let src = node.attr(imageAttribute);
-          console.log(`🖼️ [Image Scraper Debug] Image attribute '${imageAttribute}' value:`, src);
+          if (DEBUG_IMAGE_SCRAPING) {
+            console.log(`🖼️ [Image Scraper Debug] Image attribute '${imageAttribute}' value:`, src);
+          }
           
           // If the preferred attribute is missing, gracefully fallback to classic src
           if (!src && imageAttribute !== 'src') {
             src = node.attr('src');
-            console.log('🔄 [Image Scraper Debug] Fallback to src attribute:', src);
+            if (DEBUG_IMAGE_SCRAPING) {
+              console.log('🔄 [Image Scraper Debug] Fallback to src attribute:', src);
+            }
           }
           
           const normalized = normalizeImageUrl(src, pageUrl);
-          console.log('🔗 [Image Scraper Debug] Normalized image URL:', normalized);
+          if (DEBUG_IMAGE_SCRAPING) {
+            console.log('🔗 [Image Scraper Debug] Normalized image URL:', normalized);
+          }
           
           productImageCache.set(cacheKey, { url: normalized, timestamp: now });
           if (normalized) {
-            console.log('✅ [Image Scraper Debug] Successfully scraped image URL:', normalized);
+            if (DEBUG_IMAGE_SCRAPING) {
+              console.log('✅ [Image Scraper Debug] Successfully scraped image URL:', normalized, 'for reference:', reference);
+            }
             return normalized;
           } else {
-            console.warn('⚠️ [Image Scraper Debug] Failed to normalize image URL');
+            if (DEBUG_IMAGE_SCRAPING) {
+              console.warn('⚠️ [Image Scraper Debug] Failed to normalize image URL for reference:', reference);
+            }
           }
         } else {
-          console.warn(`❌ [Image Scraper Debug] Failed to fetch product page (${response.status}): ${pageUrl}`);
+          if (DEBUG_IMAGE_SCRAPING) {
+            console.warn(`❌ [Image Scraper Debug] Failed to fetch product page (${response.status}): ${pageUrl}`);
+          }
         }
       } catch (error) {
-        console.error(`❌ [Image Scraper Debug] Error fetching product image for ${reference}:`, error.message);
+        if (DEBUG_IMAGE_SCRAPING) {
+          console.error(`❌ [Image Scraper Debug] Error fetching product image for ${reference}:`, error.message);
+        }
       } finally {
         clearTimeout(timeoutId);
       }
@@ -730,15 +765,21 @@ async function fetchProductImageUrl(reference, options = {}) {
   }
 
   // 3) Default legacy scraping (placedespros)
-  console.log('🔄 [Image Scraper Debug] Falling back to legacy placedespros scraping');
+  if (DEBUG_IMAGE_SCRAPING) {
+    console.log('🔄 [Image Scraper Debug] Falling back to legacy placedespros scraping');
+  }
   const productUrl = `https://www.placedespros.com/article/art-${encodeURIComponent(reference)}`;
-  console.log('🔗 [Image Scraper Debug] Legacy product URL:', productUrl);
+  if (DEBUG_IMAGE_SCRAPING) {
+    console.log('🔗 [Image Scraper Debug] Legacy product URL:', productUrl);
+  }
   
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    console.log('📡 [Image Scraper Debug] Fetching legacy page');
+    if (DEBUG_IMAGE_SCRAPING) {
+      console.log('📡 [Image Scraper Debug] Fetching legacy page');
+    }
     const response = await fetch(productUrl, {
       headers: {
         'User-Agent': DEFAULT_USER_AGENT,
@@ -749,32 +790,44 @@ async function fetchProductImageUrl(reference, options = {}) {
     });
 
     if (!response.ok) {
-      console.warn(`❌ [Image Scraper Debug] Failed to fetch product page (${response.status}): ${productUrl}`);
+      if (DEBUG_IMAGE_SCRAPING) {
+        console.warn(`❌ [Image Scraper Debug] Failed to fetch product page (${response.status}): ${productUrl}`);
+      }
       productImageCache.set(cacheKey, { url: null, timestamp: now });
       return null;
     }
 
     const html = await response.text();
-    console.log('📄 [Image Scraper Debug] Legacy page HTML length:', html.length, 'characters');
+    if (DEBUG_IMAGE_SCRAPING) {
+      console.log('📄 [Image Scraper Debug] Legacy page HTML length:', html.length, 'characters');
+    }
     
     // Look for the main product image with class "photoItem"
     const imgRegex = /<img[^>]*class=["'][^"']*photoItem[^"']*["'][^>]*src=["']([^"']+)["'][^>]*>/i;
     const match = html.match(imgRegex);
     
-    console.log('🎯 [Image Scraper Debug] photoItem image found?', !!match);
+    if (DEBUG_IMAGE_SCRAPING) {
+      console.log('🎯 [Image Scraper Debug] photoItem image found?', !!match);
+    }
 
     if (match && match[1]) {
       const normalized = normalizeImageUrl(match[1], productUrl);
-      console.log('✅ [Image Scraper Debug] Legacy scraping successful. Image URL:', normalized);
+      if (DEBUG_IMAGE_SCRAPING) {
+        console.log('✅ [Image Scraper Debug] Legacy scraping successful. Image URL:', normalized, 'for reference:', reference);
+      }
       productImageCache.set(cacheKey, { url: normalized, timestamp: now });
       return normalized;
     }
 
-    console.warn(`⚠️ [Image Scraper Debug] No product image found for reference ${reference}`);
+    if (DEBUG_IMAGE_SCRAPING) {
+      console.warn(`⚠️ [Image Scraper Debug] No product image found for reference ${reference}`);
+    }
     productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
   } catch (error) {
-    console.error(`❌ [Image Scraper Debug] Error fetching product image for ${reference}:`, error.message);
+    if (DEBUG_IMAGE_SCRAPING) {
+      console.error(`❌ [Image Scraper Debug] Error fetching product image for ${reference}:`, error.message);
+    }
     productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
   } finally {
@@ -795,16 +848,16 @@ async function buildProductImageUrl(item, element, options = {}) {
     const trimmedValue = csvValue.trim();
     if (!trimmedValue) return null;
 
-    const normalizedDirectUrl = normalizeImageUrl(trimmedValue, element.baseUrl || options.productImageBaseUrl);
-    if (isRenderableUrl(normalizedDirectUrl)) {
-      return normalizedDirectUrl;
+    // Check if CSV value is already a complete URL (http/https/data)
+    // Don't use baseUrl for this check - it's a fallback, not a normalization base
+    if (isRenderableUrl(trimmedValue)) {
+      return trimmedValue;
     }
 
     value = trimmedValue;
   }
 
-  // If the value already contains a direct web/data URL, use it as-is to avoid unnecessary scraping
-  // Preferred: fetch online image from placedespros
+  // Preferred: fetch online image via scraping (pageUrlTemplate + imageSelector)
   const onlineUrl = await fetchProductImageUrl(value, {
     pageUrlTemplate: element.pageUrlTemplate,
     imageSelector: element.imageSelector,
@@ -967,6 +1020,27 @@ exports.generatePdf = async (params) => {
 
     const page = await browser.newPage();
 
+    // Forward browser console messages to server console
+    page.on('console', async (msg) => {
+      const type = msg.type();
+      const text = msg.text();
+      const args = await Promise.all(msg.args().map(arg => arg.jsonValue().catch(() => arg.toString())));
+      
+      // Format the message with args if available
+      const message = args.length > 0 ? args.join(' ') : text;
+      
+      // Forward to server console with appropriate level
+      if (type === 'error') {
+        console.error(`[Browser Console] ${message}`);
+      } else if (type === 'warning') {
+        console.warn(`[Browser Console] ${message}`);
+      } else if (type === 'log' || type === 'info') {
+        console.log(`[Browser Console] ${message}`);
+      } else if (type === 'debug') {
+        console.debug(`[Browser Console] ${message}`);
+      }
+    });
+
     // Get product image base URL from settings
     let productImageBaseUrl = options?.productImageBaseUrl;
     if (!productImageBaseUrl) {
@@ -992,21 +1066,67 @@ exports.generatePdf = async (params) => {
       console.warn(`PDF generation: network idle wait timed out after ${PDF_RESOURCE_WAIT_TIMEOUT_MS}ms, continuing rendering.`);
     });
 
-    // Attach lightweight error tracking to detect broken images
+    // Attach lightweight error tracking to detect broken images and log to browser console
     await page.evaluate(() => {
-      document.querySelectorAll('img').forEach(img => {
+      console.log('🖼️ [PDF Image Debug] Starting image load tracking...');
+      const images = document.querySelectorAll('img');
+      console.log(`🖼️ [PDF Image Debug] Found ${images.length} images to load`);
+      
+      images.forEach((img, index) => {
         if (img.dataset.pdfErrorListenerAttached) return;
         img.dataset.pdfErrorListenerAttached = '1';
+        
+        const imgSrc = img.src;
+        const isDataUrl = imgSrc.startsWith('data:');
+        const srcPreview = isDataUrl ? `data:${imgSrc.substring(5, 30)}...` : imgSrc;
+        
+        img.addEventListener('load', () => {
+          console.log(`✅ [PDF Image Debug] Image ${index + 1}/${images.length} loaded successfully:`, srcPreview);
+          console.log(`   - Dimensions: ${img.naturalWidth}x${img.naturalHeight}`);
+        }, { once: true });
+        
         img.addEventListener('error', () => {
+          console.error(`❌ [PDF Image Debug] Image ${index + 1}/${images.length} failed to load:`, srcPreview);
           img.dataset.loadError = '1';
         }, { once: true });
+        
+        // Log initial state
+        if (img.complete) {
+          if (img.naturalWidth > 0) {
+            console.log(`✅ [PDF Image Debug] Image ${index + 1}/${images.length} already loaded:`, srcPreview);
+          } else {
+            console.error(`❌ [PDF Image Debug] Image ${index + 1}/${images.length} already failed:`, srcPreview);
+            img.dataset.loadError = '1';
+          }
+        } else {
+          console.log(`⏳ [PDF Image Debug] Image ${index + 1}/${images.length} loading...`, srcPreview);
+        }
       });
     });
 
     // Ensure images finished loading (or timeout)
     await page.waitForFunction(() => {
       const images = document.querySelectorAll('img');
-      return images.length === 0 || Array.from(images).every(img => img.complete && img.dataset.loadError !== '1' && img.naturalWidth > 0 && img.naturalHeight > 0);
+      
+      // Count statuses in a single iteration
+      let loadedCount = 0;
+      let failedCount = 0;
+      for (const img of images) {
+        if (img.dataset.loadError === '1') {
+          failedCount++;
+        } else if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+          loadedCount++;
+        }
+      }
+      const pendingCount = images.length - loadedCount - failedCount;
+      
+      console.log(`📊 [PDF Image Debug] Image loading status: ${loadedCount} loaded, ${failedCount} failed, ${pendingCount} pending (total: ${images.length})`);
+      
+      const allDone = images.length === 0 || (failedCount === 0 && pendingCount === 0);
+      if (allDone) {
+        console.log('✅ [PDF Image Debug] All images loaded successfully!');
+      }
+      return allDone;
     }, { timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS, polling: 500 }).catch(() => {
       console.warn(`PDF generation: image load wait timed out after ${PDF_RESOURCE_WAIT_TIMEOUT_MS}ms, proceeding with available content.`);
     });
