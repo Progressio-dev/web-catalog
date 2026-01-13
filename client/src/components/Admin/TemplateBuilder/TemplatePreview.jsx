@@ -285,10 +285,15 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             wordWrap: element.wordWrap ? 'break-word' : 'normal',
             whiteSpace: element.wordWrap ? 'pre-wrap' : 'pre',
             overflow: 'hidden',
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
             boxSizing: 'border-box',
           }}
         >
-          {content}
+          <span style={{
+            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent'
+          }}>
+            {content}
+          </span>
         </div>
       );
     }
@@ -315,7 +320,10 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
         }
           
         return (
-          <div key={element.id} style={baseStyle}>
+          <div key={element.id} style={{
+            ...baseStyle,
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
+          }}>
             <img 
               src={logoUrl}
               alt={logo?.name || 'Logo'}
@@ -341,6 +349,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
           border: '1px dashed #ccc',
           fontSize: '10px',
           color: '#999'
@@ -367,7 +376,10 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
         }
         
         return (
-          <div key={element.id} style={baseStyle}>
+          <div key={element.id} style={{
+            ...baseStyle,
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
+          }}>
             <img 
               src={logoUrl}
               alt={logo.name || 'Logo'}
@@ -392,6 +404,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
           border: '1px dashed #ccc',
           fontSize: '10px',
           color: '#999'
@@ -412,7 +425,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#f0f0f0',
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || '#f0f0f0'),
             fontSize: '10px',
             color: '#999',
           }}
@@ -476,10 +489,15 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             padding: `${4 * zoom}px`,
             whiteSpace: 'pre-wrap',
             overflow: 'hidden',
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
             boxSizing: 'border-box',
           }}
         >
-          {element.content || 'Texte libre'}
+          <span style={{
+            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent'
+          }}>
+            {element.content || 'Texte libre'}
+          </span>
         </div>
       );
     }
@@ -499,10 +517,15 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             textAlign: element.textAlign,
             padding: `${4 * zoom}px`,
             overflow: 'hidden',
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
             boxSizing: 'border-box',
           }}
         >
-          {result}
+          <span style={{
+            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent'
+          }}>
+            {result}
+          </span>
         </div>
       );
     }
