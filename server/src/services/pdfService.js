@@ -74,6 +74,8 @@ const PRODUCT_IMAGE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const productImageCache = new Map();
 const FETCH_TIMEOUT_MS = 5000;
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
+const PDF_NAVIGATION_TIMEOUT_MS = 60000;
+const PDF_RESOURCE_WAIT_TIMEOUT_MS = 15000;
 
 function buildImageCacheKey(reference, options = {}) {
   const parts = [
@@ -145,6 +147,9 @@ function applyValueToTemplate(template, value, encodeValue, columnName) {
 
 function normalizeImageUrl(src, pageUrl) {
   if (!src) return null;
+  if (src.startsWith('data:')) {
+    return src;
+  }
   if (src.startsWith('//')) {
     return `https:${src}`;
   }
@@ -161,6 +166,13 @@ function normalizeImageUrl(src, pageUrl) {
 
 function shouldUrlEncodeValue(flag) {
   return flag !== false && flag !== 'false';
+}
+
+function isRenderableUrl(url) {
+  return (
+    typeof url === 'string' &&
+    (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:'))
+  );
 }
 
 function buildFontFaces(customFonts = []) {
@@ -686,9 +698,24 @@ async function fetchProductImageUrl(reference, options = {}) {
 async function buildProductImageUrl(item, element, options = {}) {
   if (!element.csvColumn) return null;
   
-  const value = item[element.csvColumn];
-  if (!value) return null;
+  const csvValue = item[element.csvColumn];
+  if (csvValue === undefined || csvValue === null) return null;
 
+  let value = csvValue;
+
+  if (typeof csvValue === 'string') {
+    const trimmedValue = csvValue.trim();
+    if (!trimmedValue) return null;
+
+    const normalizedDirectUrl = normalizeImageUrl(trimmedValue, element.baseUrl || options.productImageBaseUrl);
+    if (isRenderableUrl(normalizedDirectUrl)) {
+      return normalizedDirectUrl;
+    }
+
+    value = trimmedValue;
+  }
+
+  // If the value already contains a direct web/data URL, use it as-is to avoid unnecessary scraping
   // Preferred: fetch online image from placedespros
   const onlineUrl = await fetchProductImageUrl(value, {
     pageUrlTemplate: element.pageUrlTemplate,
@@ -863,7 +890,34 @@ exports.generatePdf = async (params) => {
     const html = await buildHtml(items, template, logo, allLogos, mappings || [], visibleFields, { productImageBaseUrl });
 
     // Set content
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setDefaultNavigationTimeout(PDF_NAVIGATION_TIMEOUT_MS);
+    await page.setDefaultTimeout(PDF_NAVIGATION_TIMEOUT_MS);
+
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: PDF_NAVIGATION_TIMEOUT_MS });
+
+    // Wait for network to become idle but don't block indefinitely
+    await page.waitForNetworkIdle({ idleTime: 1000, timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS }).catch(() => {
+      console.warn(`PDF generation: network idle wait timed out after ${PDF_RESOURCE_WAIT_TIMEOUT_MS}ms, continuing rendering.`);
+    });
+
+    // Attach lightweight error tracking to detect broken images
+    await page.evaluate(() => {
+      document.querySelectorAll('img').forEach(img => {
+        if (img.dataset.pdfErrorListenerAttached) return;
+        img.dataset.pdfErrorListenerAttached = '1';
+        img.addEventListener('error', () => {
+          img.dataset.loadError = '1';
+        }, { once: true });
+      });
+    });
+
+    // Ensure images finished loading (or timeout)
+    await page.waitForFunction(() => {
+      const images = document.querySelectorAll('img');
+      return images.length === 0 || Array.from(images).every(img => img.complete && img.dataset.loadError !== '1' && img.naturalWidth > 0 && img.naturalHeight > 0);
+    }, { timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS, polling: 500 }).catch(() => {
+      console.warn(`PDF generation: image load wait timed out after ${PDF_RESOURCE_WAIT_TIMEOUT_MS}ms, proceeding with available content.`);
+    });
 
     // Configure page format based on template
     const pageConfig = {
