@@ -45,6 +45,35 @@ function imageToDataUrl(filePath) {
   }
 }
 
+async function fetchRemoteImageAsDataUrl(url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': DEFAULT_USER_AGENT,
+        Accept: 'image/avif,image/webp,image/*,*/*;q=0.8',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch image for PDF (status ${response.status}): ${url}`);
+      return null;
+    }
+
+    const contentType = response.headers.get('content-type') || 'image/png';
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return `data:${contentType};base64,${buffer.toString('base64')}`;
+  } catch (error) {
+    console.error(`Error fetching remote image for PDF (${url}):`, error.message);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
  * SECURITY NOTE: JavaScript Code Execution
  * 
@@ -476,8 +505,30 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     // Handle regular product images
     const imageUrl = await buildProductImageUrl(item, element, options);
     if (imageUrl) {
+      let finalSrc = imageUrl;
+
+      // For PDF generation, inline images as data URLs to avoid blocked or relative requests
+      if (!useHttpUrls && !imageUrl.startsWith('data:')) {
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+          const dataUrl = await fetchRemoteImageAsDataUrl(imageUrl);
+          if (dataUrl) {
+            finalSrc = dataUrl;
+          } else {
+            console.warn(`Falling back to remote URL for product image: ${imageUrl}`);
+          }
+        } else if (imageUrl.startsWith('/uploads/')) {
+          const absolutePath = path.join(getUploadDir(), imageUrl.replace(/^\/uploads\//, ''));
+          const dataUrl = imageToDataUrl(absolutePath);
+          if (dataUrl) {
+            finalSrc = dataUrl;
+          } else {
+            console.warn(`Failed to inline local product image: ${absolutePath}`);
+          }
+        }
+      }
+
       const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'};`;
-      return `<img src="${imageUrl}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
+      return `<img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
     }
     // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
     return '';
