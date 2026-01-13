@@ -4,6 +4,22 @@ const fs = require('fs');
 const cheerio = require('cheerio');
 const { dbGet } = require('../config/database');
 const { getUploadDir, getGeneratedDir } = require('../config/paths');
+const MAX_INLINE_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB safety limit
+
+// Page format definitions
+const PAGE_FORMATS = {
+  'A4': { width: 210, height: 297 }, // mm
+  'A5': { width: 148, height: 210 },
+  'Letter': { width: 215.9, height: 279.4 },
+  'Custom': { width: null, height: null } // defined by user
+};
+
+const PRODUCT_IMAGE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const productImageCache = new Map();
+const FETCH_TIMEOUT_MS = 5000;
+const DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
+const PDF_NAVIGATION_TIMEOUT_MS = 60000;
+const PDF_RESOURCE_WAIT_TIMEOUT_MS = 15000;
 
 /**
  * Convert an image file to a base64 data URL
@@ -19,6 +35,17 @@ function imageToDataUrl(filePath) {
   try {
     if (!fs.existsSync(filePath)) {
       console.warn(`Image file not found: ${filePath}`);
+      return null;
+    }
+
+    try {
+      const { size } = fs.statSync(filePath);
+      if (size > MAX_INLINE_IMAGE_BYTES) {
+        console.warn(`Local image too large to inline (${size} bytes): ${filePath}`);
+        return null;
+      }
+    } catch (statError) {
+      console.warn(`Unable to stat image file: ${filePath}`, statError.message);
       return null;
     }
     
@@ -45,6 +72,51 @@ function imageToDataUrl(filePath) {
   }
 }
 
+async function fetchRemoteImageAsDataUrl(url) {
+  const fetchApi = globalThis.fetch;
+  if (typeof fetchApi !== 'function') {
+    console.warn('Global fetch API is not available; skipping remote image inlining.');
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetchApi(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': DEFAULT_USER_AGENT,
+        Accept: 'image/avif,image/webp,image/*,*/*;q=0.8',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch image for PDF (status ${response.status}): ${url}`);
+      return null;
+    }
+
+    const contentType = response.headers.get('content-type') || 'image/png';
+    if (!contentType.toLowerCase().startsWith('image/')) {
+      console.warn(`Blocked non-image content-type (${contentType}) for URL: ${url}`);
+      return null;
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > MAX_INLINE_IMAGE_BYTES) {
+      console.warn(`Image too large after download (${buffer.length} bytes): ${url}`);
+      return null;
+    }
+
+    return `data:${contentType};base64,${buffer.toString('base64')}`;
+  } catch (error) {
+    console.error(`Error fetching remote image for PDF (${url}):`, error.message);
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
  * SECURITY NOTE: JavaScript Code Execution
  * 
@@ -61,21 +133,6 @@ function imageToDataUrl(filePath) {
  * - Log all code executions for audit purposes
  * - Consider disabling fetch/network access in sandboxed environment
  */
-
-// Page format definitions
-const PAGE_FORMATS = {
-  'A4': { width: 210, height: 297 }, // mm
-  'A5': { width: 148, height: 210 },
-  'Letter': { width: 215.9, height: 279.4 },
-  'Custom': { width: null, height: null } // defined by user
-};
-
-const PRODUCT_IMAGE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-const productImageCache = new Map();
-const FETCH_TIMEOUT_MS = 5000;
-const DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
-const PDF_NAVIGATION_TIMEOUT_MS = 60000;
-const PDF_RESOURCE_WAIT_TIMEOUT_MS = 15000;
 
 function buildImageCacheKey(reference, options = {}) {
   const parts = [
@@ -476,8 +533,39 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     // Handle regular product images
     const imageUrl = await buildProductImageUrl(item, element, options);
     if (imageUrl) {
+      let finalSrc = imageUrl;
+
+      // For PDF generation, inline images as data URLs to avoid blocked or relative requests
+      if (!useHttpUrls && !imageUrl.startsWith('data:')) {
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+          const dataUrl = await fetchRemoteImageAsDataUrl(imageUrl);
+          if (dataUrl) {
+            finalSrc = dataUrl;
+          } else {
+            console.warn(`Falling back to remote URL for product image: ${imageUrl}`);
+          }
+        } else if (imageUrl.startsWith('/uploads/')) {
+          const uploadDir = path.resolve(getUploadDir());
+          const relativeUploadPath = imageUrl.replace(/^\/uploads\//, '');
+          const absolutePath = path.resolve(uploadDir, relativeUploadPath);
+
+          if (!absolutePath.startsWith(uploadDir)) {
+            console.warn(`Blocked suspicious upload path for inlining: ${imageUrl}`);
+            return '';
+          } else {
+            // imageToDataUrl performs synchronous disk reads; acceptable here during PDF generation
+            const dataUrl = imageToDataUrl(absolutePath);
+            if (dataUrl) {
+              finalSrc = dataUrl;
+            } else {
+              console.warn(`Failed to inline local product image: ${absolutePath}`);
+            }
+          }
+        }
+      }
+
       const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'};`;
-      return `<img src="${imageUrl}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
+      return `<img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
     }
     // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
     return '';
