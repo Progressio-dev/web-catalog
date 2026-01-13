@@ -146,7 +146,8 @@ function buildImageCacheKey(reference, options = {}) {
     options.urlEncodeValue ? 'enc' : 'raw',
     options.baseUrl || '',
     options.extension || '',
-    options.csvColumn || ''
+    options.csvColumn || '',
+    options.elementId || '' // Include element ID to prevent cache sharing between blocks
   ];
   return parts.join('|');
 }
@@ -648,7 +649,8 @@ async function fetchProductImageUrl(reference, options = {}) {
       urlEncodeValue: options.urlEncodeValue,
       csvColumn: options.csvColumn,
       baseUrl: options.baseUrl,
-      extension: options.extension
+      extension: options.extension,
+      elementId: options.elementId
     });
   }
 
@@ -865,7 +867,8 @@ async function buildProductImageUrl(item, element, options = {}) {
     urlEncodeValue: shouldUrlEncodeValue(element.urlEncodeValue),
     csvColumn: element.csvColumn,
     baseUrl: element.baseUrl || options.productImageBaseUrl,
-    extension: element.extension
+    extension: element.extension,
+    elementId: element.id // Pass element ID to prevent cache sharing between blocks
   });
   if (onlineUrl) return onlineUrl;
 
