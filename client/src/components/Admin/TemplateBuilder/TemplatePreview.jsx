@@ -19,6 +19,9 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
 
   const buildImageKey = React.useCallback((element, refValue) => {
     // MUST match server-side buildImageCacheKey order
+    // NOTE: imageCacheVersion is client-only for UI cache invalidation
+    // It's appended here to force re-fetch when element properties change
+    // Server doesn't need this as it uses TTL-based cache expiration
     return [
       refValue || '',
       element?.pageUrlTemplate || 'default',
@@ -409,6 +412,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
       const isLoading = imageKey && imageUrls[imageKey] === undefined;
       const isFailed = imageKey && imageUrls[imageKey] === null;
       
+      const [imageLoadError, setImageLoadError] = React.useState(false);
+      
       return (
         <div
           key={element.id}
@@ -424,22 +429,21 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             padding: `${4 * zoom}px`,
           }}
         >
-          {imageUrl ? (
+          {imageUrl && !imageLoadError ? (
             <img
               src={imageUrl}
               alt={refValue || 'Image produit'}
               style={{ width: '100%', height: '100%', objectFit: element.fit || 'contain' }}
               onError={(e) => {
                 console.error('Erreur de chargement image produit', imageUrl);
-                e.target.style.display = 'none';
-                e.target.parentElement.innerHTML = '<div style="padding: 4px;">❌ Image non disponible</div>';
+                setImageLoadError(true);
               }}
               key={`${element.id}-${imageCacheVersion}`}
             />
+          ) : imageLoadError || isFailed ? (
+            <div>❌ Image non disponible</div>
           ) : isLoading ? (
             <div>⏳ Chargement...</div>
-          ) : isFailed ? (
-            <div>❌ Image non disponible</div>
           ) : !refValue ? (
             <div>Aucune référence</div>
           ) : (

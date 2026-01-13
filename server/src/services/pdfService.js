@@ -164,6 +164,29 @@ async function retryWithDelay(fn, maxRetries = FETCH_MAX_RETRIES, delayMs = FETC
  * - Consider disabling fetch/network access in sandboxed environment
  */
 
+/**
+ * Build placeholder HTML for missing or failed images
+ * @param {string} baseStyle - CSS styles for positioning
+ * @param {string} message - Message to display
+ * @param {string} bgColor - Background color (default: #f0f0f0)
+ * @returns {string} - HTML for placeholder
+ */
+function buildImagePlaceholder(baseStyle, message, bgColor = '#f0f0f0') {
+  const placeholderStyle = `
+    ${baseStyle}
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: ${bgColor};
+    color: #666;
+    font-size: 10px;
+    text-align: center;
+    padding: 4px;
+    border: 1px dashed #ccc;
+  `;
+  return `<div style="${placeholderStyle}">${message}</div>`;
+}
+
 function buildImageCacheKey(reference, options = {}) {
   const parts = [
     reference,
@@ -618,71 +641,34 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
               finalSrc = dataUrl;
             } else {
               console.warn(`Failed to inline local product image, will show placeholder: ${absolutePath}`);
-              // Return placeholder if image cannot be inlined
-              const placeholderStyle = `
-                ${baseStyle}
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background-color: #f0f0f0;
-                color: #666;
-                font-size: 10px;
-                text-align: center;
-                padding: 4px;
-                border: 1px dashed #ccc;
-              `;
-              return `<div style="${placeholderStyle}">Image non disponible</div>`;
+              return buildImagePlaceholder(baseStyle, 'Image non disponible');
             }
           }
         }
       }
 
       const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'};`;
-      const placeholderDiv = `
-        <div style="${baseStyle} display: none; align-items: center; justify-content: center; background-color: #f0f0f0; color: #666; font-size: 10px; text-align: center; padding: 4px; border: 1px dashed #ccc;">
-          Image non disponible
-        </div>
-      `;
+      // Create a hidden placeholder div that shows when image fails to load
+      const hiddenPlaceholder = buildImagePlaceholder(
+        baseStyle.replace(/^/, 'display: none; '),
+        'Image non disponible'
+      );
       return `
         <img src="${finalSrc}" alt="Product" style="${imgStyle}" 
              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-        ${placeholderDiv}
+        ${hiddenPlaceholder}
       `;
     }
     
     // Return placeholder if no valid image URL could be built (e.g., missing CSV column data)
     const csvValue = element.csvColumn ? item[element.csvColumn] : null;
     if (!csvValue) {
-      // No CSV value - show different message
-      const placeholderStyle = `
-        ${baseStyle}
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #f8f8f8;
-        color: #999;
-        font-size: 10px;
-        text-align: center;
-        padding: 4px;
-        border: 1px dashed #ddd;
-      `;
-      return `<div style="${placeholderStyle}">Aucune référence</div>`;
+      // No CSV value - show different message with lighter background
+      return buildImagePlaceholder(baseStyle, 'Aucune référence', '#f8f8f8');
     }
     
     // CSV value exists but no image found
-    const placeholderStyle = `
-      ${baseStyle}
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-color: #f0f0f0;
-      color: #666;
-      font-size: 10px;
-      text-align: center;
-      padding: 4px;
-      border: 1px dashed #ccc;
-    `;
-    return `<div style="${placeholderStyle}">Image non disponible</div>`;
+    return buildImagePlaceholder(baseStyle, 'Image non disponible');
   }
 
   if (element.type === 'line') {
