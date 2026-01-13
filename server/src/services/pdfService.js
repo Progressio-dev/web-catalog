@@ -1091,13 +1091,22 @@ exports.generatePdf = async (params) => {
     // Ensure images finished loading (or timeout)
     await page.waitForFunction(() => {
       const images = document.querySelectorAll('img');
-      const loadedCount = Array.from(images).filter(img => img.complete && img.dataset.loadError !== '1' && img.naturalWidth > 0 && img.naturalHeight > 0).length;
-      const failedCount = Array.from(images).filter(img => img.dataset.loadError === '1').length;
+      
+      // Count statuses in a single iteration
+      let loadedCount = 0;
+      let failedCount = 0;
+      for (const img of images) {
+        if (img.dataset.loadError === '1') {
+          failedCount++;
+        } else if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+          loadedCount++;
+        }
+      }
       const pendingCount = images.length - loadedCount - failedCount;
       
       console.log(`📊 [PDF Image Debug] Image loading status: ${loadedCount} loaded, ${failedCount} failed, ${pendingCount} pending (total: ${images.length})`);
       
-      const allDone = images.length === 0 || Array.from(images).every(img => img.complete && img.dataset.loadError !== '1' && img.naturalWidth > 0 && img.naturalHeight > 0);
+      const allDone = images.length === 0 || (failedCount === 0 && pendingCount === 0);
       if (allDone) {
         console.log('✅ [PDF Image Debug] All images loaded successfully!');
       }
