@@ -693,12 +693,13 @@ async function buildProductImageUrl(item, element, options = {}) {
   
   const rawValue = item[element.csvColumn];
   const isStringValue = typeof rawValue === 'string';
-  const value = isStringValue ? rawValue.trim() : rawValue;
+  const stringValue = isStringValue ? rawValue.trim() : null;
+  const value = stringValue ?? rawValue;
   if (!value) return null;
 
   // If the value already contains a direct web/data URL, use it as-is to avoid unnecessary scraping
-  if (isStringValue) {
-    const normalizedDirectUrl = normalizeImageUrl(value, element.baseUrl || options.productImageBaseUrl);
+  if (stringValue) {
+    const normalizedDirectUrl = normalizeImageUrl(stringValue, element.baseUrl || options.productImageBaseUrl);
     if (
       normalizedDirectUrl &&
       (normalizedDirectUrl.startsWith('http://') ||
@@ -896,7 +897,7 @@ exports.generatePdf = async (params) => {
     // Ensure images finished loading (or timeout)
     await page.waitForFunction(() => {
       const images = document.querySelectorAll('img');
-      return images.length === 0 || Array.from(images).every(img => img.complete && img.naturalWidth > 0);
+      return images.length === 0 || Array.from(images).every(img => img.complete && (img.naturalWidth > 0 || img.naturalHeight > 0));
     }, { timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS, polling: 500 }).catch(() => {
       console.warn(`PDF generation: image load wait timed out after ${PDF_RESOURCE_WAIT_TIMEOUT_MS}ms, proceeding with available content.`);
     });
