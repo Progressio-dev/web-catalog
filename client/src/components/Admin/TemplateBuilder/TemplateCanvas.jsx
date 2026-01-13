@@ -212,6 +212,7 @@ const TemplateCanvas = ({
       boxSizing: 'border-box',
       opacity: element.opacity ?? 1,
       zIndex: element.zIndex ?? 0,
+      backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
     };
 
     const renderResizeHandles = () => {
@@ -292,12 +293,16 @@ const TemplateCanvas = ({
             textAlign: element.textAlign,
             padding: '4px',
             overflow: 'hidden',
-            backgroundColor: 'rgba(255,255,255,0.9)',
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'rgba(255,255,255,0.9)'),
             boxSizing: 'border-box',
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          {displayText}
+          <span style={{
+            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent'
+          }}>
+            {displayText}
+          </span>
           {renderResizeHandles()}
         </div>
       );
@@ -329,7 +334,7 @@ const TemplateCanvas = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#f0f0f0',
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || '#f0f0f0'),
             fontSize: '12px',
             color: '#666',
           }}
@@ -388,13 +393,17 @@ const TemplateCanvas = ({
             textAlign: element.textAlign,
             padding: '4px',
             overflow: 'hidden',
-            backgroundColor: 'rgba(255,255,255,0.9)',
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'rgba(255,255,255,0.9)'),
             whiteSpace: 'pre-wrap',
             boxSizing: 'border-box',
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          {element.content || 'Texte libre'}
+          <span style={{
+            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent'
+          }}>
+            {element.content || 'Texte libre'}
+          </span>
           {renderResizeHandles()}
         </div>
       );
@@ -414,13 +423,17 @@ const TemplateCanvas = ({
             textAlign: element.textAlign,
             padding: '4px',
             overflow: 'hidden',
-            backgroundColor: 'rgba(255,255,200,0.9)',
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'rgba(255,255,200,0.9)'),
             border: isSelected ? '3px solid #2196F3' : '1px dashed #f90',
             boxSizing: 'border-box',
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          💻 Code JS
+          <span style={{
+            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent'
+          }}>
+            💻 Code JS
+          </span>
           {renderResizeHandles()}
         </div>
       );

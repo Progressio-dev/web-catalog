@@ -345,6 +345,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       content = `${prefix}${csvValue}${suffix}`;
     }
     
+    // Determine block background
+    const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
+    
     const textStyle = `
       ${baseStyle}
       font-size: ${element.fontSize || 12}px;
@@ -355,16 +358,28 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       text-align: ${element.textAlign || 'left'};
       padding: 4px;
       box-sizing: border-box;
+      background-color: ${blockBgColor};
       ${element.wordWrap 
         ? 'white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;' 
         : 'white-space: pre;'}
       text-decoration: ${element.textDecoration || 'none'};
     `;
+    
+    // Apply highlight if enabled
+    if (element.highlightEnabled) {
+      const highlightColor = element.highlightColor || '#FFFF00';
+      return `<div style="${textStyle}"><span style="background-color: ${highlightColor};">${content}</span></div>`;
+    }
+    
     return `<div style="${textStyle}">${content}</div>`;
   }
 
   if (element.type === 'freeText') {
     const content = element.content || 'Texte libre';
+    
+    // Determine block background
+    const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
+    
     const textStyle = `
       ${baseStyle}
       font-size: ${element.fontSize || 14}px;
@@ -375,8 +390,16 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       text-align: ${element.textAlign || 'left'};
       padding: 4px;
       box-sizing: border-box;
+      background-color: ${blockBgColor};
       white-space: pre-wrap;
     `;
+    
+    // Apply highlight if enabled
+    if (element.highlightEnabled) {
+      const highlightColor = element.highlightColor || '#FFFF00';
+      return `<div style="${textStyle}"><span style="background-color: ${highlightColor};">${content}</span></div>`;
+    }
+    
     return `<div style="${textStyle}">${content}</div>`;
   }
 
@@ -390,6 +413,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       result = 'Erreur d\'exécution';
     }
     
+    // Determine block background
+    const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
+    
     const textStyle = `
       ${baseStyle}
       font-size: ${element.fontSize || 14}px;
@@ -400,7 +426,15 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       text-align: ${element.textAlign || 'left'};
       padding: 4px;
       box-sizing: border-box;
+      background-color: ${blockBgColor};
     `;
+    
+    // Apply highlight if enabled
+    if (element.highlightEnabled) {
+      const highlightColor = element.highlightColor || '#FFFF00';
+      return `<div style="${textStyle}"><span style="background-color: ${highlightColor};">${result}</span></div>`;
+    }
+    
     return `<div style="${textStyle}">${result}</div>`;
   }
 
@@ -431,11 +465,15 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       
       // Check if file exists
       if (fs.existsSync(absolutePath)) {
+        // Determine block background
+        const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
+        
         const imageStyle = `
           ${baseStyle}
           display: flex;
           align-items: center;
           justify-content: center;
+          background-color: ${blockBgColor};
         `;
         
         const imgStyle = `
@@ -495,11 +533,15 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         
         // Check if file exists
         if (fs.existsSync(absolutePath)) {
+          // Determine block background
+          const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
+          
           const imageStyle = `
             ${baseStyle}
             display: flex;
             align-items: center;
             justify-content: center;
+            background-color: ${blockBgColor};
           `;
           
           const imgStyle = `
@@ -570,7 +612,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         }
       }
 
-      const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'};`;
+      // Determine block background
+      const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
+      const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'}; background-color: ${blockBgColor};`;
       return `<img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
     }
     // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
@@ -578,17 +622,29 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
   }
 
   if (element.type === 'line') {
+    // Determine block background
+    const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
+    
     const lineStyle = `
       ${baseStyle}
       border-bottom: ${element.thickness || 1}px ${element.style || 'solid'} ${element.color || '#000000'};
+      background-color: ${blockBgColor};
     `;
     return `<div style="${lineStyle}"></div>`;
   }
 
   if (element.type === 'rectangle') {
+    // For rectangle, blockBackgroundColor takes precedence over backgroundColor if set
+    let finalBgColor = element.backgroundColor || 'transparent';
+    if (!element.blockBackgroundTransparent && element.blockBackgroundColor) {
+      finalBgColor = element.blockBackgroundColor;
+    } else if (element.blockBackgroundTransparent) {
+      finalBgColor = 'transparent';
+    }
+    
     const rectStyle = `
       ${baseStyle}
-      background-color: ${element.backgroundColor || 'transparent'};
+      background-color: ${finalBgColor};
       border: ${element.borderWidth || 1}px ${element.borderStyle || 'solid'} ${element.borderColor || '#000000'};
       border-radius: ${element.borderRadius || 0}px;
     `;
