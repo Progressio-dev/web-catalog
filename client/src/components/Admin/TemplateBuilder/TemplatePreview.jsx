@@ -255,6 +255,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
       top: `${yPx}px`,
       width: `${widthPx}px`,
       height: `${heightPx}px`,
+      opacity: element.opacity ?? 1,
+      zIndex: element.zIndex ?? 0,
     };
 
     if (element.type === 'text') {
