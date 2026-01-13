@@ -74,6 +74,8 @@ const PRODUCT_IMAGE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const productImageCache = new Map();
 const FETCH_TIMEOUT_MS = 5000;
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
+const PDF_NAVIGATION_TIMEOUT_MS = 60000;
+const PDF_RESOURCE_WAIT_TIMEOUT_MS = 15000;
 
 function buildImageCacheKey(reference, options = {}) {
   const parts = [
@@ -690,11 +692,12 @@ async function buildProductImageUrl(item, element, options = {}) {
   if (!element.csvColumn) return null;
   
   const rawValue = item[element.csvColumn];
-  const value = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+  const isStringValue = typeof rawValue === 'string';
+  const value = isStringValue ? rawValue.trim() : rawValue;
   if (!value) return null;
 
   // If the value already contains a direct web/data URL, use it as-is to avoid unnecessary scraping
-  if (typeof value === 'string') {
+  if (isStringValue) {
     const normalizedDirectUrl = normalizeImageUrl(value, element.baseUrl || options.productImageBaseUrl);
     if (normalizedDirectUrl && (normalizedDirectUrl.startsWith('http') || normalizedDirectUrl.startsWith('data:'))) {
       return normalizedDirectUrl;
@@ -875,13 +878,13 @@ exports.generatePdf = async (params) => {
     const html = await buildHtml(items, template, logo, allLogos, mappings || [], visibleFields, { productImageBaseUrl });
 
     // Set content
-    await page.setDefaultNavigationTimeout(60000);
-    await page.setDefaultTimeout(60000);
+    await page.setDefaultNavigationTimeout(PDF_NAVIGATION_TIMEOUT_MS);
+    await page.setDefaultTimeout(PDF_NAVIGATION_TIMEOUT_MS);
 
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: PDF_NAVIGATION_TIMEOUT_MS });
 
     // Wait for network to become idle but don't block indefinitely
-    await page.waitForNetworkIdle({ idleTime: 1000, timeout: 15000 }).catch(() => {
+    await page.waitForNetworkIdle({ idleTime: 1000, timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS }).catch(() => {
       console.warn('PDF generation: network idle wait timed out, continuing rendering.');
     });
 
@@ -889,7 +892,7 @@ exports.generatePdf = async (params) => {
     await page.waitForFunction(() => {
       const images = document.querySelectorAll('img');
       return images.length === 0 || Array.from(images).every(img => img.complete);
-    }, { timeout: 15000, polling: 250 }).catch(() => {
+    }, { timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS, polling: 250 }).catch(() => {
       console.warn('PDF generation: image load wait timed out, proceeding with available content.');
     });
 
