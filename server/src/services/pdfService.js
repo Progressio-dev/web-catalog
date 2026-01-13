@@ -740,16 +740,24 @@ async function fetchProductImageUrl(reference, options = {}) {
           
           productImageCache.set(cacheKey, { url: normalized, timestamp: now });
           if (normalized) {
-            console.log('✅ [Image Scraper] Successfully scraped image URL:', normalized, 'for reference:', reference);
+            if (DEBUG_IMAGE_SCRAPING) {
+              console.log('✅ [Image Scraper Debug] Successfully scraped image URL:', normalized, 'for reference:', reference);
+            }
             return normalized;
           } else {
-            console.warn('⚠️ [Image Scraper] Failed to normalize image URL for reference:', reference);
+            if (DEBUG_IMAGE_SCRAPING) {
+              console.warn('⚠️ [Image Scraper Debug] Failed to normalize image URL for reference:', reference);
+            }
           }
         } else {
-          console.warn(`❌ [Image Scraper] Failed to fetch product page (${response.status}): ${pageUrl}`);
+          if (DEBUG_IMAGE_SCRAPING) {
+            console.warn(`❌ [Image Scraper Debug] Failed to fetch product page (${response.status}): ${pageUrl}`);
+          }
         }
       } catch (error) {
-        console.error(`❌ [Image Scraper] Error fetching product image for ${reference}:`, error.message);
+        if (DEBUG_IMAGE_SCRAPING) {
+          console.error(`❌ [Image Scraper Debug] Error fetching product image for ${reference}:`, error.message);
+        }
       } finally {
         clearTimeout(timeoutId);
       }
@@ -782,7 +790,9 @@ async function fetchProductImageUrl(reference, options = {}) {
     });
 
     if (!response.ok) {
-      console.warn(`❌ [Image Scraper] Failed to fetch product page (${response.status}): ${productUrl}`);
+      if (DEBUG_IMAGE_SCRAPING) {
+        console.warn(`❌ [Image Scraper Debug] Failed to fetch product page (${response.status}): ${productUrl}`);
+      }
       productImageCache.set(cacheKey, { url: null, timestamp: now });
       return null;
     }
@@ -802,16 +812,22 @@ async function fetchProductImageUrl(reference, options = {}) {
 
     if (match && match[1]) {
       const normalized = normalizeImageUrl(match[1], productUrl);
-      console.log('✅ [Image Scraper] Legacy scraping successful. Image URL:', normalized, 'for reference:', reference);
+      if (DEBUG_IMAGE_SCRAPING) {
+        console.log('✅ [Image Scraper Debug] Legacy scraping successful. Image URL:', normalized, 'for reference:', reference);
+      }
       productImageCache.set(cacheKey, { url: normalized, timestamp: now });
       return normalized;
     }
 
-    console.warn(`⚠️ [Image Scraper] No product image found for reference ${reference}`);
+    if (DEBUG_IMAGE_SCRAPING) {
+      console.warn(`⚠️ [Image Scraper Debug] No product image found for reference ${reference}`);
+    }
     productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
   } catch (error) {
-    console.error(`❌ [Image Scraper] Error fetching product image for ${reference}:`, error.message);
+    if (DEBUG_IMAGE_SCRAPING) {
+      console.error(`❌ [Image Scraper Debug] Error fetching product image for ${reference}:`, error.message);
+    }
     productImageCache.set(cacheKey, { url: null, timestamp: now });
     return null;
   } finally {
