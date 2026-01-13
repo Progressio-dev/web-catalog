@@ -820,7 +820,10 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           min="0"
           max="100"
           value={Math.round((element.opacity ?? 1) * 100)}
-          onChange={(e) => onUpdate({ opacity: parseInt(e.target.value) / 100 })}
+          onChange={(e) => {
+            const percentValue = parseInt(e.target.value);
+            onUpdate({ opacity: percentValue / 100 });
+          }}
           style={styles.range}
         />
       </div>
@@ -830,7 +833,10 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         <input
           type="number"
           value={element.zIndex ?? 0}
-          onChange={(e) => onUpdate({ zIndex: parseInt(e.target.value) || 0 })}
+          onChange={(e) => {
+            const value = e.target.value === '' ? 0 : parseInt(e.target.value);
+            onUpdate({ zIndex: isNaN(value) ? 0 : value });
+          }}
           style={styles.input}
           placeholder="0"
         />
