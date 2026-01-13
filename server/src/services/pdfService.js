@@ -168,6 +168,13 @@ function shouldUrlEncodeValue(flag) {
   return flag !== false && flag !== 'false';
 }
 
+function isRenderableUrl(url) {
+  return (
+    typeof url === 'string' &&
+    (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:'))
+  );
+}
+
 function buildFontFaces(customFonts = []) {
   return (customFonts || [])
     .map(
@@ -692,23 +699,23 @@ async function buildProductImageUrl(item, element, options = {}) {
   if (!element.csvColumn) return null;
   
   const csvValue = item[element.csvColumn];
-  const stringValue = typeof csvValue === 'string' ? csvValue.trim() : null;
-  const value = stringValue ?? csvValue;
-  if (!value) return null;
+  if (csvValue === undefined || csvValue === null) return null;
 
-  // If the value already contains a direct web/data URL, use it as-is to avoid unnecessary scraping
-  if (stringValue) {
-    const normalizedDirectUrl = normalizeImageUrl(stringValue, element.baseUrl || options.productImageBaseUrl);
-    if (
-      normalizedDirectUrl &&
-      (normalizedDirectUrl.startsWith('http://') ||
-        normalizedDirectUrl.startsWith('https://') ||
-        normalizedDirectUrl.startsWith('data:'))
-    ) {
+  let value = csvValue;
+
+  if (typeof csvValue === 'string') {
+    const trimmedValue = csvValue.trim();
+    if (!trimmedValue) return null;
+
+    const normalizedDirectUrl = normalizeImageUrl(trimmedValue, element.baseUrl || options.productImageBaseUrl);
+    if (isRenderableUrl(normalizedDirectUrl)) {
       return normalizedDirectUrl;
     }
+
+    value = trimmedValue;
   }
 
+  // If the value already contains a direct web/data URL, use it as-is to avoid unnecessary scraping
   // Preferred: fetch online image from placedespros
   const onlineUrl = await fetchProductImageUrl(value, {
     pageUrlTemplate: element.pageUrlTemplate,
@@ -896,7 +903,7 @@ exports.generatePdf = async (params) => {
     // Ensure images finished loading (or timeout)
     await page.waitForFunction(() => {
       const images = document.querySelectorAll('img');
-      return images.length === 0 || Array.from(images).every(img => img.complete && img.naturalWidth > 0);
+      return images.length === 0 || Array.from(images).every(img => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
     }, { timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS, polling: 500 }).catch(() => {
       console.warn(`PDF generation: image load wait timed out after ${PDF_RESOURCE_WAIT_TIMEOUT_MS}ms, proceeding with available content.`);
     });
