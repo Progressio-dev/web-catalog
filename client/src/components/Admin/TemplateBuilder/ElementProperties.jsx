@@ -812,6 +812,38 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           </div>
         </div>
       )}
+
+      <div style={styles.group}>
+        <label style={styles.label}>Transparence: {Math.round((element.opacity ?? 1) * 100)}%</label>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={Math.round((element.opacity ?? 1) * 100)}
+          onChange={(e) => {
+            const percentValue = parseInt(e.target.value);
+            onUpdate({ opacity: percentValue / 100 });
+          }}
+          style={styles.range}
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Position Z (ordre des couches):</label>
+        <input
+          type="number"
+          value={element.zIndex ?? 0}
+          onChange={(e) => {
+            const value = e.target.value === '' ? 0 : parseInt(e.target.value);
+            onUpdate({ zIndex: isNaN(value) ? 0 : value });
+          }}
+          style={styles.input}
+          placeholder="0"
+        />
+        <p style={styles.hint}>
+          Valeur plus élevée = au-dessus. Par défaut: 0
+        </p>
+      </div>
     </>
   );
 

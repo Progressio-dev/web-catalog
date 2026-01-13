@@ -210,6 +210,8 @@ const TemplateCanvas = ({
       cursor: 'move',
       border: isSelected ? '3px solid #2196F3' : '1px dashed #ccc',
       boxSizing: 'border-box',
+      opacity: element.opacity ?? 1,
+      zIndex: element.zIndex ?? 0,
     };
 
     const renderResizeHandles = () => {

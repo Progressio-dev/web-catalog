@@ -330,6 +330,8 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     top: ${element.y || 0}mm;
     width: ${element.width || 'auto'}mm;
     height: ${element.height || 'auto'}mm;
+    opacity: ${element.opacity ?? 1};
+    z-index: ${element.zIndex ?? 0};
   `;
 
   if (element.type === 'text') {
