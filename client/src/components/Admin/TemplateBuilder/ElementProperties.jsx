@@ -847,6 +847,58 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     </>
   );
 
+  const renderCommonCustomizationOptions = () => (
+    <>
+      <div style={styles.group}>
+        <label style={styles.label}>Couleur de fond du bloc:</label>
+        <div style={styles.buttonGroup}>
+          <button
+            onClick={() => onUpdate({ blockBackgroundTransparent: !element.blockBackgroundTransparent })}
+            style={{
+              ...styles.toggleBtn,
+              ...(element.blockBackgroundTransparent ? styles.toggleBtnActive : {}),
+            }}
+          >
+            Transparent
+          </button>
+        </div>
+        {!element.blockBackgroundTransparent && (
+          <input
+            type="color"
+            value={element.blockBackgroundColor || '#FFFFFF'}
+            onChange={(e) => onUpdate({ blockBackgroundColor: e.target.value })}
+            style={{...styles.colorInput, marginTop: '8px'}}
+          />
+        )}
+      </div>
+
+      {/* Show highlight options only for text-based elements */}
+      {(element.type === 'text' || element.type === 'freeText' || element.type === 'jsCode') && (
+        <div style={styles.group}>
+          <label style={styles.checkbox}>
+            <input
+              type="checkbox"
+              checked={element.highlightEnabled || false}
+              onChange={(e) => onUpdate({ highlightEnabled: e.target.checked })}
+            />
+            Texte surligné
+          </label>
+          {element.highlightEnabled && (
+            <>
+              <label style={{...styles.label, marginTop: '8px'}}>Couleur de surbrillance:</label>
+              <input
+                type="color"
+                value={element.highlightColor || '#FFFF00'}
+                onChange={(e) => onUpdate({ highlightColor: e.target.value })}
+                style={styles.colorInput}
+              />
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -867,6 +919,9 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         {element.type === 'image' && renderImageProperties()}
         {element.type === 'freeText' && renderFreeTextProperties()}
         {element.type === 'jsCode' && renderJsCodeProperties()}
+
+        {/* Common customization options for all block types */}
+        {renderCommonCustomizationOptions()}
       </div>
     </div>
   );
