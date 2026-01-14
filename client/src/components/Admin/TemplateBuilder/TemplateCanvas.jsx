@@ -193,6 +193,32 @@ const TemplateCanvas = ({
     }
   }, [draggingId, resizingId, dragOffset, resizeStart, resizeHandle, mouseDownPos]);
 
+  // Helper function to get vertical alignment styles
+  const getVerticalAlignStyles = (verticalAlign) => {
+    if (!verticalAlign || verticalAlign === 'top') {
+      return {
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+      };
+    }
+    if (verticalAlign === 'middle') {
+      return {
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+      };
+    }
+    if (verticalAlign === 'bottom') {
+      return {
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-end',
+      };
+    }
+    return {};
+  };
+
   const renderElement = (element) => {
     const isSelected = selectedElement?.id === element.id;
     // Convert mm to px for rendering
@@ -285,6 +311,7 @@ const TemplateCanvas = ({
           key={element.id}
           style={{
             ...baseStyle,
+            ...getVerticalAlignStyles(element.verticalAlign),
             fontSize: `${element.fontSize}px`,
             fontFamily: element.fontFamily,
             fontWeight: element.fontWeight,
@@ -331,9 +358,8 @@ const TemplateCanvas = ({
           key={element.id}
           style={{
             ...baseStyle,
-            display: 'flex',
+            ...getVerticalAlignStyles(element.verticalAlign),
             alignItems: 'center',
-            justifyContent: 'center',
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || '#f0f0f0'),
             fontSize: '12px',
             color: '#666',
@@ -385,6 +411,7 @@ const TemplateCanvas = ({
           key={element.id}
           style={{
             ...baseStyle,
+            ...getVerticalAlignStyles(element.verticalAlign),
             fontSize: `${element.fontSize}px`,
             fontFamily: element.fontFamily,
             fontWeight: element.fontWeight,
@@ -415,6 +442,7 @@ const TemplateCanvas = ({
           key={element.id}
           style={{
             ...baseStyle,
+            ...getVerticalAlignStyles(element.verticalAlign),
             fontSize: `${element.fontSize}px`,
             fontFamily: element.fontFamily,
             fontWeight: element.fontWeight,

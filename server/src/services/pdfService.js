@@ -323,6 +323,31 @@ exports.generatePreviewHtml = async ({ item, template, logos, useHttpUrls = true
 
 // Render a single element
 async function renderElement(element, item, logos, template, useHttpUrls = false, options = {}) {
+  // Helper function to get vertical alignment CSS
+  const getVerticalAlignStyles = (verticalAlign) => {
+    if (!verticalAlign || verticalAlign === 'top') {
+      return 'display: flex; flex-direction: column; justify-content: flex-start;';
+    }
+    if (verticalAlign === 'middle') {
+      return 'display: flex; flex-direction: column; justify-content: center;';
+    }
+    if (verticalAlign === 'bottom') {
+      return 'display: flex; flex-direction: column; justify-content: flex-end;';
+    }
+    return '';
+  };
+
+  // Helper function to get vertical alignment for images (uses align-items)
+  const getImageVerticalAlignStyle = (verticalAlign) => {
+    if (verticalAlign === 'top') {
+      return 'align-items: flex-start;';
+    }
+    if (verticalAlign === 'bottom') {
+      return 'align-items: flex-end;';
+    }
+    return 'align-items: center;';
+  };
+
   // Elements are stored in mm, use them directly with mm units in CSS
   const baseStyle = `
     position: absolute;
@@ -350,6 +375,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     
     const textStyle = `
       ${baseStyle}
+      ${getVerticalAlignStyles(element.verticalAlign)}
       font-size: ${element.fontSize || 12}px;
       font-family: ${element.fontFamily || 'Arial'}, sans-serif;
       font-weight: ${element.fontWeight || 'normal'};
@@ -382,6 +408,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     
     const textStyle = `
       ${baseStyle}
+      ${getVerticalAlignStyles(element.verticalAlign)}
       font-size: ${element.fontSize || 14}px;
       font-family: ${element.fontFamily || 'Arial'}, sans-serif;
       font-weight: ${element.fontWeight || 'normal'};
@@ -418,6 +445,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     
     const textStyle = `
       ${baseStyle}
+      ${getVerticalAlignStyles(element.verticalAlign)}
       font-size: ${element.fontSize || 14}px;
       font-family: ${element.fontFamily || 'Arial'}, sans-serif;
       font-weight: ${element.fontWeight || 'normal'};
@@ -471,8 +499,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         const imageStyle = `
           ${baseStyle}
           display: flex;
-          align-items: center;
+          flex-direction: column;
           justify-content: center;
+          ${getImageVerticalAlignStyle(element.verticalAlign)}
           background-color: ${blockBgColor};
         `;
         
@@ -539,8 +568,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
           const imageStyle = `
             ${baseStyle}
             display: flex;
-            align-items: center;
+            flex-direction: column;
             justify-content: center;
+            ${getImageVerticalAlignStyle(element.verticalAlign)}
             background-color: ${blockBgColor};
           `;
           
@@ -614,8 +644,10 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
 
       // Determine block background
       const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
-      const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'}; background-color: ${blockBgColor};`;
-      return `<img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
+      
+      const containerStyle = `${baseStyle} display: flex; flex-direction: column; justify-content: center; ${getImageVerticalAlignStyle(element.verticalAlign)} background-color: ${blockBgColor};`;
+      const imgStyle = `width: 100%; height: 100%; object-fit: ${element.fit || 'contain'};`;
+      return `<div style="${containerStyle}"><img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" /></div>`;
     }
     // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
     return '';
