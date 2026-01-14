@@ -338,6 +338,39 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     return `display: flex; align-items: ${alignItems}; justify-content: ${justifyContent};`;
   };
   
+  // Helper function to calculate image mask styles
+  const getMaskStyles = (element) => {
+    // Note: Both circle and ellipse use 50% border-radius.
+    // The actual shape will depend on the element's width/height ratio:
+    // - Square elements (width === height) will appear as circles
+    // - Rectangular elements will appear as ellipses
+    if (element.maskShape === 'circle' || element.maskShape === 'ellipse') {
+      return 'border-radius: 50%; overflow: hidden;';
+    } else if (element.maskShape === 'rounded') {
+      return `border-radius: ${element.borderRadius || 10}px; overflow: hidden;`;
+    }
+    return '';
+  };
+  
+  // Helper function to calculate image transformation styles
+  const getImageTransformStyles = (element) => {
+    const cropTop = element.cropTop || 0;
+    const cropBottom = element.cropBottom || 0;
+    const cropLeft = element.cropLeft || 0;
+    const cropRight = element.cropRight || 0;
+    const clipPath = (cropTop || cropBottom || cropLeft || cropRight) 
+      ? `clip-path: inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%);`
+      : '';
+    
+    return `
+      width: 100%;
+      height: 100%;
+      object-fit: ${element.fit || 'contain'};
+      transform: rotate(${element.rotation || 0}deg);
+      ${clipPath}
+    `;
+  };
+  
   // Elements are stored in mm, use them directly with mm units in CSS
   const baseStyle = `
     position: absolute;
@@ -370,6 +403,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       font-weight: ${element.fontWeight || 'normal'};
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
+      line-height: ${element.lineHeight || 1.2};
+      letter-spacing: ${element.letterSpacing || 0}px;
+      text-transform: ${element.textTransform || 'none'};
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
@@ -398,6 +434,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       font-weight: ${element.fontWeight || 'normal'};
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
+      line-height: ${element.lineHeight || 1.2};
+      letter-spacing: ${element.letterSpacing || 0}px;
+      text-transform: ${element.textTransform || 'none'};
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
@@ -430,6 +469,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       font-weight: ${element.fontWeight || 'normal'};
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
+      line-height: ${element.lineHeight || 1.2};
+      letter-spacing: ${element.letterSpacing || 0}px;
+      text-transform: ${element.textTransform || 'none'};
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
@@ -471,19 +513,18 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         // Determine block background
         const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
         
+        const maskStyles = getMaskStyles(element);
+        
         const imageStyle = `
           ${baseStyle}
           display: flex;
           align-items: center;
           justify-content: center;
           background-color: ${blockBgColor};
+          ${maskStyles}
         `;
         
-        const imgStyle = `
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-        `;
+        const imgStyle = getImageTransformStyles(element);
         
         // Use HTTP URL for browser previews, data URL for PDF generation
         let src;
@@ -539,19 +580,18 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
           // Determine block background
           const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
           
+          const maskStyles = getMaskStyles(element);
+          
           const imageStyle = `
             ${baseStyle}
             display: flex;
             align-items: center;
             justify-content: center;
             background-color: ${blockBgColor};
+            ${maskStyles}
           `;
           
-          const imgStyle = `
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-          `;
+          const imgStyle = getImageTransformStyles(element);
           
           // Use HTTP URL for browser previews, data URL for PDF generation
           let src;
@@ -617,8 +657,21 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
 
       // Determine block background
       const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
-      const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'}; background-color: ${blockBgColor};`;
-      return `<img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
+      
+      const maskStyles = getMaskStyles(element);
+      
+      const wrapperStyle = `
+        ${baseStyle}
+        background-color: ${blockBgColor};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        ${maskStyles}
+      `;
+      
+      const imgStyle = getImageTransformStyles(element);
+      
+      return `<div style="${wrapperStyle}"><img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" /></div>`;
     }
     // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
     return '';
