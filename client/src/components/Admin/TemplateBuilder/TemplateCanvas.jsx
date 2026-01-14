@@ -550,6 +550,95 @@ const TemplateCanvas = ({
       );
     }
 
+    // Table element
+    if (element.type === 'table') {
+      const columns = element.columns || [];
+      const sampleRows = 3; // Show 3 sample rows in canvas
+      
+      return (
+        <div
+          key={element.id}
+          style={{
+            ...baseStyle,
+            backgroundColor: 'white',
+            border: isSelected ? '3px solid #2196F3' : isInMultiSelect ? '2px solid #4CAF50' : '1px solid #ddd',
+            overflow: 'hidden',
+          }}
+          onMouseDown={(e) => handleMouseDown(e, element)}
+        >
+          <table style={{
+            width: '100%',
+            height: '100%',
+            borderCollapse: 'collapse',
+            fontSize: `${(element.fontSize || 10) * 0.8}px`,
+            fontFamily: element.fontFamily || 'Arial',
+          }}>
+            {element.showHeaders && (
+              <thead>
+                <tr style={{ backgroundColor: element.headerBackgroundColor || '#f0f0f0' }}>
+                  {columns.map((col, idx) => (
+                    <th key={idx} style={{
+                      border: `${element.borderWidth || 1}px solid ${element.borderColor || '#000'}`,
+                      padding: `${(element.cellPadding || 2) * 0.5}px`,
+                      color: element.headerTextColor || '#000',
+                      textAlign: element.textAlign || 'left',
+                      fontSize: '8px',
+                    }}>
+                      {col.label || col.csvColumn || `Col ${idx + 1}`}
+                    </th>
+                  ))}
+                  {columns.length === 0 && (
+                    <th style={{ padding: '4px', fontSize: '8px' }}>
+                      Configurer colonnes →
+                    </th>
+                  )}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {Array.from({ length: sampleRows }).map((_, rowIdx) => (
+                <tr key={rowIdx} style={{
+                  backgroundColor: element.alternateRowColor && rowIdx % 2 === 1 
+                    ? (element.alternateColor || '#f9f9f9') 
+                    : 'white',
+                }}>
+                  {columns.map((col, colIdx) => (
+                    <td key={colIdx} style={{
+                      border: `${element.borderWidth || 1}px solid ${element.borderColor || '#000'}`,
+                      padding: `${(element.cellPadding || 2) * 0.5}px`,
+                      textAlign: element.textAlign || 'left',
+                      fontSize: '8px',
+                    }}>
+                      {col.csvColumn || '...'}
+                    </td>
+                  ))}
+                  {columns.length === 0 && (
+                    <td style={{ padding: '4px', fontSize: '8px', color: '#999' }}>
+                      Exemple données
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{
+            position: 'absolute',
+            bottom: '2px',
+            right: '4px',
+            fontSize: '10px',
+            color: '#666',
+            backgroundColor: 'rgba(255,255,255,0.8)',
+            padding: '2px 4px',
+            borderRadius: '2px',
+            pointerEvents: 'none',
+          }}>
+            📊 Tableau ({columns.length} colonnes)
+          </div>
+          {renderResizeHandles()}
+        </div>
+      );
+    }
+
     // Group element
     if (element.type === 'group') {
       return (

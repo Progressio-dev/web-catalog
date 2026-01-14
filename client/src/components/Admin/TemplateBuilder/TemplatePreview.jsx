@@ -542,6 +542,66 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
       );
     }
 
+    // Table element
+    if (element.type === 'table') {
+      const columns = element.columns || [];
+      const rowData = allSampleData || [displayData];
+      
+      return (
+        <div
+          key={element.id}
+          style={{
+            ...baseStyle,
+            backgroundColor: 'white',
+            overflow: 'auto',
+          }}
+        >
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: `${(element.fontSize || 10) * zoom}px`,
+            fontFamily: element.fontFamily || 'Arial',
+          }}>
+            {element.showHeaders && (
+              <thead>
+                <tr style={{ backgroundColor: element.headerBackgroundColor || '#f0f0f0' }}>
+                  {columns.map((col, idx) => (
+                    <th key={idx} style={{
+                      border: `${(element.borderWidth || 1) * zoom}px solid ${element.borderColor || '#000'}`,
+                      padding: `${(element.cellPadding || 2) * zoom}px`,
+                      color: element.headerTextColor || '#000',
+                      textAlign: element.textAlign || 'left',
+                    }}>
+                      {col.label || col.csvColumn || `Col ${idx + 1}`}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {rowData.slice(0, 10).map((row, rowIdx) => (
+                <tr key={rowIdx} style={{
+                  backgroundColor: element.alternateRowColor && rowIdx % 2 === 1 
+                    ? (element.alternateColor || '#f9f9f9') 
+                    : 'white',
+                }}>
+                  {columns.map((col, colIdx) => (
+                    <td key={colIdx} style={{
+                      border: `${(element.borderWidth || 1) * zoom}px solid ${element.borderColor || '#000'}`,
+                      padding: `${(element.cellPadding || 2) * zoom}px`,
+                      textAlign: element.textAlign || 'left',
+                    }}>
+                      {row[col.csvColumn] || ''}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
     // Group element - render children recursively
     if (element.type === 'group') {
       return (

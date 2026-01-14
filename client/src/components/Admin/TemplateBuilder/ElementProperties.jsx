@@ -840,6 +840,135 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     </>
   );
 
+  const renderTableProperties = () => {
+    const columns = element.columns || [];
+
+    const handleAddColumn = () => {
+      const newColumn = {
+        csvColumn: '',
+        label: '',
+        width: null, // Auto width
+      };
+      onUpdate({ columns: [...columns, newColumn] });
+    };
+
+    const handleRemoveColumn = (index) => {
+      const newColumns = columns.filter((_, i) => i !== index);
+      onUpdate({ columns: newColumns });
+    };
+
+    const handleUpdateColumn = (index, updates) => {
+      const newColumns = columns.map((col, i) => 
+        i === index ? { ...col, ...updates } : col
+      );
+      onUpdate({ columns: newColumns });
+    };
+
+    return (
+      <>
+        <div style={styles.group}>
+          <label style={styles.label}>Colonnes du tableau:</label>
+          {columns.map((col, idx) => (
+            <div key={idx} style={{ 
+              padding: '8px', 
+              border: '1px solid #ddd', 
+              borderRadius: '4px', 
+              marginBottom: '8px',
+              backgroundColor: '#f9f9f9' 
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                <strong style={{ fontSize: '12px' }}>Colonne {idx + 1}</strong>
+                <button
+                  onClick={() => handleRemoveColumn(idx)}
+                  style={{
+                    padding: '2px 6px',
+                    fontSize: '12px',
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '3px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              <select
+                value={col.csvColumn || ''}
+                onChange={(e) => handleUpdateColumn(idx, { csvColumn: e.target.value })}
+                style={{ ...styles.select, marginBottom: '5px' }}
+              >
+                <option value="">Sélectionner une colonne CSV</option>
+                {csvColumns.map((column) => (
+                  <option key={column} value={column}>
+                    {column}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Étiquette de l'en-tête (optionnel)"
+                value={col.label || ''}
+                onChange={(e) => handleUpdateColumn(idx, { label: e.target.value })}
+                style={styles.input}
+              />
+            </div>
+          ))}
+          <button
+            onClick={handleAddColumn}
+            style={{
+              ...styles.button,
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              width: '100%',
+              marginTop: '5px',
+            }}
+          >
+            + Ajouter une colonne
+          </button>
+        </div>
+
+        <div style={styles.group}>
+          <label style={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={element.showHeaders || false}
+              onChange={(e) => onUpdate({ showHeaders: e.target.checked })}
+            />
+            <span>Afficher les en-têtes</span>
+          </label>
+        </div>
+
+        <div style={styles.group}>
+          <label style={styles.label}>Taille du texte: {element.fontSize || 10}px</label>
+          <input
+            type="range"
+            min="6"
+            max="20"
+            value={element.fontSize || 10}
+            onChange={(e) => onUpdate({ fontSize: parseInt(e.target.value) })}
+            style={styles.range}
+          />
+        </div>
+
+        <div style={styles.group}>
+          <label style={styles.label}>Police:</label>
+          <select
+            value={element.fontFamily || 'Arial'}
+            onChange={(e) => onUpdate({ fontFamily: e.target.value })}
+            style={styles.select}
+          >
+            {fonts.map((font) => (
+              <option key={font} value={font}>
+                {font}
+              </option>
+            ))}
+          </select>
+        </div>
+      </>
+    );
+  };
+
   const renderPositionAndSize = () => (
     <>
       <div style={styles.group}>
@@ -1009,7 +1138,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
 
       <div style={styles.content}>
         <div style={styles.typeLabel}>
-          Type: {element.type === 'text' ? '📝 Texte' : element.type === 'logo' ? '🖼️ Logo' : element.type === 'image' ? '📷 Image' : element.type === 'line' ? '➖ Ligne' : element.type === 'freeText' ? '📝 Texte Libre' : element.type === 'jsCode' ? '💻 Code JavaScript' : '▭ Rectangle'}
+          Type: {element.type === 'text' ? '📝 Texte' : element.type === 'logo' ? '🖼️ Logo' : element.type === 'image' ? '📷 Image' : element.type === 'line' ? '➖ Ligne' : element.type === 'freeText' ? '📝 Texte Libre' : element.type === 'jsCode' ? '💻 Code JavaScript' : element.type === 'table' ? '📊 Tableau' : element.type === 'group' ? '📦 Groupe' : '▭ Rectangle'}
         </div>
 
         {renderPositionAndSize()}
@@ -1018,6 +1147,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         {element.type === 'image' && renderImageProperties()}
         {element.type === 'freeText' && renderFreeTextProperties()}
         {element.type === 'jsCode' && renderJsCodeProperties()}
+        {element.type === 'table' && renderTableProperties()}
 
         {/* Common customization options for all block types */}
         {renderCommonCustomizationOptions()}
