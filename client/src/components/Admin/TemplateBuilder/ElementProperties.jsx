@@ -287,7 +287,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
               ...(element.verticalAlign === 'middle' ? styles.toggleBtnActive : {}),
             }}
           >
-            ⬍
+            ↕
           </button>
           <button
             onClick={() => onUpdate({ verticalAlign: 'bottom' })}
@@ -492,7 +492,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
               ...(element.verticalAlign === 'middle' ? styles.toggleBtnActive : {}),
             }}
           >
-            ⬍
+            ↕
           </button>
           <button
             onClick={() => onUpdate({ verticalAlign: 'bottom' })}
@@ -691,7 +691,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
               ...(element.verticalAlign === 'middle' ? styles.toggleBtnActive : {}),
             }}
           >
-            ⬍
+            ↕
           </button>
           <button
             onClick={() => onUpdate({ verticalAlign: 'bottom' })}
@@ -842,7 +842,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
               ...(element.verticalAlign === 'middle' ? styles.toggleBtnActive : {}),
             }}
           >
-            ⬍
+            ↕
           </button>
           <button
             onClick={() => onUpdate({ verticalAlign: 'bottom' })}

@@ -337,6 +337,17 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     return '';
   };
 
+  // Helper function to get vertical alignment for images (uses align-items)
+  const getImageVerticalAlignStyle = (verticalAlign) => {
+    if (verticalAlign === 'top') {
+      return 'align-items: flex-start;';
+    }
+    if (verticalAlign === 'bottom') {
+      return 'align-items: flex-end;';
+    }
+    return 'align-items: center;';
+  };
+
   // Elements are stored in mm, use them directly with mm units in CSS
   const baseStyle = `
     position: absolute;
@@ -485,20 +496,12 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         // Determine block background
         const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
         
-        // Get vertical alignment - for images, we need to use align-items for the flexbox
-        let verticalAlignStyle = 'align-items: center;';
-        if (element.verticalAlign === 'top') {
-          verticalAlignStyle = 'align-items: flex-start;';
-        } else if (element.verticalAlign === 'bottom') {
-          verticalAlignStyle = 'align-items: flex-end;';
-        }
-        
         const imageStyle = `
           ${baseStyle}
           display: flex;
           flex-direction: column;
           justify-content: center;
-          ${verticalAlignStyle}
+          ${getImageVerticalAlignStyle(element.verticalAlign)}
           background-color: ${blockBgColor};
         `;
         
@@ -562,20 +565,12 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
           // Determine block background
           const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
           
-          // Get vertical alignment - for images, we need to use align-items for the flexbox
-          let verticalAlignStyle = 'align-items: center;';
-          if (element.verticalAlign === 'top') {
-            verticalAlignStyle = 'align-items: flex-start;';
-          } else if (element.verticalAlign === 'bottom') {
-            verticalAlignStyle = 'align-items: flex-end;';
-          }
-          
           const imageStyle = `
             ${baseStyle}
             display: flex;
             flex-direction: column;
             justify-content: center;
-            ${verticalAlignStyle}
+            ${getImageVerticalAlignStyle(element.verticalAlign)}
             background-color: ${blockBgColor};
           `;
           
@@ -650,15 +645,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       // Determine block background
       const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
       
-      // Get vertical alignment for images
-      let verticalAlignStyle = 'align-items: center;';
-      if (element.verticalAlign === 'top') {
-        verticalAlignStyle = 'align-items: flex-start;';
-      } else if (element.verticalAlign === 'bottom') {
-        verticalAlignStyle = 'align-items: flex-end;';
-      }
-      
-      const containerStyle = `${baseStyle} display: flex; flex-direction: column; justify-content: center; ${verticalAlignStyle} background-color: ${blockBgColor};`;
+      const containerStyle = `${baseStyle} display: flex; flex-direction: column; justify-content: center; ${getImageVerticalAlignStyle(element.verticalAlign)} background-color: ${blockBgColor};`;
       const imgStyle = `width: 100%; height: 100%; object-fit: ${element.fit || 'contain'};`;
       return `<div style="${containerStyle}"><img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" /></div>`;
     }
