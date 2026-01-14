@@ -392,6 +392,9 @@ const TemplateCanvas = ({
             fontWeight: element.fontWeight,
             fontStyle: element.fontStyle,
             color: element.color,
+            lineHeight: element.lineHeight || 1.2,
+            letterSpacing: `${element.letterSpacing || 0}px`,
+            textTransform: element.textTransform || 'none',
             padding: '4px',
             overflow: 'hidden',
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'rgba(255,255,255,0.9)'),
@@ -414,9 +417,39 @@ const TemplateCanvas = ({
     if (element.type === 'logo' || element.type === 'image') {
       let content;
       
+      // Calculate clip-path for cropping
+      const cropTop = element.cropTop || 0;
+      const cropBottom = element.cropBottom || 0;
+      const cropLeft = element.cropLeft || 0;
+      const cropRight = element.cropRight || 0;
+      
+      // Calculate mask shape
+      let maskStyle = {};
+      if (element.maskShape === 'circle') {
+        maskStyle.borderRadius = '50%';
+        maskStyle.overflow = 'hidden';
+      } else if (element.maskShape === 'ellipse') {
+        maskStyle.borderRadius = '50%';
+        maskStyle.overflow = 'hidden';
+      } else if (element.maskShape === 'rounded') {
+        maskStyle.borderRadius = `${element.borderRadius || 10}px`;
+        maskStyle.overflow = 'hidden';
+      }
+      
+      // Image styles with transformations
+      const imageStyle = {
+        width: '100%',
+        height: '100%',
+        objectFit: element.fit || 'contain',
+        transform: `rotate(${element.rotation || 0}deg)`,
+        clipPath: (cropTop || cropBottom || cropLeft || cropRight) 
+          ? `inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%)`
+          : 'none',
+      };
+      
       // Handle logo element with logoPath
       if (element.type === 'logo' && element.logoPath) {
-        content = <img src={element.logoPath} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+        content = <img src={element.logoPath} alt="logo" style={imageStyle} />;
       }
       // Handle legacy logo format (type: 'image' with source: 'logo')
       else if (element.type === 'image' && element.source === 'logo') {
@@ -434,6 +467,7 @@ const TemplateCanvas = ({
           key={element.id}
           style={{
             ...baseStyle,
+            ...maskStyle,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -496,6 +530,9 @@ const TemplateCanvas = ({
             fontWeight: element.fontWeight,
             fontStyle: element.fontStyle,
             color: element.color,
+            lineHeight: element.lineHeight || 1.2,
+            letterSpacing: `${element.letterSpacing || 0}px`,
+            textTransform: element.textTransform || 'none',
             padding: '4px',
             overflow: 'hidden',
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'rgba(255,255,255,0.9)'),
@@ -530,6 +567,9 @@ const TemplateCanvas = ({
             fontWeight: element.fontWeight,
             fontStyle: element.fontStyle,
             color: element.color,
+            lineHeight: element.lineHeight || 1.2,
+            letterSpacing: `${element.letterSpacing || 0}px`,
+            textTransform: element.textTransform || 'none',
             padding: '4px',
             overflow: 'hidden',
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'rgba(255,255,200,0.9)'),

@@ -70,6 +70,51 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     : ['Arial', 'Times New Roman', 'Helvetica', 'Courier New', 'Georgia'];
   const tokenExampleString = '{value}, {{value}}, %VALUE%, %REFERENCE%, %REF%, %{COLONNE}%';
 
+  // Helper function to render advanced typography controls
+  const renderTypographyControls = () => (
+    <>
+      <div style={styles.group}>
+        <label style={styles.label}>Interlignage: {element.lineHeight || 1.2}</label>
+        <input
+          type="range"
+          min="0.8"
+          max="3"
+          step="0.1"
+          value={element.lineHeight || 1.2}
+          onChange={(e) => onUpdate({ lineHeight: parseFloat(e.target.value) })}
+          style={styles.range}
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Espacement des lettres: {element.letterSpacing || 0}px</label>
+        <input
+          type="range"
+          min="-2"
+          max="10"
+          step="0.5"
+          value={element.letterSpacing || 0}
+          onChange={(e) => onUpdate({ letterSpacing: parseFloat(e.target.value) })}
+          style={styles.range}
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Transformation du texte:</label>
+        <select
+          value={element.textTransform || 'none'}
+          onChange={(e) => onUpdate({ textTransform: e.target.value })}
+          style={styles.select}
+        >
+          <option value="none">Normal</option>
+          <option value="uppercase">MAJUSCULES</option>
+          <option value="lowercase">minuscules</option>
+          <option value="capitalize">Première Lettre En Majuscule</option>
+        </select>
+      </div>
+    </>
+  );
+
   // Effect to fetch real-time image preview for image elements
   React.useEffect(() => {
     // Only run for image elements with sample data
@@ -234,6 +279,8 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           </button>
         </div>
       </div>
+
+      {renderTypographyControls()}
 
       <div style={styles.group}>
         <label style={styles.label}>Alignement horizontal:</label>
@@ -473,6 +520,107 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         </select>
       </div>
 
+      {/* Advanced Image Transformations */}
+      <div style={styles.sectionHeader}>
+        <strong>🎨 Transformations avancées</strong>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Rotation: {element.rotation || 0}°</label>
+        <input
+          type="range"
+          min="0"
+          max="360"
+          step="15"
+          value={element.rotation || 0}
+          onChange={(e) => onUpdate({ rotation: parseInt(e.target.value) })}
+          style={styles.range}
+        />
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Recadrage (Crop):</label>
+        <div style={styles.cropControls}>
+          <div style={styles.cropRow}>
+            <label style={styles.cropLabel}>Haut: {element.cropTop || 0}%</label>
+            <input
+              type="range"
+              min="0"
+              max="50"
+              step="1"
+              value={element.cropTop || 0}
+              onChange={(e) => onUpdate({ cropTop: parseInt(e.target.value) })}
+              style={styles.range}
+            />
+          </div>
+          <div style={styles.cropRow}>
+            <label style={styles.cropLabel}>Bas: {element.cropBottom || 0}%</label>
+            <input
+              type="range"
+              min="0"
+              max="50"
+              step="1"
+              value={element.cropBottom || 0}
+              onChange={(e) => onUpdate({ cropBottom: parseInt(e.target.value) })}
+              style={styles.range}
+            />
+          </div>
+          <div style={styles.cropRow}>
+            <label style={styles.cropLabel}>Gauche: {element.cropLeft || 0}%</label>
+            <input
+              type="range"
+              min="0"
+              max="50"
+              step="1"
+              value={element.cropLeft || 0}
+              onChange={(e) => onUpdate({ cropLeft: parseInt(e.target.value) })}
+              style={styles.range}
+            />
+          </div>
+          <div style={styles.cropRow}>
+            <label style={styles.cropLabel}>Droite: {element.cropRight || 0}%</label>
+            <input
+              type="range"
+              min="0"
+              max="50"
+              step="1"
+              value={element.cropRight || 0}
+              onChange={(e) => onUpdate({ cropRight: parseInt(e.target.value) })}
+              style={styles.range}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Forme de masque:</label>
+        <select
+          value={element.maskShape || 'none'}
+          onChange={(e) => onUpdate({ maskShape: e.target.value })}
+          style={styles.select}
+        >
+          <option value="none">Aucun</option>
+          <option value="circle">Cercle</option>
+          <option value="ellipse">Ellipse</option>
+          <option value="rounded">Coins arrondis</option>
+        </select>
+      </div>
+
+      {element.maskShape === 'rounded' && (
+        <div style={styles.group}>
+          <label style={styles.label}>Rayon des coins: {element.borderRadius || 0}px</label>
+          <input
+            type="range"
+            min="0"
+            max="50"
+            step="1"
+            value={element.borderRadius || 0}
+            onChange={(e) => onUpdate({ borderRadius: parseInt(e.target.value) })}
+            style={styles.range}
+          />
+        </div>
+      )}
+
       {/* Real-time Image URL Preview */}
       {sampleData && element.csvColumn && (
         <div style={styles.previewSection}>
@@ -605,6 +753,8 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           </button>
         </div>
       </div>
+
+      {renderTypographyControls()}
 
       <div style={styles.group}>
         <label style={styles.label}>Alignement horizontal:</label>
@@ -756,6 +906,8 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           </button>
         </div>
       </div>
+
+      {renderTypographyControls()}
 
       <div style={styles.group}>
         <label style={styles.label}>Alignement horizontal:</label>
@@ -1318,6 +1470,30 @@ const styles = {
     maxWidth: '100%',
     maxHeight: '200px',
     objectFit: 'contain',
+  },
+  sectionHeader: {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: '15px',
+    marginBottom: '10px',
+    paddingBottom: '5px',
+    borderBottom: '1px solid #ddd',
+  },
+  cropControls: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  cropRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  cropLabel: {
+    fontSize: '11px',
+    fontWeight: 'bold',
+    color: '#555',
   },
 };
 

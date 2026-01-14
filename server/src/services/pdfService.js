@@ -370,6 +370,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       font-weight: ${element.fontWeight || 'normal'};
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
+      line-height: ${element.lineHeight || 1.2};
+      letter-spacing: ${element.letterSpacing || 0}px;
+      text-transform: ${element.textTransform || 'none'};
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
@@ -398,6 +401,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       font-weight: ${element.fontWeight || 'normal'};
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
+      line-height: ${element.lineHeight || 1.2};
+      letter-spacing: ${element.letterSpacing || 0}px;
+      text-transform: ${element.textTransform || 'none'};
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
@@ -430,6 +436,9 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       font-weight: ${element.fontWeight || 'normal'};
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
+      line-height: ${element.lineHeight || 1.2};
+      letter-spacing: ${element.letterSpacing || 0}px;
+      text-transform: ${element.textTransform || 'none'};
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
@@ -471,18 +480,38 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         // Determine block background
         const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
         
+        // Calculate mask shape styles
+        let maskStyles = '';
+        if (element.maskShape === 'circle' || element.maskShape === 'ellipse') {
+          maskStyles = 'border-radius: 50%; overflow: hidden;';
+        } else if (element.maskShape === 'rounded') {
+          maskStyles = `border-radius: ${element.borderRadius || 10}px; overflow: hidden;`;
+        }
+        
         const imageStyle = `
           ${baseStyle}
           display: flex;
           align-items: center;
           justify-content: center;
           background-color: ${blockBgColor};
+          ${maskStyles}
         `;
+        
+        // Calculate cropping
+        const cropTop = element.cropTop || 0;
+        const cropBottom = element.cropBottom || 0;
+        const cropLeft = element.cropLeft || 0;
+        const cropRight = element.cropRight || 0;
+        const clipPath = (cropTop || cropBottom || cropLeft || cropRight) 
+          ? `clip-path: inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%);`
+          : '';
         
         const imgStyle = `
           width: 100%;
           height: 100%;
-          object-fit: contain;
+          object-fit: ${element.fit || 'contain'};
+          transform: rotate(${element.rotation || 0}deg);
+          ${clipPath}
         `;
         
         // Use HTTP URL for browser previews, data URL for PDF generation
@@ -539,18 +568,38 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
           // Determine block background
           const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
           
+          // Calculate mask shape styles
+          let maskStyles = '';
+          if (element.maskShape === 'circle' || element.maskShape === 'ellipse') {
+            maskStyles = 'border-radius: 50%; overflow: hidden;';
+          } else if (element.maskShape === 'rounded') {
+            maskStyles = `border-radius: ${element.borderRadius || 10}px; overflow: hidden;`;
+          }
+          
           const imageStyle = `
             ${baseStyle}
             display: flex;
             align-items: center;
             justify-content: center;
             background-color: ${blockBgColor};
+            ${maskStyles}
           `;
+          
+          // Calculate cropping
+          const cropTop = element.cropTop || 0;
+          const cropBottom = element.cropBottom || 0;
+          const cropLeft = element.cropLeft || 0;
+          const cropRight = element.cropRight || 0;
+          const clipPath = (cropTop || cropBottom || cropLeft || cropRight) 
+            ? `clip-path: inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%);`
+            : '';
           
           const imgStyle = `
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: ${element.fit || 'contain'};
+            transform: rotate(${element.rotation || 0}deg);
+            ${clipPath}
           `;
           
           // Use HTTP URL for browser previews, data URL for PDF generation
@@ -617,8 +666,42 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
 
       // Determine block background
       const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
-      const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'}; background-color: ${blockBgColor};`;
-      return `<img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
+      
+      // Calculate mask shape styles
+      let maskStyles = '';
+      if (element.maskShape === 'circle' || element.maskShape === 'ellipse') {
+        maskStyles = 'border-radius: 50%; overflow: hidden;';
+      } else if (element.maskShape === 'rounded') {
+        maskStyles = `border-radius: ${element.borderRadius || 10}px; overflow: hidden;`;
+      }
+      
+      const wrapperStyle = `
+        ${baseStyle}
+        background-color: ${blockBgColor};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        ${maskStyles}
+      `;
+      
+      // Calculate cropping
+      const cropTop = element.cropTop || 0;
+      const cropBottom = element.cropBottom || 0;
+      const cropLeft = element.cropLeft || 0;
+      const cropRight = element.cropRight || 0;
+      const clipPath = (cropTop || cropBottom || cropLeft || cropRight) 
+        ? `clip-path: inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%);`
+        : '';
+      
+      const imgStyle = `
+        width: 100%;
+        height: 100%;
+        object-fit: ${element.fit || 'contain'};
+        transform: rotate(${element.rotation || 0}deg);
+        ${clipPath}
+      `;
+      
+      return `<div style="${wrapperStyle}"><img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" /></div>`;
     }
     // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
     return '';
