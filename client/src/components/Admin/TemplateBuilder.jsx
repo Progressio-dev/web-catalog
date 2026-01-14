@@ -557,6 +557,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
             <ElementPalette
               csvColumns={csvData?.columns || []}
               onAddElement={handleAddElement}
+              onBackToTemplates={onCancel}
             />
           </div>
 

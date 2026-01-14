@@ -312,6 +312,131 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         </label>
       </div>
 
+      {/* Advanced Typography Controls */}
+      <div style={styles.group}>
+        <label style={styles.label}>Interlignage (line-height):</label>
+        <input
+          type="number"
+          min="0.5"
+          max="3"
+          step="0.1"
+          value={element.lineHeight || 1.2}
+          onChange={(e) => onUpdate({ lineHeight: parseFloat(e.target.value) || 1.2 })}
+          style={styles.input}
+          placeholder="1.2"
+        />
+        <p style={styles.hint}>Espacement entre les lignes (ex: 1.5 = 150%)</p>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Transformation du texte:</label>
+        <select
+          value={element.textTransform || 'none'}
+          onChange={(e) => onUpdate({ textTransform: e.target.value })}
+          style={styles.select}
+        >
+          <option value="none">Normal</option>
+          <option value="uppercase">MAJUSCULES</option>
+          <option value="lowercase">minuscules</option>
+          <option value="capitalize">Première Lettre Majuscule</option>
+        </select>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Espacement des lettres (letter-spacing):</label>
+        <input
+          type="number"
+          min="-5"
+          max="20"
+          step="0.5"
+          value={element.letterSpacing || 0}
+          onChange={(e) => onUpdate({ letterSpacing: parseFloat(e.target.value) || 0 })}
+          style={styles.input}
+          placeholder="0"
+        />
+        <p style={styles.hint}>Espacement entre les lettres en pixels</p>
+      </div>
+
+      {/* Typography Style Presets */}
+      <div style={styles.group}>
+        <label style={styles.label}>Styles prédéfinis:</label>
+        <div style={styles.presetButtons}>
+          <button
+            onClick={() => onUpdate({
+              fontSize: 32,
+              fontWeight: 'bold',
+              lineHeight: 1.2,
+              textTransform: 'none',
+            })}
+            style={styles.presetBtn}
+            title="Titre principal (H1)"
+          >
+            H1
+          </button>
+          <button
+            onClick={() => onUpdate({
+              fontSize: 24,
+              fontWeight: 'bold',
+              lineHeight: 1.3,
+              textTransform: 'none',
+            })}
+            style={styles.presetBtn}
+            title="Sous-titre (H2)"
+          >
+            H2
+          </button>
+          <button
+            onClick={() => onUpdate({
+              fontSize: 18,
+              fontWeight: 'bold',
+              lineHeight: 1.4,
+              textTransform: 'none',
+            })}
+            style={styles.presetBtn}
+            title="Sous-titre niveau 3 (H3)"
+          >
+            H3
+          </button>
+          <button
+            onClick={() => onUpdate({
+              fontSize: 14,
+              fontWeight: 'normal',
+              lineHeight: 1.5,
+              textTransform: 'none',
+            })}
+            style={styles.presetBtn}
+            title="Texte normal (Body)"
+          >
+            Body
+          </button>
+          <button
+            onClick={() => onUpdate({
+              fontSize: 12,
+              fontWeight: 'normal',
+              lineHeight: 1.4,
+              textTransform: 'none',
+            })}
+            style={styles.presetBtn}
+            title="Texte petit (Small)"
+          >
+            Small
+          </button>
+          <button
+            onClick={() => onUpdate({
+              fontSize: 10,
+              fontWeight: 'bold',
+              lineHeight: 1.3,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+            })}
+            style={styles.presetBtn}
+            title="Étiquette (Label)"
+          >
+            Label
+          </button>
+        </div>
+      </div>
+
       {/* Préfixe/Suffixe pour champs CSV */}
       {element.csvColumn && (
         <>
@@ -472,6 +597,108 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           <option value="fill">Remplir</option>
         </select>
       </div>
+
+      {/* Advanced Image Editing */}
+      <div style={styles.group}>
+        <label style={styles.label}>🎨 Édition avancée</label>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Rotation: {element.imageRotation || 0}°</label>
+        <input
+          type="range"
+          min="0"
+          max="360"
+          step="1"
+          value={element.imageRotation || 0}
+          onChange={(e) => onUpdate({ imageRotation: parseInt(e.target.value) || 0 })}
+          style={styles.range}
+        />
+        <div style={styles.buttonGroup}>
+          <button
+            onClick={() => onUpdate({ imageRotation: 0 })}
+            style={styles.toggleBtn}
+          >
+            0°
+          </button>
+          <button
+            onClick={() => onUpdate({ imageRotation: 90 })}
+            style={styles.toggleBtn}
+          >
+            90°
+          </button>
+          <button
+            onClick={() => onUpdate({ imageRotation: 180 })}
+            style={styles.toggleBtn}
+          >
+            180°
+          </button>
+          <button
+            onClick={() => onUpdate({ imageRotation: 270 })}
+            style={styles.toggleBtn}
+          >
+            270°
+          </button>
+        </div>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Position de l'image (crop):</label>
+        <div style={styles.cropControls}>
+          <div style={styles.cropRow}>
+            <label style={styles.cropLabel}>X offset (%):</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={element.imageCropX || 50}
+              onChange={(e) => onUpdate({ imageCropX: parseInt(e.target.value) || 50 })}
+              style={styles.cropInput}
+            />
+          </div>
+          <div style={styles.cropRow}>
+            <label style={styles.cropLabel}>Y offset (%):</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={element.imageCropY || 50}
+              onChange={(e) => onUpdate({ imageCropY: parseInt(e.target.value) || 50 })}
+              style={styles.cropInput}
+            />
+          </div>
+        </div>
+        <p style={styles.hint}>Position du point focal de l'image (50% = centré)</p>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Forme / Masque:</label>
+        <select
+          value={element.imageMask || 'none'}
+          onChange={(e) => onUpdate({ imageMask: e.target.value })}
+          style={styles.select}
+        >
+          <option value="none">Aucun (rectangle)</option>
+          <option value="circle">Cercle</option>
+          <option value="rounded">Coins arrondis</option>
+          <option value="rounded-lg">Coins très arrondis</option>
+        </select>
+      </div>
+
+      {element.imageMask === 'rounded' || element.imageMask === 'rounded-lg' ? (
+        <div style={styles.group}>
+          <label style={styles.label}>Rayon des coins: {element.borderRadius || 0}px</label>
+          <input
+            type="range"
+            min="0"
+            max="50"
+            step="1"
+            value={element.borderRadius || (element.imageMask === 'rounded' ? 10 : 20)}
+            onChange={(e) => onUpdate({ borderRadius: parseInt(e.target.value) || 0 })}
+            style={styles.range}
+          />
+        </div>
+      ) : null}
 
       {/* Real-time Image URL Preview */}
       {sampleData && element.csvColumn && (
@@ -1318,6 +1545,42 @@ const styles = {
     maxWidth: '100%',
     maxHeight: '200px',
     objectFit: 'contain',
+  },
+  presetButtons: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '5px',
+  },
+  presetBtn: {
+    padding: '8px 6px',
+    backgroundColor: 'white',
+    border: '1px solid #ddd',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    fontSize: '11px',
+    fontWeight: 'bold',
+    transition: 'all 0.2s ease',
+  },
+  cropControls: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  cropRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  cropLabel: {
+    fontSize: '11px',
+    minWidth: '80px',
+  },
+  cropInput: {
+    flex: 1,
+    padding: '5px 8px',
+    fontSize: '13px',
+    border: '1px solid #ddd',
+    borderRadius: '3px',
   },
 };
 

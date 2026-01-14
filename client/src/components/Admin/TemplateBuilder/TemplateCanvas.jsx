@@ -396,6 +396,8 @@ const TemplateCanvas = ({
             overflow: 'hidden',
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'rgba(255,255,255,0.9)'),
             boxSizing: 'border-box',
+            lineHeight: element.lineHeight || 1.2,
+            letterSpacing: `${element.letterSpacing || 0}px`,
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
@@ -403,6 +405,7 @@ const TemplateCanvas = ({
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
+            textTransform: element.textTransform || 'none',
           }}>
             {displayText}
           </span>
@@ -414,9 +417,34 @@ const TemplateCanvas = ({
     if (element.type === 'logo' || element.type === 'image') {
       let content;
       
+      // Compute image styles based on transformations
+      const imageRotation = element.imageRotation || 0;
+      const imageMask = element.imageMask || 'none';
+      const imageCropX = element.imageCropX || 50;
+      const imageCropY = element.imageCropY || 50;
+      
+      // Determine border radius based on mask
+      let borderRadiusStyle = '0px';
+      if (imageMask === 'circle') {
+        borderRadiusStyle = '50%';
+      } else if (imageMask === 'rounded') {
+        borderRadiusStyle = `${element.borderRadius || 10}px`;
+      } else if (imageMask === 'rounded-lg') {
+        borderRadiusStyle = `${element.borderRadius || 20}px`;
+      }
+      
+      const imageStyle = {
+        width: '100%',
+        height: '100%',
+        objectFit: element.fit || 'contain',
+        objectPosition: `${imageCropX}% ${imageCropY}%`,
+        transform: `rotate(${imageRotation}deg)`,
+        borderRadius: borderRadiusStyle,
+      };
+      
       // Handle logo element with logoPath
       if (element.type === 'logo' && element.logoPath) {
-        content = <img src={element.logoPath} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+        content = <img src={element.logoPath} alt="logo" style={imageStyle} />;
       }
       // Handle legacy logo format (type: 'image' with source: 'logo')
       else if (element.type === 'image' && element.source === 'logo') {
@@ -440,6 +468,8 @@ const TemplateCanvas = ({
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || '#f0f0f0'),
             fontSize: '12px',
             color: '#666',
+            overflow: 'hidden',
+            borderRadius: borderRadiusStyle,
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
@@ -501,6 +531,8 @@ const TemplateCanvas = ({
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'rgba(255,255,255,0.9)'),
             whiteSpace: 'pre-wrap',
             boxSizing: 'border-box',
+            lineHeight: element.lineHeight || 1.2,
+            letterSpacing: `${element.letterSpacing || 0}px`,
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
@@ -508,6 +540,7 @@ const TemplateCanvas = ({
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
+            textTransform: element.textTransform || 'none',
           }}>
             {element.content || 'Texte libre'}
           </span>
@@ -535,6 +568,8 @@ const TemplateCanvas = ({
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'rgba(255,255,200,0.9)'),
             border: isSelected ? '3px solid #2196F3' : '1px dashed #f90',
             boxSizing: 'border-box',
+            lineHeight: element.lineHeight || 1.2,
+            letterSpacing: `${element.letterSpacing || 0}px`,
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
@@ -542,6 +577,7 @@ const TemplateCanvas = ({
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
+            textTransform: element.textTransform || 'none',
           }}>
             💻 Code JS
           </span>
