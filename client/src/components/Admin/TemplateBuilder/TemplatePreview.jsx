@@ -542,6 +542,29 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
       );
     }
 
+    // Group element - render children recursively
+    if (element.type === 'group') {
+      return (
+        <div
+          key={element.id}
+          style={{
+            ...baseStyle,
+            // Groups are transparent in preview
+          }}
+        >
+          {element.children?.map(child => {
+            // Recursively render children with adjusted positions
+            const childElement = {
+              ...child,
+              x: (element.x || 0) + (child.x || 0),
+              y: (element.y || 0) + (child.y || 0),
+            };
+            return renderPreviewElement(childElement);
+          })}
+        </div>
+      );
+    }
+
     return null;
   }, [displayData, zoom, codeResults, logos, imageUrls, buildImageKey, imageCacheVersion]);
 

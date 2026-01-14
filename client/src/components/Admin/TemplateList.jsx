@@ -51,6 +51,43 @@ const TemplateList = () => {
     }
   };
 
+  const handleExport = async (id, name) => {
+    try {
+      const response = await api.get(`/templates/${id}/export`);
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `template-${name.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('Template exporté avec succès');
+    } catch (error) {
+      console.error('Export template error:', error);
+      toast.error('Erreur lors de l\'export');
+    }
+  };
+
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      await api.post('/templates/import', { templateData: data });
+      toast.success('Template importé avec succès');
+      fetchTemplates();
+      event.target.value = ''; // Reset file input
+    } catch (error) {
+      console.error('Import template error:', error);
+      toast.error('Erreur lors de l\'import: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
   const handleToggleActive = async (template) => {
     try {
       await api.put(`/templates/${template.id}`, {
@@ -100,9 +137,20 @@ const TemplateList = () => {
     <div style={styles.container}>
       <div style={styles.header}>
         <h2 style={styles.title}>Templates</h2>
-        <button onClick={handleNew} style={styles.btnNew}>
-          + Nouveau Template
-        </button>
+        <div style={styles.headerActions}>
+          <label style={styles.btnImport}>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImport}
+              style={{ display: 'none' }}
+            />
+            📥 Importer
+          </label>
+          <button onClick={handleNew} style={styles.btnNew}>
+            + Nouveau Template
+          </button>
+        </div>
       </div>
 
       {templates.length === 0 ? (
@@ -151,6 +199,13 @@ const TemplateList = () => {
                   ✏️ Éditer
                 </button>
                 <button
+                  onClick={() => handleExport(template.id, template.name)}
+                  style={styles.btnSecondary}
+                  title="Exporter ce template en JSON"
+                >
+                  📤 Exporter
+                </button>
+                <button
                   onClick={() => handleDuplicate(template.id)}
                   style={styles.btnSecondary}
                 >
@@ -190,6 +245,21 @@ const styles = {
   title: {
     fontSize: '28px',
     fontWeight: 'bold',
+  },
+  headerActions: {
+    display: 'flex',
+    gap: '10px',
+  },
+  btnImport: {
+    padding: '12px 24px',
+    backgroundColor: '#2196F3',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    display: 'inline-block',
   },
   btnNew: {
     padding: '12px 24px',

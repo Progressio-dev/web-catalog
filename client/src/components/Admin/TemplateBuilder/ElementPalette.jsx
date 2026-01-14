@@ -145,6 +145,27 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
     });
   };
 
+  const addTableElement = () => {
+    onAddElement({
+      type: 'table',
+      width: 180, // mm - full page width minus margins
+      height: 100, // mm
+      columns: [], // Will be configured in properties
+      showHeaders: true,
+      headerBackgroundColor: '#f0f0f0',
+      headerTextColor: '#000000',
+      borderColor: '#000000',
+      borderWidth: 1,
+      cellPadding: 2,
+      fontSize: 10,
+      fontFamily: 'Arial',
+      textAlign: 'left',
+      rowHeight: 8, // mm per row
+      alternateRowColor: false,
+      alternateColor: '#f9f9f9',
+    });
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.section}>
@@ -223,6 +244,10 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
           <button onClick={addJsCodeElement} style={styles.elementBtn}>
             <span style={styles.icon}>💻</span>
             <span>Code JavaScript</span>
+          </button>
+          <button onClick={addTableElement} style={styles.elementBtn}>
+            <span style={styles.icon}>📊</span>
+            <span>Tableau automatique</span>
           </button>
           <button onClick={addImageElement} style={styles.elementBtn}>
             <span style={styles.icon}>📷</span>

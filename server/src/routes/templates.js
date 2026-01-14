@@ -8,7 +8,9 @@ router.use(authMiddleware);
 
 router.get('/', templateController.getTemplates);
 router.get('/:id', templateController.getTemplate);
+router.get('/:id/export', templateController.exportTemplate);
 router.post('/', templateController.createTemplate);
+router.post('/import', templateController.importTemplate);
 router.put('/:id', templateController.updateTemplate);
 router.delete('/:id', templateController.deleteTemplate);
 router.post('/:id/duplicate', templateController.duplicateTemplate);
