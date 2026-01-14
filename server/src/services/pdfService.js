@@ -323,6 +323,21 @@ exports.generatePreviewHtml = async ({ item, template, logos, useHttpUrls = true
 
 // Render a single element
 async function renderElement(element, item, logos, template, useHttpUrls = false, options = {}) {
+  // Helper function to generate vertical alignment CSS
+  const getVerticalAlignmentStyle = (verticalAlign, textAlign) => {
+    if (!verticalAlign) return '';
+    
+    const alignItems = verticalAlign === 'top' ? 'flex-start' 
+      : verticalAlign === 'bottom' ? 'flex-end' 
+      : 'center';
+    
+    const justifyContent = textAlign === 'left' ? 'flex-start' 
+      : textAlign === 'right' ? 'flex-end' 
+      : 'center';
+    
+    return `display: flex; align-items: ${alignItems}; justify-content: ${justifyContent};`;
+  };
+  
   // Elements are stored in mm, use them directly with mm units in CSS
   const baseStyle = `
     position: absolute;
@@ -348,15 +363,6 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     // Determine block background
     const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
     
-    // Calculate vertical alignment CSS
-    const verticalAlignStyle = element.verticalAlign === 'top' 
-      ? 'display: flex; align-items: flex-start; justify-content: ' + (element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center') + ';'
-      : element.verticalAlign === 'bottom'
-      ? 'display: flex; align-items: flex-end; justify-content: ' + (element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center') + ';'
-      : element.verticalAlign === 'middle'
-      ? 'display: flex; align-items: center; justify-content: ' + (element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center') + ';'
-      : '';
-    
     const textStyle = `
       ${baseStyle}
       font-size: ${element.fontSize || 12}px;
@@ -367,7 +373,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
-      ${verticalAlignStyle}
+      ${getVerticalAlignmentStyle(element.verticalAlign, element.textAlign)}
       ${element.wordWrap 
         ? 'white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;' 
         : 'white-space: pre;'}
@@ -385,15 +391,6 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     // Determine block background
     const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
     
-    // Calculate vertical alignment CSS
-    const verticalAlignStyle = element.verticalAlign === 'top' 
-      ? 'display: flex; align-items: flex-start; justify-content: ' + (element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center') + ';'
-      : element.verticalAlign === 'bottom'
-      ? 'display: flex; align-items: flex-end; justify-content: ' + (element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center') + ';'
-      : element.verticalAlign === 'middle'
-      ? 'display: flex; align-items: center; justify-content: ' + (element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center') + ';'
-      : '';
-    
     const textStyle = `
       ${baseStyle}
       font-size: ${element.fontSize || 14}px;
@@ -405,7 +402,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       box-sizing: border-box;
       background-color: ${blockBgColor};
       white-space: pre-wrap;
-      ${verticalAlignStyle}
+      ${getVerticalAlignmentStyle(element.verticalAlign, element.textAlign)}
     `;
     
     const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}`;
@@ -426,15 +423,6 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     // Determine block background
     const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
     
-    // Calculate vertical alignment CSS
-    const verticalAlignStyle = element.verticalAlign === 'top' 
-      ? 'display: flex; align-items: flex-start; justify-content: ' + (element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center') + ';'
-      : element.verticalAlign === 'bottom'
-      ? 'display: flex; align-items: flex-end; justify-content: ' + (element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center') + ';'
-      : element.verticalAlign === 'middle'
-      ? 'display: flex; align-items: center; justify-content: ' + (element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center') + ';'
-      : '';
-    
     const textStyle = `
       ${baseStyle}
       font-size: ${element.fontSize || 14}px;
@@ -445,7 +433,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
-      ${verticalAlignStyle}
+      ${getVerticalAlignmentStyle(element.verticalAlign, element.textAlign)}
     `;
     
     const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}`;
