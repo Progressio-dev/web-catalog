@@ -23,6 +23,8 @@ const TemplateCanvas = ({
   const [resizeStart, setResizeStart] = React.useState({ x: 0, y: 0, width: 0, height: 0 });
   const [mouseDownPos, setMouseDownPos] = React.useState(null);
   const [smartGuides, setSmartGuides] = React.useState({ horizontal: [], vertical: [] });
+  const [dragStartState, setDragStartState] = React.useState(null); // Track initial state for history
+
 
   // Get base page dimensions in mm
   let pageWidth =
@@ -149,6 +151,14 @@ const TemplateCanvas = ({
     
     setMouseDownPos({ x: e.clientX, y: e.clientY });
     setDraggingId(element.id);
+    // Store initial state for history tracking
+    setDragStartState({ 
+      id: element.id, 
+      x: element.x, 
+      y: element.y,
+      width: element.width,
+      height: element.height
+    });
     // Element positions are in mm, convert to px for drag calculations
     const elementXPx = (element.x || 0) * MM_TO_PX;
     const elementYPx = (element.y || 0) * MM_TO_PX;
@@ -163,6 +173,14 @@ const TemplateCanvas = ({
     setMouseDownPos({ x: e.clientX, y: e.clientY });
     setResizingId(element.id);
     setResizeHandle(handle);
+    // Store initial state for history tracking
+    setDragStartState({ 
+      id: element.id, 
+      x: element.x, 
+      y: element.y,
+      width: element.width,
+      height: element.height
+    });
     // Element dimensions are in mm, convert to px for resize calculations
     const widthPx = (element.width || 0) * MM_TO_PX;
     const heightPx = (element.height || 0) * MM_TO_PX;
@@ -203,7 +221,7 @@ const TemplateCanvas = ({
       onUpdateElement(draggingId, {
         x: Math.max(0, Math.min(newXMm, maxXMm)),
         y: Math.max(0, Math.min(newYMm, maxYMm)),
-      });
+      }, true); // Skip history during drag
     } else if (resizingId) {
       const dx = e.clientX - resizeStart.x;
       const dy = e.clientY - resizeStart.y;
@@ -265,17 +283,40 @@ const TemplateCanvas = ({
           break;
       }
 
-      onUpdateElement(resizingId, updates);
+      onUpdateElement(resizingId, updates, true); // Skip history during resize
     }
   };
 
   const handleMouseUp = (e) => {
+    // When drag/resize ends, push final state to history (one entry for the whole operation)
+    if (dragStartState && (draggingId || resizingId)) {
+      const elementId = draggingId || resizingId;
+      const currentElement = elements.find(el => el.id === elementId);
+      
+      // Only push to history if the element actually changed
+      if (currentElement && (
+        currentElement.x !== dragStartState.x ||
+        currentElement.y !== dragStartState.y ||
+        currentElement.width !== dragStartState.width ||
+        currentElement.height !== dragStartState.height
+      )) {
+        // Call onUpdateElement without skipHistory to add the final state to history
+        onUpdateElement(elementId, {
+          x: currentElement.x,
+          y: currentElement.y,
+          width: currentElement.width,
+          height: currentElement.height,
+        }, false); // Don't skip history - save this final state
+      }
+    }
+    
     // End drag/resize but KEEP the selection
     // Selection was already set in handleMouseDown
     setDraggingId(null);
     setResizingId(null);
     setResizeHandle(null);
     setMouseDownPos(null);
+    setDragStartState(null);
     // Clear smart guides when drag ends
     setSmartGuides({ horizontal: [], vertical: [] });
   };

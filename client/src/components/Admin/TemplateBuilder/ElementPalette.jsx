@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { logoAPI } from '../../../services/api';
 import { toast } from 'react-toastify';
 
-const ElementPalette = ({ csvColumns, onAddElement, onBackToTemplates }) => {
+const ElementPalette = ({ csvColumns, onAddElement }) => {
   const [logos, setLogos] = useState([]);
   const [selectedLogoId, setSelectedLogoId] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -168,14 +168,6 @@ const ElementPalette = ({ csvColumns, onAddElement, onBackToTemplates }) => {
 
   return (
     <div style={styles.container}>
-      {onBackToTemplates && (
-        <div style={styles.section}>
-          <button onClick={onBackToTemplates} style={styles.backButton}>
-            <span style={styles.icon}>📋</span>
-            <span>Templates</span>
-          </button>
-        </div>
-      )}
       <div style={styles.section}>
         <h4 style={styles.sectionTitle}>Colonnes CSV</h4>
         <div style={styles.columnList}>
@@ -370,21 +362,6 @@ const styles = {
     border: '1px solid #ddd',
     borderRadius: '5px',
     backgroundColor: 'white',
-  },
-  backButton: {
-    padding: '12px',
-    backgroundColor: '#2196F3',
-    color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    fontSize: '14px',
-    fontWeight: '600',
-    justifyContent: 'center',
-    width: '100%',
   },
 };
 

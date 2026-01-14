@@ -319,12 +319,12 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     }
   };
 
-  const handleUpdateElement = (id, updates) => {
+  const handleUpdateElement = (id, updates, skipHistory = false) => {
     let nextElements = [];
     updateElements((prev) => {
       nextElements = prev.map(el => el.id === id ? { ...el, ...updates } : el);
       return nextElements;
-    });
+    }, skipHistory);
     if (selectedElement?.id === id && nextElements.length) {
       setSelectedElement(nextElements.find((el) => el.id === id) || null);
     }
@@ -557,7 +557,6 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
             <ElementPalette
               csvColumns={csvData?.columns || []}
               onAddElement={handleAddElement}
-              onBackToTemplates={onCancel}
             />
           </div>
 

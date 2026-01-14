@@ -444,6 +444,23 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
     if (element.type === 'image') {
       const refValue = displayData?.[element.csvColumn];
       const imageUrl = refValue ? imageUrls[buildImageKey(element, refValue)] : null;
+      
+      // Get image transformation settings
+      const imageRotation = element.imageRotation || 0;
+      const imageMask = element.imageMask || 'none';
+      const imageCropX = element.imageCropX || 50;
+      const imageCropY = element.imageCropY || 50;
+      
+      // Determine border radius based on mask
+      let borderRadius = '0';
+      if (imageMask === 'circle') {
+        borderRadius = '50%';
+      } else if (imageMask === 'rounded') {
+        borderRadius = `${(element.borderRadius || 10) * zoom}px`;
+      } else if (imageMask === 'rounded-lg') {
+        borderRadius = `${(element.borderRadius || 20) * zoom}px`;
+      }
+      
       return (
         <div
           key={element.id}
@@ -455,13 +472,21 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || '#f0f0f0'),
             fontSize: '10px',
             color: '#999',
+            overflow: 'hidden',
+            borderRadius: borderRadius,
           }}
         >
           {imageUrl ? (
             <img
               src={imageUrl}
               alt={refValue || 'Image produit'}
-              style={{ width: '100%', height: '100%', objectFit: element.fit || 'contain' }}
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                objectFit: element.fit || 'contain',
+                objectPosition: `${imageCropX}% ${imageCropY}%`,
+                transform: `rotate(${imageRotation}deg)`,
+              }}
               onError={(e) => {
                 console.error('Erreur de chargement image produit', imageUrl);
                 e.target.style.opacity = '0';
