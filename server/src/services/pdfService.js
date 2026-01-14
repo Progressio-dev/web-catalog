@@ -407,7 +407,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       letter-spacing: ${element.letterSpacing || 0}px;
     `;
     
-    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''} text-transform: ${element.textTransform || 'none'};`;
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%; ${element.highlightEnabled ? 'background-color: ' + (element.highlightColor || '#FFFF00') + '; ' : ''}text-transform: ${element.textTransform || 'none'};`;
     
     return `<div style="${textStyle}"><span style="${innerSpanStyle}">${content}</span></div>`;
   }
@@ -434,7 +434,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       letter-spacing: ${element.letterSpacing || 0}px;
     `;
     
-    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''} text-transform: ${element.textTransform || 'none'};`;
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%; ${element.highlightEnabled ? 'background-color: ' + (element.highlightColor || '#FFFF00') + '; ' : ''}text-transform: ${element.textTransform || 'none'};`;
     
     return `<div style="${textStyle}"><span style="${innerSpanStyle}">${content}</span></div>`;
   }
@@ -467,7 +467,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       letter-spacing: ${element.letterSpacing || 0}px;
     `;
     
-    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''} text-transform: ${element.textTransform || 'none'};`;
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%; ${element.highlightEnabled ? 'background-color: ' + (element.highlightColor || '#FFFF00') + '; ' : ''}text-transform: ${element.textTransform || 'none'};`;
     
     return `<div style="${textStyle}"><span style="${innerSpanStyle}">${result}</span></div>`;
   }
