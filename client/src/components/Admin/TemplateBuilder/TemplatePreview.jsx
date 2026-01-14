@@ -289,12 +289,15 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             overflow: 'hidden',
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
             boxSizing: 'border-box',
+            lineHeight: element.lineHeight || 1.2,
+            letterSpacing: `${(element.letterSpacing || 0) * zoom}px`,
           }}
         >
           <span style={{
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
+            textTransform: element.textTransform || 'none',
           }}>
             {content}
           </span>
@@ -322,11 +325,29 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           // Relative path without /uploads/ - add it
           logoUrl = `/uploads/${logoPath}`;
         }
+        
+        // Get image transformation settings
+        const imageRotation = element.imageRotation || 0;
+        const imageMask = element.imageMask || 'none';
+        const imageCropX = element.imageCropX || 50;
+        const imageCropY = element.imageCropY || 50;
+        
+        // Determine border radius based on mask
+        let borderRadius = '0';
+        if (imageMask === 'circle') {
+          borderRadius = '50%';
+        } else if (imageMask === 'rounded') {
+          borderRadius = `${(element.borderRadius || 10) * zoom}px`;
+        } else if (imageMask === 'rounded-lg') {
+          borderRadius = `${(element.borderRadius || 20) * zoom}px`;
+        }
           
         return (
           <div key={element.id} style={{
             ...baseStyle,
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
+            overflow: 'hidden',
+            borderRadius: borderRadius,
           }}>
             <img 
               src={logoUrl}
@@ -334,7 +355,9 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
               style={{
                 width: '100%',
                 height: '100%',
-                objectFit: 'contain'
+                objectFit: element.fit || 'contain',
+                objectPosition: `${imageCropX}% ${imageCropY}%`,
+                transform: `rotate(${imageRotation}deg)`,
               }}
               onError={(e) => {
                 console.error('Logo load error:', logoUrl, 'Original path:', logoPath);
@@ -497,12 +520,15 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             overflow: 'hidden',
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
             boxSizing: 'border-box',
+            lineHeight: element.lineHeight || 1.2,
+            letterSpacing: `${(element.letterSpacing || 0) * zoom}px`,
           }}
         >
           <span style={{
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
+            textTransform: element.textTransform || 'none',
           }}>
             {element.content || 'Texte libre'}
           </span>
@@ -529,12 +555,15 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
             overflow: 'hidden',
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
             boxSizing: 'border-box',
+            lineHeight: element.lineHeight || 1.2,
+            letterSpacing: `${(element.letterSpacing || 0) * zoom}px`,
           }}
         >
           <span style={{
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
+            textTransform: element.textTransform || 'none',
           }}>
             {result}
           </span>
