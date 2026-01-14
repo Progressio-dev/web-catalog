@@ -275,12 +275,14 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           key={element.id}
           style={{
             ...baseStyle,
+            display: 'flex',
+            alignItems: element.verticalAlign === 'top' ? 'flex-start' : element.verticalAlign === 'bottom' ? 'flex-end' : 'center',
+            justifyContent: element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center',
             fontSize: `${(element.fontSize || 12) * zoom}px`,
             fontFamily: element.fontFamily,
             fontWeight: element.fontWeight,
             fontStyle: element.fontStyle,
             color: element.color,
-            textAlign: element.textAlign,
             padding: `${4 * zoom}px`,
             wordWrap: element.wordWrap ? 'break-word' : 'normal',
             whiteSpace: element.wordWrap ? 'pre-wrap' : 'pre',
@@ -290,7 +292,9 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           }}
         >
           <span style={{
-            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent'
+            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
+            textAlign: element.textAlign,
+            width: '100%',
           }}>
             {content}
           </span>
@@ -480,12 +484,14 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           key={element.id}
           style={{
             ...baseStyle,
+            display: 'flex',
+            alignItems: element.verticalAlign === 'top' ? 'flex-start' : element.verticalAlign === 'bottom' ? 'flex-end' : 'center',
+            justifyContent: element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center',
             fontSize: `${(element.fontSize || 14) * zoom}px`,
             fontFamily: element.fontFamily,
             fontWeight: element.fontWeight,
             fontStyle: element.fontStyle,
             color: element.color,
-            textAlign: element.textAlign,
             padding: `${4 * zoom}px`,
             whiteSpace: 'pre-wrap',
             overflow: 'hidden',
@@ -494,7 +500,9 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           }}
         >
           <span style={{
-            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent'
+            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
+            textAlign: element.textAlign,
+            width: '100%',
           }}>
             {element.content || 'Texte libre'}
           </span>
@@ -509,12 +517,14 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           key={element.id}
           style={{
             ...baseStyle,
+            display: 'flex',
+            alignItems: element.verticalAlign === 'top' ? 'flex-start' : element.verticalAlign === 'bottom' ? 'flex-end' : 'center',
+            justifyContent: element.textAlign === 'left' ? 'flex-start' : element.textAlign === 'right' ? 'flex-end' : 'center',
             fontSize: `${(element.fontSize || 14) * zoom}px`,
             fontFamily: element.fontFamily,
             fontWeight: element.fontWeight,
             fontStyle: element.fontStyle,
             color: element.color,
-            textAlign: element.textAlign,
             padding: `${4 * zoom}px`,
             overflow: 'hidden',
             backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
@@ -522,7 +532,9 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           }}
         >
           <span style={{
-            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent'
+            backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
+            textAlign: element.textAlign,
+            width: '100%',
           }}>
             {result}
           </span>

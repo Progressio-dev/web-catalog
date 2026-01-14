@@ -323,6 +323,21 @@ exports.generatePreviewHtml = async ({ item, template, logos, useHttpUrls = true
 
 // Render a single element
 async function renderElement(element, item, logos, template, useHttpUrls = false, options = {}) {
+  // Helper function to generate vertical alignment CSS
+  const getVerticalAlignmentStyle = (verticalAlign, textAlign) => {
+    if (!verticalAlign) return '';
+    
+    const alignItems = verticalAlign === 'top' ? 'flex-start' 
+      : verticalAlign === 'bottom' ? 'flex-end' 
+      : 'center';
+    
+    const justifyContent = textAlign === 'left' ? 'flex-start' 
+      : textAlign === 'right' ? 'flex-end' 
+      : 'center';
+    
+    return `display: flex; align-items: ${alignItems}; justify-content: ${justifyContent};`;
+  };
+  
   // Elements are stored in mm, use them directly with mm units in CSS
   const baseStyle = `
     position: absolute;
@@ -355,23 +370,19 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       font-weight: ${element.fontWeight || 'normal'};
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
-      text-align: ${element.textAlign || 'left'};
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
+      ${getVerticalAlignmentStyle(element.verticalAlign, element.textAlign)}
       ${element.wordWrap 
         ? 'white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;' 
         : 'white-space: pre;'}
       text-decoration: ${element.textDecoration || 'none'};
     `;
     
-    // Apply highlight if enabled
-    if (element.highlightEnabled) {
-      const highlightColor = element.highlightColor || '#FFFF00';
-      return `<div style="${textStyle}"><span style="background-color: ${highlightColor};">${content}</span></div>`;
-    }
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}`;
     
-    return `<div style="${textStyle}">${content}</div>`;
+    return `<div style="${textStyle}"><span style="${innerSpanStyle}">${content}</span></div>`;
   }
 
   if (element.type === 'freeText') {
@@ -387,20 +398,16 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       font-weight: ${element.fontWeight || 'normal'};
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
-      text-align: ${element.textAlign || 'left'};
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
       white-space: pre-wrap;
+      ${getVerticalAlignmentStyle(element.verticalAlign, element.textAlign)}
     `;
     
-    // Apply highlight if enabled
-    if (element.highlightEnabled) {
-      const highlightColor = element.highlightColor || '#FFFF00';
-      return `<div style="${textStyle}"><span style="background-color: ${highlightColor};">${content}</span></div>`;
-    }
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}`;
     
-    return `<div style="${textStyle}">${content}</div>`;
+    return `<div style="${textStyle}"><span style="${innerSpanStyle}">${content}</span></div>`;
   }
 
   if (element.type === 'jsCode') {
@@ -423,19 +430,15 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       font-weight: ${element.fontWeight || 'normal'};
       font-style: ${element.fontStyle || 'normal'};
       color: ${element.color || '#000000'};
-      text-align: ${element.textAlign || 'left'};
       padding: 4px;
       box-sizing: border-box;
       background-color: ${blockBgColor};
+      ${getVerticalAlignmentStyle(element.verticalAlign, element.textAlign)}
     `;
     
-    // Apply highlight if enabled
-    if (element.highlightEnabled) {
-      const highlightColor = element.highlightColor || '#FFFF00';
-      return `<div style="${textStyle}"><span style="background-color: ${highlightColor};">${result}</span></div>`;
-    }
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}`;
     
-    return `<div style="${textStyle}">${result}</div>`;
+    return `<div style="${textStyle}"><span style="${innerSpanStyle}">${result}</span></div>`;
   }
 
   if (element.type === 'logo') {
