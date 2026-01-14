@@ -199,3 +199,97 @@ exports.duplicateTemplate = async (req, res) => {
     res.status(500).json({ error: 'Échec de la duplication du template' });
   }
 };
+
+// Export template
+exports.exportTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const template = await dbGet('SELECT * FROM templates WHERE id = ?', [id]);
+    
+    if (!template) {
+      return res.status(404).json({ error: 'Template non trouvé' });
+    }
+
+    // Create export object with all necessary data
+    const exportData = {
+      version: '2.0',
+      exportDate: new Date().toISOString(),
+      template: {
+        name: template.name,
+        config: template.config,
+        page_format: template.page_format,
+        page_orientation: template.page_orientation,
+        page_width: template.page_width,
+        page_height: template.page_height,
+        csv_separator: template.csv_separator,
+        background_color: template.background_color,
+      }
+    };
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="template-${template.name.replace(/[^a-zA-Z0-9]/g, '-')}-${Date.now()}.json"`);
+    
+    res.json(exportData);
+  } catch (error) {
+    console.error('Export template error:', error);
+    res.status(500).json({ error: 'Échec de l\'export du template' });
+  }
+};
+
+// Import template
+exports.importTemplate = async (req, res) => {
+  try {
+    const { templateData } = req.body;
+
+    if (!templateData) {
+      return res.status(400).json({ error: 'Données du template manquantes' });
+    }
+
+    let data;
+    try {
+      // Parse if it's a string
+      data = typeof templateData === 'string' ? JSON.parse(templateData) : templateData;
+    } catch (parseError) {
+      return res.status(400).json({ error: 'Format JSON invalide' });
+    }
+
+    // Validate structure
+    if (!data.template || !data.template.name || !data.template.config) {
+      return res.status(400).json({ error: 'Structure du template invalide' });
+    }
+
+    const { template } = data;
+
+    // Ensure config is a string
+    const configJson = typeof template.config === 'string' 
+      ? template.config 
+      : JSON.stringify(template.config);
+
+    // Create new template from imported data
+    const result = await dbRun(
+      `INSERT INTO templates (
+        name, config, page_format, page_orientation, 
+        page_width, page_height, csv_separator, background_color
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        `${template.name} (Importé)`,
+        configJson,
+        template.page_format || 'A4',
+        template.page_orientation || 'portrait',
+        template.page_width,
+        template.page_height,
+        template.csv_separator || ',',
+        template.background_color || '#FFFFFF'
+      ]
+    );
+
+    const newTemplate = await dbGet('SELECT * FROM templates WHERE id = ?', [result.lastID]);
+    
+    res.status(201).json(newTemplate);
+  } catch (error) {
+    console.error('Import template error:', error);
+    res.status(500).json({ error: 'Échec de l\'import du template' });
+  }
+};

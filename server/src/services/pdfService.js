@@ -654,6 +654,97 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     return `<div style="${rectStyle}"></div>`;
   }
 
+  // Group element - recursively render children
+  if (element.type === 'group') {
+    const children = element.children || [];
+    const childrenHtml = await Promise.all(
+      children.map(async (child) => {
+        // Adjust child position to be relative to group
+        const absoluteChild = {
+          ...child,
+          x: (element.x || 0) + (child.x || 0),
+          y: (element.y || 0) + (child.y || 0),
+        };
+        return await renderElement(absoluteChild, item, logos, template, useHttpUrls, options);
+      })
+    );
+    return childrenHtml.join('');
+  }
+
+  // Table element - render data as HTML table
+  if (element.type === 'table') {
+    const columns = element.columns || [];
+    if (columns.length === 0) {
+      return ''; // No columns configured
+    }
+
+    const thStyle = `
+      border: ${element.borderWidth || 1}px solid ${element.borderColor || '#000'};
+      padding: ${element.cellPadding || 2}mm;
+      background-color: ${element.headerBackgroundColor || '#f0f0f0'};
+      color: ${element.headerTextColor || '#000'};
+      text-align: ${element.textAlign || 'left'};
+      font-size: ${element.fontSize || 10}px;
+      font-family: ${element.fontFamily || 'Arial'}, sans-serif;
+      font-weight: bold;
+    `;
+
+    const tdStyle = (rowIdx) => `
+      border: ${element.borderWidth || 1}px solid ${element.borderColor || '#000'};
+      padding: ${element.cellPadding || 2}mm;
+      text-align: ${element.textAlign || 'left'};
+      font-size: ${element.fontSize || 10}px;
+      font-family: ${element.fontFamily || 'Arial'}, sans-serif;
+      background-color: ${
+        element.alternateRowColor && rowIdx % 2 === 1 
+          ? (element.alternateColor || '#f9f9f9') 
+          : 'white'
+      };
+    `;
+
+    const tableStyle = `
+      position: absolute;
+      left: ${element.x || 0}mm;
+      top: ${element.y || 0}mm;
+      width: ${element.width || 'auto'}mm;
+      border-collapse: collapse;
+      background-color: white;
+    `;
+
+    // Note: For multi-item PDF generation, we render only the current item's row
+    // For full table rendering with all data, this would need to be adapted
+    const headerRow = element.showHeaders ? `
+      <thead>
+        <tr>
+          ${columns.map(col => `
+            <th style="${thStyle}">
+              ${col.label || col.csvColumn || ''}
+            </th>
+          `).join('')}
+        </tr>
+      </thead>
+    ` : '';
+
+    const dataRow = `
+      <tbody>
+        <tr>
+          ${columns.map((col, idx) => `
+            <td style="${tdStyle(0)}">
+              ${item[col.csvColumn] || ''}
+            </td>
+          `).join('')}
+        </tr>
+      </tbody>
+    `;
+
+    return `
+      <table style="${tableStyle}">
+        ${headerRow}
+        ${dataRow}
+      </table>
+    `;
+  }
+
   return '';
 }
 
