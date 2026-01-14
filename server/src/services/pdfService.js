@@ -338,6 +338,31 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     return `display: flex; align-items: ${alignItems}; justify-content: ${justifyContent};`;
   };
   
+  // Helper function to get image transformation properties
+  const getImageTransformProps = (element) => {
+    const imageRotation = element.imageRotation || 0;
+    const imageMask = element.imageMask || 'none';
+    const imageCropX = element.imageCropX || 50;
+    const imageCropY = element.imageCropY || 50;
+    
+    // Determine border radius based on mask
+    let borderRadius = '0';
+    if (imageMask === 'circle') {
+      borderRadius = '50%';
+    } else if (imageMask === 'rounded') {
+      borderRadius = `${element.borderRadius || 10}px`;
+    } else if (imageMask === 'rounded-lg') {
+      borderRadius = `${element.borderRadius || 20}px`;
+    }
+    
+    return {
+      rotation: imageRotation,
+      cropX: imageCropX,
+      cropY: imageCropY,
+      borderRadius: borderRadius,
+    };
+  };
+  
   // Elements are stored in mm, use them directly with mm units in CSS
   const baseStyle = `
     position: absolute;
@@ -382,7 +407,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       letter-spacing: ${element.letterSpacing || 0}px;
     `;
     
-    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}text-transform: ${element.textTransform || 'none'};`;
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''} text-transform: ${element.textTransform || 'none'};`;
     
     return `<div style="${textStyle}"><span style="${innerSpanStyle}">${content}</span></div>`;
   }
@@ -409,7 +434,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       letter-spacing: ${element.letterSpacing || 0}px;
     `;
     
-    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}text-transform: ${element.textTransform || 'none'};`;
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''} text-transform: ${element.textTransform || 'none'};`;
     
     return `<div style="${textStyle}"><span style="${innerSpanStyle}">${content}</span></div>`;
   }
@@ -442,7 +467,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       letter-spacing: ${element.letterSpacing || 0}px;
     `;
     
-    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}text-transform: ${element.textTransform || 'none'};`;
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''} text-transform: ${element.textTransform || 'none'};`;
     
     return `<div style="${textStyle}"><span style="${innerSpanStyle}">${result}</span></div>`;
   }
@@ -477,21 +502,8 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         // Determine block background
         const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
         
-        // Get image transformation settings
-        const imageRotation = element.imageRotation || 0;
-        const imageMask = element.imageMask || 'none';
-        const imageCropX = element.imageCropX || 50;
-        const imageCropY = element.imageCropY || 50;
-        
-        // Determine border radius based on mask
-        let borderRadius = '0';
-        if (imageMask === 'circle') {
-          borderRadius = '50%';
-        } else if (imageMask === 'rounded') {
-          borderRadius = `${element.borderRadius || 10}px`;
-        } else if (imageMask === 'rounded-lg') {
-          borderRadius = `${element.borderRadius || 20}px`;
-        }
+        // Get image transformation settings using helper
+        const { rotation, cropX, cropY, borderRadius } = getImageTransformProps(element);
         
         const imageStyle = `
           ${baseStyle}
@@ -507,8 +519,8 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
           width: 100%;
           height: 100%;
           object-fit: ${element.fit || 'contain'};
-          object-position: ${imageCropX}% ${imageCropY}%;
-          transform: rotate(${imageRotation}deg);
+          object-position: ${cropX}% ${cropY}%;
+          transform: rotate(${rotation}deg);
         `;
         
         // Use HTTP URL for browser previews, data URL for PDF generation
@@ -641,25 +653,12 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         }
       }
 
-      // Get image transformation settings
-      const imageRotation = element.imageRotation || 0;
-      const imageMask = element.imageMask || 'none';
-      const imageCropX = element.imageCropX || 50;
-      const imageCropY = element.imageCropY || 50;
-      
-      // Determine border radius based on mask
-      let borderRadius = '0';
-      if (imageMask === 'circle') {
-        borderRadius = '50%';
-      } else if (imageMask === 'rounded') {
-        borderRadius = `${element.borderRadius || 10}px`;
-      } else if (imageMask === 'rounded-lg') {
-        borderRadius = `${element.borderRadius || 20}px`;
-      }
+      // Get image transformation settings using helper
+      const { rotation, cropX, cropY, borderRadius } = getImageTransformProps(element);
 
       // Determine block background
       const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
-      const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'}; object-position: ${imageCropX}% ${imageCropY}%; transform: rotate(${imageRotation}deg); background-color: ${blockBgColor}; border-radius: ${borderRadius}; overflow: hidden;`;
+      const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'}; object-position: ${cropX}% ${cropY}%; transform: rotate(${rotation}deg); background-color: ${blockBgColor}; border-radius: ${borderRadius}; overflow: hidden;`;
       return `<img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
     }
     // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
