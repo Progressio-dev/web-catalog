@@ -424,11 +424,12 @@ const TemplateCanvas = ({
       const cropRight = element.cropRight || 0;
       
       // Calculate mask shape
+      // Note: Both circle and ellipse use 50% border-radius.
+      // The actual shape depends on the element's width/height ratio:
+      // - Square elements (width === height) appear as circles
+      // - Rectangular elements appear as ellipses
       let maskStyle = {};
-      if (element.maskShape === 'circle') {
-        maskStyle.borderRadius = '50%';
-        maskStyle.overflow = 'hidden';
-      } else if (element.maskShape === 'ellipse') {
+      if (element.maskShape === 'circle' || element.maskShape === 'ellipse') {
         maskStyle.borderRadius = '50%';
         maskStyle.overflow = 'hidden';
       } else if (element.maskShape === 'rounded') {

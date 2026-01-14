@@ -340,6 +340,10 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
   
   // Helper function to calculate image mask styles
   const getMaskStyles = (element) => {
+    // Note: Both circle and ellipse use 50% border-radius.
+    // The actual shape will depend on the element's width/height ratio:
+    // - Square elements (width === height) will appear as circles
+    // - Rectangular elements will appear as ellipses
     if (element.maskShape === 'circle' || element.maskShape === 'ellipse') {
       return 'border-radius: 50%; overflow: hidden;';
     } else if (element.maskShape === 'rounded') {
