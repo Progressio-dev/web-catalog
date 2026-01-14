@@ -378,9 +378,11 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         ? 'white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;' 
         : 'white-space: pre;'}
       text-decoration: ${element.textDecoration || 'none'};
+      line-height: ${element.lineHeight || 1.2};
+      letter-spacing: ${element.letterSpacing || 0}px;
     `;
     
-    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}`;
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}text-transform: ${element.textTransform || 'none'};`;
     
     return `<div style="${textStyle}"><span style="${innerSpanStyle}">${content}</span></div>`;
   }
@@ -403,9 +405,11 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       background-color: ${blockBgColor};
       white-space: pre-wrap;
       ${getVerticalAlignmentStyle(element.verticalAlign, element.textAlign)}
+      line-height: ${element.lineHeight || 1.2};
+      letter-spacing: ${element.letterSpacing || 0}px;
     `;
     
-    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}`;
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}text-transform: ${element.textTransform || 'none'};`;
     
     return `<div style="${textStyle}"><span style="${innerSpanStyle}">${content}</span></div>`;
   }
@@ -434,9 +438,11 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       box-sizing: border-box;
       background-color: ${blockBgColor};
       ${getVerticalAlignmentStyle(element.verticalAlign, element.textAlign)}
+      line-height: ${element.lineHeight || 1.2};
+      letter-spacing: ${element.letterSpacing || 0}px;
     `;
     
-    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}`;
+    const innerSpanStyle = `text-align: ${element.textAlign || 'left'}; width: 100%;${element.highlightEnabled ? ' background-color: ' + (element.highlightColor || '#FFFF00') + ';' : ''}text-transform: ${element.textTransform || 'none'};`;
     
     return `<div style="${textStyle}"><span style="${innerSpanStyle}">${result}</span></div>`;
   }
@@ -471,18 +477,38 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         // Determine block background
         const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
         
+        // Get image transformation settings
+        const imageRotation = element.imageRotation || 0;
+        const imageMask = element.imageMask || 'none';
+        const imageCropX = element.imageCropX || 50;
+        const imageCropY = element.imageCropY || 50;
+        
+        // Determine border radius based on mask
+        let borderRadius = '0';
+        if (imageMask === 'circle') {
+          borderRadius = '50%';
+        } else if (imageMask === 'rounded') {
+          borderRadius = `${element.borderRadius || 10}px`;
+        } else if (imageMask === 'rounded-lg') {
+          borderRadius = `${element.borderRadius || 20}px`;
+        }
+        
         const imageStyle = `
           ${baseStyle}
           display: flex;
           align-items: center;
           justify-content: center;
           background-color: ${blockBgColor};
+          overflow: hidden;
+          border-radius: ${borderRadius};
         `;
         
         const imgStyle = `
           width: 100%;
           height: 100%;
-          object-fit: contain;
+          object-fit: ${element.fit || 'contain'};
+          object-position: ${imageCropX}% ${imageCropY}%;
+          transform: rotate(${imageRotation}deg);
         `;
         
         // Use HTTP URL for browser previews, data URL for PDF generation
@@ -615,9 +641,25 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         }
       }
 
+      // Get image transformation settings
+      const imageRotation = element.imageRotation || 0;
+      const imageMask = element.imageMask || 'none';
+      const imageCropX = element.imageCropX || 50;
+      const imageCropY = element.imageCropY || 50;
+      
+      // Determine border radius based on mask
+      let borderRadius = '0';
+      if (imageMask === 'circle') {
+        borderRadius = '50%';
+      } else if (imageMask === 'rounded') {
+        borderRadius = `${element.borderRadius || 10}px`;
+      } else if (imageMask === 'rounded-lg') {
+        borderRadius = `${element.borderRadius || 20}px`;
+      }
+
       // Determine block background
       const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
-      const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'}; background-color: ${blockBgColor};`;
+      const imgStyle = `${baseStyle} object-fit: ${element.fit || 'contain'}; object-position: ${imageCropX}% ${imageCropY}%; transform: rotate(${imageRotation}deg); background-color: ${blockBgColor}; border-radius: ${borderRadius}; overflow: hidden;`;
       return `<img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" />`;
     }
     // Return empty string if no valid image URL could be built (e.g., missing CSV column data)
