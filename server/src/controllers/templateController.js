@@ -247,8 +247,13 @@ exports.importTemplate = async (req, res) => {
       return res.status(400).json({ error: 'Données du template manquantes' });
     }
 
-    // Parse if it's a string
-    const data = typeof templateData === 'string' ? JSON.parse(templateData) : templateData;
+    let data;
+    try {
+      // Parse if it's a string
+      data = typeof templateData === 'string' ? JSON.parse(templateData) : templateData;
+    } catch (parseError) {
+      return res.status(400).json({ error: 'Format JSON invalide' });
+    }
 
     // Validate structure
     if (!data.template || !data.template.name || !data.template.config) {

@@ -603,8 +603,8 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
                 </button>
                 <button
                   onClick={handleGroupElements}
-                  disabled={selectedElements.length < 2 && (!selectedElement || selectedElements.length === 0)}
-                  style={{ ...styles.btnSecondary, ...((selectedElements.length < 2 && (!selectedElement || selectedElements.length === 0)) ? styles.btnDisabled : {}) }}
+                  disabled={selectedElements.length < 2}
+                  style={{ ...styles.btnSecondary, ...(selectedElements.length < 2 ? styles.btnDisabled : {}) }}
                   title="Grouper les éléments sélectionnés"
                 >
                   📦 Grouper

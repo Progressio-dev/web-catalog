@@ -84,7 +84,7 @@ const TemplateList = () => {
       event.target.value = ''; // Reset file input
     } catch (error) {
       console.error('Import template error:', error);
-      toast.error('Erreur lors de l\'import: ' + (error.response?.data?.error || error.message));
+      toast.error('Erreur lors de l\'import du template');
     }
   };
 

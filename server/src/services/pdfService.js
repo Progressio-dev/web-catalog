@@ -678,12 +678,6 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       return ''; // No columns configured
     }
 
-    const tableStyle = `
-      ${baseStyle}
-      background-color: white;
-      border-collapse: collapse;
-    `;
-
     const thStyle = `
       border: ${element.borderWidth || 1}px solid ${element.borderColor || '#000'};
       padding: ${element.cellPadding || 2}mm;
@@ -706,6 +700,15 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
           ? (element.alternateColor || '#f9f9f9') 
           : 'white'
       };
+    `;
+
+    const tableStyle = `
+      position: absolute;
+      left: ${element.x || 0}mm;
+      top: ${element.y || 0}mm;
+      width: ${element.width || 'auto'}mm;
+      border-collapse: collapse;
+      background-color: white;
     `;
 
     // Note: For multi-item PDF generation, we render only the current item's row
@@ -735,12 +738,10 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     `;
 
     return `
-      <div style="${tableStyle}">
-        <table style="width: 100%; border-collapse: collapse;">
-          ${headerRow}
-          ${dataRow}
-        </table>
-      </div>
+      <table style="${tableStyle}">
+        ${headerRow}
+        ${dataRow}
+      </table>
     `;
   }
 
