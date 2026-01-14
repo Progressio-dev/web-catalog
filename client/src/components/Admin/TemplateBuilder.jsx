@@ -7,6 +7,7 @@ import ElementProperties from './TemplateBuilder/ElementProperties';
 import TemplatePreview from './TemplateBuilder/TemplatePreview';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
+import { migrateTemplateConfig, getCurrentSchemaVersion } from '../../utils/templateMigrations';
 
 /**
  * TemplateBuilder - Main orchestrator component for template creation
@@ -16,7 +17,14 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   const parsedConfig = useMemo(() => {
     if (!template?.config) return null;
     try {
-      return JSON.parse(template.config);
+      const config = JSON.parse(template.config);
+      // Apply migrations automatically
+      return migrateTemplateConfig(config, {
+        page_format: template.page_format,
+        page_orientation: template.page_orientation,
+        page_width: template.page_width,
+        page_height: template.page_height,
+      });
     } catch (error) {
       console.error('Error parsing template config:', error);
       return null;
@@ -92,24 +100,26 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   };
 
   const [elements, setElements] = useState(() => {
-    const rawElements = parsedConfig?.elements || [];
-    const alreadyMigrated = parsedConfig?.mmMigrated === true;
-    return migratePxToMm(
-      rawElements,
-      template?.page_format || 'A4',
-      template?.page_orientation || 'portrait',
-      template?.page_width,
-      template?.page_height,
-      alreadyMigrated
-    );
+    return parsedConfig?.elements || [];
   });
   const [selectedElement, setSelectedElement] = useState(null);
+  const [selectedElements, setSelectedElements] = useState([]); // For multi-selection
   const [templateName, setTemplateName] = useState(template?.name || '');
   const [saving, setSaving] = useState(false);
   const [isEditMode] = useState(!!template);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const historyIndexRef = useRef(0);
+  
+  // Grid and guides settings
+  const [gridSettings, setGridSettings] = useState(() => 
+    parsedConfig?.gridSettings || {
+      enabled: false,
+      size: 10, // mm
+      snapToGrid: false,
+      showSmartGuides: true,
+    }
+  );
 
   const BASE_FONTS = [
     'Arial',
@@ -325,10 +335,115 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     if (selectedElement?.id === id) {
       setSelectedElement(null);
     }
+    setSelectedElements(prev => prev.filter(el => el.id !== id));
   };
 
-  const handleSelectElement = (element) => {
-    setSelectedElement(element);
+  const handleSelectElement = (element, isMultiSelect = false) => {
+    if (isMultiSelect) {
+      // Multi-select mode (Ctrl/Cmd + click)
+      setSelectedElements(prev => {
+        const isAlreadySelected = prev.some(el => el.id === element.id);
+        if (isAlreadySelected) {
+          return prev.filter(el => el.id !== element.id);
+        } else {
+          return [...prev, element];
+        }
+      });
+      setSelectedElement(element);
+    } else {
+      // Single select
+      setSelectedElement(element);
+      setSelectedElements([]);
+    }
+  };
+
+  const handleGroupElements = () => {
+    const toGroup = selectedElements.length > 0 ? selectedElements : (selectedElement ? [selectedElement] : []);
+    if (toGroup.length < 2) {
+      toast.warning('Sélectionnez au moins 2 éléments pour créer un groupe');
+      return;
+    }
+
+    // Calculate group bounding box
+    const xs = toGroup.map(el => el.x);
+    const ys = toGroup.map(el => el.y);
+    const rights = toGroup.map(el => el.x + el.width);
+    const bottoms = toGroup.map(el => el.y + el.height);
+
+    const groupX = Math.min(...xs);
+    const groupY = Math.min(...ys);
+    const groupWidth = Math.max(...rights) - groupX;
+    const groupHeight = Math.max(...bottoms) - groupY;
+
+    // Convert absolute positions to relative within group
+    const children = toGroup.map(el => ({
+      ...el,
+      x: el.x - groupX,
+      y: el.y - groupY,
+    }));
+
+    const newGroup = {
+      id: `group_${Date.now()}`,
+      type: 'group',
+      x: groupX,
+      y: groupY,
+      width: groupWidth,
+      height: groupHeight,
+      children,
+    };
+
+    // Remove grouped elements and add group
+    updateElements(prev => {
+      const filtered = prev.filter(el => !toGroup.some(g => g.id === el.id));
+      return [...filtered, newGroup];
+    });
+
+    setSelectedElement(newGroup);
+    setSelectedElements([]);
+    toast.success('Groupe créé avec succès');
+  };
+
+  const handleUngroupElements = () => {
+    if (!selectedElement || selectedElement.type !== 'group') {
+      toast.warning('Sélectionnez un groupe pour le dégrouper');
+      return;
+    }
+
+    const group = selectedElement;
+    // Convert children's relative positions back to absolute
+    const children = group.children.map(child => ({
+      ...child,
+      x: child.x + group.x,
+      y: child.y + group.y,
+    }));
+
+    // Remove group and add children
+    updateElements(prev => {
+      const filtered = prev.filter(el => el.id !== group.id);
+      return [...filtered, ...children];
+    });
+
+    setSelectedElement(null);
+    toast.success('Groupe dissous avec succès');
+  };
+
+  const handleDuplicateElement = () => {
+    const toDuplicate = selectedElement;
+    if (!toDuplicate) {
+      toast.warning('Sélectionnez un élément à dupliquer');
+      return;
+    }
+
+    const newElement = {
+      ...toDuplicate,
+      id: `${toDuplicate.type}_${Date.now()}`,
+      x: toDuplicate.x + 10,
+      y: toDuplicate.y + 10,
+    };
+
+    updateElements(prev => [...prev, newElement]);
+    setSelectedElement(newElement);
+    toast.success('Élément dupliqué');
   };
 
   const handleSaveTemplate = async () => {
@@ -342,11 +457,13 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
       // Save CSV test data in config for later editing
       const csvTestData = csvData?.preview ? csvData.preview.slice(0, 5) : null;
       const config = { 
+        schemaVersion: getCurrentSchemaVersion(),
         elements, 
         backgroundColor: pageConfig.backgroundColor,
         csvTestData, // Save first 5 rows for preview during editing
         mmMigrated: true, // Mark as migrated to prevent re-migration
         customFonts,
+        gridSettings, // Save grid settings
       };
       
       const payload = {
@@ -477,6 +594,41 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
                   ↻ Rétablir
                 </button>
                 <button
+                  onClick={handleDuplicateElement}
+                  disabled={!selectedElement}
+                  style={{ ...styles.btnSecondary, ...(!selectedElement ? styles.btnDisabled : {}) }}
+                  title="Dupliquer l'élément sélectionné"
+                >
+                  📋 Dupliquer
+                </button>
+                <button
+                  onClick={handleGroupElements}
+                  disabled={selectedElements.length < 2 && (!selectedElement || selectedElements.length === 0)}
+                  style={{ ...styles.btnSecondary, ...((selectedElements.length < 2 && (!selectedElement || selectedElements.length === 0)) ? styles.btnDisabled : {}) }}
+                  title="Grouper les éléments sélectionnés"
+                >
+                  📦 Grouper
+                </button>
+                <button
+                  onClick={handleUngroupElements}
+                  disabled={!selectedElement || selectedElement.type !== 'group'}
+                  style={{ ...styles.btnSecondary, ...((!selectedElement || selectedElement.type !== 'group') ? styles.btnDisabled : {}) }}
+                  title="Dégrouper"
+                >
+                  📂 Dégrouper
+                </button>
+                <button
+                  onClick={() => setGridSettings(prev => ({ ...prev, enabled: !prev.enabled }))}
+                  style={{ 
+                    ...styles.btnSecondary,
+                    backgroundColor: gridSettings.enabled ? '#4CAF50' : undefined,
+                    color: gridSettings.enabled ? 'white' : undefined,
+                  }}
+                  title="Afficher/masquer la grille"
+                >
+                  🔲 Grille
+                </button>
+                <button
                   onClick={handleSaveTemplate}
                   disabled={saving}
                   style={styles.btnPrimary}
@@ -490,6 +642,8 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
               pageConfig={pageConfig}
               elements={elements}
               selectedElement={selectedElement}
+              selectedElements={selectedElements}
+              gridSettings={gridSettings}
               onSelectElement={handleSelectElement}
               onUpdateElement={handleUpdateElement}
               onDeleteElement={handleDeleteElement}
@@ -498,6 +652,50 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
 
           {/* Right sidebar - Properties & Preview (30%) */}
           <div style={styles.rightSidebar}>
+            {/* Grid Settings Panel */}
+            <div style={styles.gridPanel}>
+              <h4 style={styles.panelTitle}>⚙️ Paramètres de la grille</h4>
+              <div style={styles.gridOptions}>
+                <label style={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={gridSettings.enabled}
+                    onChange={(e) => setGridSettings(prev => ({ ...prev, enabled: e.target.checked }))}
+                  />
+                  <span>Afficher la grille</span>
+                </label>
+                <label style={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={gridSettings.snapToGrid}
+                    onChange={(e) => setGridSettings(prev => ({ ...prev, snapToGrid: e.target.checked }))}
+                    disabled={!gridSettings.enabled}
+                  />
+                  <span>Magnétisme (snap-to-grid)</span>
+                </label>
+                <label style={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={gridSettings.showSmartGuides}
+                    onChange={(e) => setGridSettings(prev => ({ ...prev, showSmartGuides: e.target.checked }))}
+                  />
+                  <span>Guides intelligents</span>
+                </label>
+                <label style={styles.inputLabel}>
+                  <span>Taille de la grille (mm):</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={gridSettings.size}
+                    onChange={(e) => setGridSettings(prev => ({ ...prev, size: parseInt(e.target.value) || 10 }))}
+                    style={styles.numberInput}
+                    disabled={!gridSettings.enabled}
+                  />
+                </label>
+              </div>
+            </div>
+
             <div style={styles.fontManager}>
               <div style={styles.fontHeader}>
                 <div>
@@ -756,6 +954,42 @@ const styles = {
     backgroundColor: '#e3f2fd',
     borderRadius: '8px',
     textAlign: 'center',
+  },
+  gridPanel: {
+    padding: '15px',
+    borderBottom: '1px solid #eee',
+    backgroundColor: '#f9f9f9',
+  },
+  panelTitle: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    marginBottom: '10px',
+    color: '#333',
+  },
+  gridOptions: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+    cursor: 'pointer',
+  },
+  inputLabel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '5px',
+    fontSize: '13px',
+  },
+  numberInput: {
+    padding: '5px 8px',
+    fontSize: '13px',
+    border: '1px solid #ddd',
+    borderRadius: '3px',
+    width: '80px',
   },
 };
 

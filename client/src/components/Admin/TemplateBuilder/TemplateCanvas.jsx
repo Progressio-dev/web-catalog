@@ -10,6 +10,8 @@ const TemplateCanvas = ({
   pageConfig,
   elements,
   selectedElement,
+  selectedElements = [],
+  gridSettings = { enabled: false, size: 10, snapToGrid: false, showSmartGuides: true },
   onSelectElement,
   onUpdateElement,
   onDeleteElement,
@@ -20,6 +22,7 @@ const TemplateCanvas = ({
   const [resizeHandle, setResizeHandle] = React.useState(null);
   const [resizeStart, setResizeStart] = React.useState({ x: 0, y: 0, width: 0, height: 0 });
   const [mouseDownPos, setMouseDownPos] = React.useState(null);
+  const [smartGuides, setSmartGuides] = React.useState({ horizontal: [], vertical: [] });
 
   // Get base page dimensions in mm
   let pageWidth =
@@ -56,11 +59,93 @@ const TemplateCanvas = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedElement, onDeleteElement]);
 
+  // Snap value to grid
+  const snapToGrid = (value) => {
+    if (!gridSettings.snapToGrid || !gridSettings.enabled) {
+      return value;
+    }
+    const gridSizeMm = gridSettings.size;
+    return Math.round(value / gridSizeMm) * gridSizeMm;
+  };
+
+  // Calculate smart guides for alignment
+  const calculateSmartGuides = (currentElement, x, y, width, height) => {
+    if (!gridSettings.showSmartGuides) {
+      setSmartGuides({ horizontal: [], vertical: [] });
+      return;
+    }
+
+    const SNAP_THRESHOLD_MM = 2; // 2mm threshold for snapping
+    const horizontal = [];
+    const vertical = [];
+
+    // Check alignment with other elements
+    elements.forEach(el => {
+      if (el.id === currentElement.id) return;
+      
+      // Skip children if we're dragging a group
+      if (currentElement.type === 'group' && 
+          currentElement.children?.some(child => child.id === el.id)) {
+        return;
+      }
+
+      // Vertical guides (X alignment)
+      // Left edges
+      if (Math.abs(x - el.x) < SNAP_THRESHOLD_MM) {
+        vertical.push({ position: el.x, type: 'left' });
+      }
+      // Right edges
+      if (Math.abs((x + width) - (el.x + el.width)) < SNAP_THRESHOLD_MM) {
+        vertical.push({ position: el.x + el.width, type: 'right' });
+      }
+      // Centers
+      const currentCenterX = x + width / 2;
+      const elCenterX = el.x + el.width / 2;
+      if (Math.abs(currentCenterX - elCenterX) < SNAP_THRESHOLD_MM) {
+        vertical.push({ position: elCenterX, type: 'center' });
+      }
+
+      // Horizontal guides (Y alignment)
+      // Top edges
+      if (Math.abs(y - el.y) < SNAP_THRESHOLD_MM) {
+        horizontal.push({ position: el.y, type: 'top' });
+      }
+      // Bottom edges
+      if (Math.abs((y + height) - (el.y + el.height)) < SNAP_THRESHOLD_MM) {
+        horizontal.push({ position: el.y + el.height, type: 'bottom' });
+      }
+      // Centers
+      const currentCenterY = y + height / 2;
+      const elCenterY = el.y + el.height / 2;
+      if (Math.abs(currentCenterY - elCenterY) < SNAP_THRESHOLD_MM) {
+        horizontal.push({ position: elCenterY, type: 'center' });
+      }
+    });
+
+    // Page center guides
+    const pageCenterX = pageWidth / 2;
+    const pageCenterY = pageHeight / 2;
+    const currentCenterX = x + width / 2;
+    const currentCenterY = y + height / 2;
+
+    if (Math.abs(currentCenterX - pageCenterX) < SNAP_THRESHOLD_MM) {
+      vertical.push({ position: pageCenterX, type: 'page-center' });
+    }
+    if (Math.abs(currentCenterY - pageCenterY) < SNAP_THRESHOLD_MM) {
+      horizontal.push({ position: pageCenterY, type: 'page-center' });
+    }
+
+    setSmartGuides({ horizontal, vertical });
+  };
+
   const handleMouseDown = (e, element) => {
     e.stopPropagation();
     
-    // ALWAYS select the element immediately
-    onSelectElement(element);
+    // Check if Ctrl/Cmd key is pressed for multi-select
+    const isMultiSelect = e.ctrlKey || e.metaKey;
+    
+    // Select the element (with multi-select if applicable)
+    onSelectElement(element, isMultiSelect);
     
     setMouseDownPos({ x: e.clientX, y: e.clientY });
     setDraggingId(element.id);
@@ -95,12 +180,23 @@ const TemplateCanvas = ({
 
   const handleMouseMove = (e) => {
     if (draggingId && !resizingId) {
+      const element = elements.find(el => el.id === draggingId);
+      if (!element) return;
+
       const newXPx = e.clientX - dragOffset.x;
       const newYPx = e.clientY - dragOffset.y;
 
       // Convert px back to mm before saving
-      const newXMm = newXPx / MM_TO_PX;
-      const newYMm = newYPx / MM_TO_PX;
+      let newXMm = newXPx / MM_TO_PX;
+      let newYMm = newYPx / MM_TO_PX;
+
+      // Apply snap-to-grid
+      newXMm = snapToGrid(newXMm);
+      newYMm = snapToGrid(newYMm);
+
+      // Calculate smart guides
+      calculateSmartGuides(element, newXMm, newYMm, element.width, element.height);
+
       const maxXMm = pageWidth - MIN_EDGE_MARGIN_MM;
       const maxYMm = pageHeight - MIN_EDGE_MARGIN_MM;
 
@@ -180,6 +276,8 @@ const TemplateCanvas = ({
     setResizingId(null);
     setResizeHandle(null);
     setMouseDownPos(null);
+    // Clear smart guides when drag ends
+    setSmartGuides({ horizontal: [], vertical: [] });
   };
 
   React.useEffect(() => {
@@ -195,6 +293,7 @@ const TemplateCanvas = ({
 
   const renderElement = (element) => {
     const isSelected = selectedElement?.id === element.id;
+    const isInMultiSelect = selectedElements.some(el => el.id === element.id);
     // Convert mm to px for rendering
     const xPx = (element.x || 0) * MM_TO_PX;
     const yPx = (element.y || 0) * MM_TO_PX;
@@ -208,7 +307,7 @@ const TemplateCanvas = ({
       width: `${widthPx}px`,
       height: `${heightPx}px`,
       cursor: 'move',
-      border: isSelected ? '3px solid #2196F3' : '1px dashed #ccc',
+      border: isSelected ? '3px solid #2196F3' : isInMultiSelect ? '2px solid #4CAF50' : '1px dashed #ccc',
       boxSizing: 'border-box',
       opacity: element.opacity ?? 1,
       zIndex: element.zIndex ?? 0,
@@ -451,6 +550,66 @@ const TemplateCanvas = ({
       );
     }
 
+    // Group element
+    if (element.type === 'group') {
+      return (
+        <div
+          key={element.id}
+          style={{
+            ...baseStyle,
+            backgroundColor: 'rgba(200, 200, 255, 0.1)',
+            border: isSelected ? '3px dashed #2196F3' : isInMultiSelect ? '2px dashed #4CAF50' : '1px dashed #999',
+          }}
+          onMouseDown={(e) => handleMouseDown(e, element)}
+        >
+          {/* Render children relative to group */}
+          {element.children?.map(child => {
+            const childXPx = (child.x || 0) * MM_TO_PX;
+            const childYPx = (child.y || 0) * MM_TO_PX;
+            const childWidthPx = (child.width || 0) * MM_TO_PX;
+            const childHeightPx = (child.height || 0) * MM_TO_PX;
+
+            return (
+              <div
+                key={child.id}
+                style={{
+                  position: 'absolute',
+                  left: `${childXPx}px`,
+                  top: `${childYPx}px`,
+                  width: `${childWidthPx}px`,
+                  height: `${childHeightPx}px`,
+                  border: '1px solid #ccc',
+                  backgroundColor: 'rgba(255,255,255,0.8)',
+                  fontSize: '10px',
+                  padding: '2px',
+                  overflow: 'hidden',
+                  pointerEvents: 'none',
+                }}
+              >
+                {child.type === 'text' ? (child.csvColumn || 'Texte') : 
+                 child.type === 'logo' ? '🖼️ Logo' :
+                 child.type === 'image' ? '📷 Image' :
+                 child.type === 'line' ? '➖' :
+                 child.type === 'rectangle' ? '▭' :
+                 child.type}
+              </div>
+            );
+          })}
+          <div style={{
+            position: 'absolute',
+            bottom: '2px',
+            right: '4px',
+            fontSize: '10px',
+            color: '#666',
+            pointerEvents: 'none',
+          }}>
+            📦 Groupe ({element.children?.length || 0} éléments)
+          </div>
+          {renderResizeHandles()}
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -472,7 +631,76 @@ const TemplateCanvas = ({
           }}
         >
           {/* Grid background */}
-          <div style={styles.grid} />
+          {gridSettings.enabled && (
+            <svg
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: 0,
+              }}
+            >
+              <defs>
+                <pattern
+                  id="grid"
+                  width={gridSettings.size * MM_TO_PX}
+                  height={gridSettings.size * MM_TO_PX}
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d={`M ${gridSettings.size * MM_TO_PX} 0 L 0 0 0 ${gridSettings.size * MM_TO_PX}`}
+                    fill="none"
+                    stroke="#ddd"
+                    strokeWidth="0.5"
+                  />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#grid)" />
+            </svg>
+          )}
+
+          {/* Smart guides */}
+          {gridSettings.showSmartGuides && (
+            <svg
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: 1000,
+              }}
+            >
+              {smartGuides.horizontal.map((guide, idx) => (
+                <line
+                  key={`h-${idx}`}
+                  x1="0"
+                  y1={guide.position * MM_TO_PX}
+                  x2={canvasWidth}
+                  y2={guide.position * MM_TO_PX}
+                  stroke="#FF00FF"
+                  strokeWidth="1"
+                  strokeDasharray="4,4"
+                />
+              ))}
+              {smartGuides.vertical.map((guide, idx) => (
+                <line
+                  key={`v-${idx}`}
+                  x1={guide.position * MM_TO_PX}
+                  y1="0"
+                  x2={guide.position * MM_TO_PX}
+                  y2={canvasHeight}
+                  stroke="#FF00FF"
+                  strokeWidth="1"
+                  strokeDasharray="4,4"
+                />
+              ))}
+            </svg>
+          )}
 
           {/* Render all elements */}
           {elements.map((element) => renderElement(element))}
