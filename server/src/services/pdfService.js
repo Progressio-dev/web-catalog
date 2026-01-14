@@ -338,6 +338,35 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     return `display: flex; align-items: ${alignItems}; justify-content: ${justifyContent};`;
   };
   
+  // Helper function to calculate image mask styles
+  const getMaskStyles = (element) => {
+    if (element.maskShape === 'circle' || element.maskShape === 'ellipse') {
+      return 'border-radius: 50%; overflow: hidden;';
+    } else if (element.maskShape === 'rounded') {
+      return `border-radius: ${element.borderRadius || 10}px; overflow: hidden;`;
+    }
+    return '';
+  };
+  
+  // Helper function to calculate image transformation styles
+  const getImageTransformStyles = (element) => {
+    const cropTop = element.cropTop || 0;
+    const cropBottom = element.cropBottom || 0;
+    const cropLeft = element.cropLeft || 0;
+    const cropRight = element.cropRight || 0;
+    const clipPath = (cropTop || cropBottom || cropLeft || cropRight) 
+      ? `clip-path: inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%);`
+      : '';
+    
+    return `
+      width: 100%;
+      height: 100%;
+      object-fit: ${element.fit || 'contain'};
+      transform: rotate(${element.rotation || 0}deg);
+      ${clipPath}
+    `;
+  };
+  
   // Elements are stored in mm, use them directly with mm units in CSS
   const baseStyle = `
     position: absolute;
@@ -480,13 +509,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         // Determine block background
         const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
         
-        // Calculate mask shape styles
-        let maskStyles = '';
-        if (element.maskShape === 'circle' || element.maskShape === 'ellipse') {
-          maskStyles = 'border-radius: 50%; overflow: hidden;';
-        } else if (element.maskShape === 'rounded') {
-          maskStyles = `border-radius: ${element.borderRadius || 10}px; overflow: hidden;`;
-        }
+        const maskStyles = getMaskStyles(element);
         
         const imageStyle = `
           ${baseStyle}
@@ -497,22 +520,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
           ${maskStyles}
         `;
         
-        // Calculate cropping
-        const cropTop = element.cropTop || 0;
-        const cropBottom = element.cropBottom || 0;
-        const cropLeft = element.cropLeft || 0;
-        const cropRight = element.cropRight || 0;
-        const clipPath = (cropTop || cropBottom || cropLeft || cropRight) 
-          ? `clip-path: inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%);`
-          : '';
-        
-        const imgStyle = `
-          width: 100%;
-          height: 100%;
-          object-fit: ${element.fit || 'contain'};
-          transform: rotate(${element.rotation || 0}deg);
-          ${clipPath}
-        `;
+        const imgStyle = getImageTransformStyles(element);
         
         // Use HTTP URL for browser previews, data URL for PDF generation
         let src;
@@ -568,13 +576,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
           // Determine block background
           const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
           
-          // Calculate mask shape styles
-          let maskStyles = '';
-          if (element.maskShape === 'circle' || element.maskShape === 'ellipse') {
-            maskStyles = 'border-radius: 50%; overflow: hidden;';
-          } else if (element.maskShape === 'rounded') {
-            maskStyles = `border-radius: ${element.borderRadius || 10}px; overflow: hidden;`;
-          }
+          const maskStyles = getMaskStyles(element);
           
           const imageStyle = `
             ${baseStyle}
@@ -585,22 +587,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
             ${maskStyles}
           `;
           
-          // Calculate cropping
-          const cropTop = element.cropTop || 0;
-          const cropBottom = element.cropBottom || 0;
-          const cropLeft = element.cropLeft || 0;
-          const cropRight = element.cropRight || 0;
-          const clipPath = (cropTop || cropBottom || cropLeft || cropRight) 
-            ? `clip-path: inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%);`
-            : '';
-          
-          const imgStyle = `
-            width: 100%;
-            height: 100%;
-            object-fit: ${element.fit || 'contain'};
-            transform: rotate(${element.rotation || 0}deg);
-            ${clipPath}
-          `;
+          const imgStyle = getImageTransformStyles(element);
           
           // Use HTTP URL for browser previews, data URL for PDF generation
           let src;
@@ -667,13 +654,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       // Determine block background
       const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
       
-      // Calculate mask shape styles
-      let maskStyles = '';
-      if (element.maskShape === 'circle' || element.maskShape === 'ellipse') {
-        maskStyles = 'border-radius: 50%; overflow: hidden;';
-      } else if (element.maskShape === 'rounded') {
-        maskStyles = `border-radius: ${element.borderRadius || 10}px; overflow: hidden;`;
-      }
+      const maskStyles = getMaskStyles(element);
       
       const wrapperStyle = `
         ${baseStyle}
@@ -684,22 +665,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         ${maskStyles}
       `;
       
-      // Calculate cropping
-      const cropTop = element.cropTop || 0;
-      const cropBottom = element.cropBottom || 0;
-      const cropLeft = element.cropLeft || 0;
-      const cropRight = element.cropRight || 0;
-      const clipPath = (cropTop || cropBottom || cropLeft || cropRight) 
-        ? `clip-path: inset(${cropTop}% ${cropRight}% ${cropBottom}% ${cropLeft}%);`
-        : '';
-      
-      const imgStyle = `
-        width: 100%;
-        height: 100%;
-        object-fit: ${element.fit || 'contain'};
-        transform: rotate(${element.rotation || 0}deg);
-        ${clipPath}
-      `;
+      const imgStyle = getImageTransformStyles(element);
       
       return `<div style="${wrapperStyle}"><img src="${finalSrc}" alt="Product" style="${imgStyle}" onerror="this.style.display='none'" /></div>`;
     }
