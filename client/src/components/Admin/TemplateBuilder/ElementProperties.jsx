@@ -236,7 +236,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
       </div>
 
       <div style={styles.group}>
-        <label style={styles.label}>Alignement horizontal:</label>
+        <label style={styles.label}>Alignement:</label>
         <div style={styles.buttonGroup}>
           <button
             onClick={() => onUpdate({ textAlign: 'left' })}
@@ -264,39 +264,6 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
             }}
           >
             ➡
-          </button>
-        </div>
-      </div>
-
-      <div style={styles.group}>
-        <label style={styles.label}>Alignement vertical:</label>
-        <div style={styles.buttonGroup}>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'top' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'top' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ⬆
-          </button>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'middle' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'middle' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ↕
-          </button>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'bottom' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'bottom' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ⬇
           </button>
         </div>
       </div>
@@ -473,39 +440,6 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         </select>
       </div>
 
-      <div style={styles.group}>
-        <label style={styles.label}>Alignement vertical:</label>
-        <div style={styles.buttonGroup}>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'top' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'top' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ⬆
-          </button>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'middle' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'middle' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ↕
-          </button>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'bottom' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'bottom' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ⬇
-          </button>
-        </div>
-      </div>
-
       {/* Real-time Image URL Preview */}
       {sampleData && element.csvColumn && (
         <div style={styles.previewSection}>
@@ -640,7 +574,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
       </div>
 
       <div style={styles.group}>
-        <label style={styles.label}>Alignement horizontal:</label>
+        <label style={styles.label}>Alignement:</label>
         <div style={styles.buttonGroup}>
           <button
             onClick={() => onUpdate({ textAlign: 'left' })}
@@ -668,39 +602,6 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
             }}
           >
             ➡
-          </button>
-        </div>
-      </div>
-
-      <div style={styles.group}>
-        <label style={styles.label}>Alignement vertical:</label>
-        <div style={styles.buttonGroup}>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'top' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'top' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ⬆
-          </button>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'middle' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'middle' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ↕
-          </button>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'bottom' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'bottom' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ⬇
           </button>
         </div>
       </div>
@@ -791,7 +692,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
       </div>
 
       <div style={styles.group}>
-        <label style={styles.label}>Alignement horizontal:</label>
+        <label style={styles.label}>Alignement:</label>
         <div style={styles.buttonGroup}>
           <button
             onClick={() => onUpdate({ textAlign: 'left' })}
@@ -819,39 +720,6 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
             }}
           >
             ➡
-          </button>
-        </div>
-      </div>
-
-      <div style={styles.group}>
-        <label style={styles.label}>Alignement vertical:</label>
-        <div style={styles.buttonGroup}>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'top' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'top' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ⬆
-          </button>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'middle' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'middle' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ↕
-          </button>
-          <button
-            onClick={() => onUpdate({ verticalAlign: 'bottom' })}
-            style={{
-              ...styles.toggleBtn,
-              ...(element.verticalAlign === 'bottom' ? styles.toggleBtnActive : {}),
-            }}
-          >
-            ⬇
           </button>
         </div>
       </div>
