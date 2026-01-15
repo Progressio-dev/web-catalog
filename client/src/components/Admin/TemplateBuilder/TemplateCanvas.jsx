@@ -551,6 +551,7 @@ const TemplateCanvas = ({
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
           <span style={{
+            display: 'block',
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
@@ -691,6 +692,7 @@ const TemplateCanvas = ({
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
           <span style={{
+            display: 'block',
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
@@ -734,6 +736,7 @@ const TemplateCanvas = ({
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
           <span style={{
+            display: 'block',
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',

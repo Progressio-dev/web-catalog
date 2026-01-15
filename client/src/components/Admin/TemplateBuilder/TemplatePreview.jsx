@@ -297,6 +297,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           }}
         >
           <span style={{
+            display: 'block',
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
@@ -537,6 +538,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           }}
         >
           <span style={{
+            display: 'block',
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
@@ -572,6 +574,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           }}
         >
           <span style={{
+            display: 'block',
             backgroundColor: element.highlightEnabled ? (element.highlightColor || '#FFFF00') : 'transparent',
             textAlign: element.textAlign,
             width: '100%',
