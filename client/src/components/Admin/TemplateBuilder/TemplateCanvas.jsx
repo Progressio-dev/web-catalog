@@ -75,6 +75,32 @@ const TemplateCanvas = ({
     setCanvasPan({ x: panX, y: panY });
   }, [canvasWidth, canvasHeight]); // Recenter when canvas size changes
 
+  // Helper function: Zoom centered on viewport
+  const zoomToViewportCenter = React.useCallback((zoomFactor) => {
+    if (!canvasContainerRef.current) return;
+    const rect = canvasContainerRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const canvasPointX = (centerX - canvasPan.x) / canvasZoom;
+    const canvasPointY = (centerY - canvasPan.y) / canvasZoom;
+    const newZoom = Math.max(0.1, Math.min(5, canvasZoom * zoomFactor));
+    setCanvasPan({
+      x: centerX - canvasPointX * newZoom,
+      y: centerY - canvasPointY * newZoom,
+    });
+    setCanvasZoom(newZoom);
+  }, [canvasZoom, canvasPan]);
+
+  // Helper function: Reset to 100% zoom and center
+  const resetZoomAndCenter = React.useCallback(() => {
+    if (!canvasContainerRef.current) return;
+    const rect = canvasContainerRef.current.getBoundingClientRect();
+    const panX = (rect.width - canvasWidth) / 2;
+    const panY = (rect.height - canvasHeight) / 2;
+    setCanvasZoom(1);
+    setCanvasPan({ x: panX, y: panY });
+  }, [canvasWidth, canvasHeight]);
+
   // Handle delete key and keyboard shortcuts for zoom/pan
   React.useEffect(() => {
     const handleKeyDown = (e) => {
@@ -91,43 +117,13 @@ const TemplateCanvas = ({
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
         if (e.key === '+' || e.key === '=') {
           e.preventDefault();
-          // Zoom in centered on viewport
-          if (!canvasContainerRef.current) return;
-          const rect = canvasContainerRef.current.getBoundingClientRect();
-          const centerX = rect.width / 2;
-          const centerY = rect.height / 2;
-          const canvasPointX = (centerX - canvasPan.x) / canvasZoom;
-          const canvasPointY = (centerY - canvasPan.y) / canvasZoom;
-          const newZoom = Math.max(0.1, Math.min(5, canvasZoom * 1.2));
-          setCanvasPan({
-            x: centerX - canvasPointX * newZoom,
-            y: centerY - canvasPointY * newZoom,
-          });
-          setCanvasZoom(newZoom);
+          zoomToViewportCenter(1.2);
         } else if (e.key === '-' || e.key === '_') {
           e.preventDefault();
-          // Zoom out centered on viewport
-          if (!canvasContainerRef.current) return;
-          const rect = canvasContainerRef.current.getBoundingClientRect();
-          const centerX = rect.width / 2;
-          const centerY = rect.height / 2;
-          const canvasPointX = (centerX - canvasPan.x) / canvasZoom;
-          const canvasPointY = (centerY - canvasPan.y) / canvasZoom;
-          const newZoom = Math.max(0.1, Math.min(5, canvasZoom * 0.8));
-          setCanvasPan({
-            x: centerX - canvasPointX * newZoom,
-            y: centerY - canvasPointY * newZoom,
-          });
-          setCanvasZoom(newZoom);
+          zoomToViewportCenter(0.8);
         } else if (e.key === '0') {
           e.preventDefault();
-          // Reset to 100% zoom and center (Ctrl/Cmd + 0)
-          if (!canvasContainerRef.current) return;
-          const rect = canvasContainerRef.current.getBoundingClientRect();
-          const panX = (rect.width - canvasWidth) / 2;
-          const panY = (rect.height - canvasHeight) / 2;
-          setCanvasZoom(1);
-          setCanvasPan({ x: panX, y: panY });
+          resetZoomAndCenter();
         }
       }
     };
@@ -145,7 +141,7 @@ const TemplateCanvas = ({
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedElement, onDeleteElement, isSpacePressed, canvasZoom, canvasPan, canvasWidth, canvasHeight]);
+  }, [selectedElement, onDeleteElement, isSpacePressed, zoomToViewportCenter, resetZoomAndCenter]);
 
   // Handle mouse wheel for zoom with improved ergonomics
   React.useEffect(() => {
@@ -1168,21 +1164,7 @@ const TemplateCanvas = ({
           🔍 Fit
         </button>
         <button
-          onClick={() => {
-            // Zoom in centered on viewport
-            if (!canvasContainerRef.current) return;
-            const rect = canvasContainerRef.current.getBoundingClientRect();
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-            const canvasPointX = (centerX - canvasPan.x) / canvasZoom;
-            const canvasPointY = (centerY - canvasPan.y) / canvasZoom;
-            const newZoom = Math.max(0.1, Math.min(5, canvasZoom * 1.2));
-            setCanvasPan({
-              x: centerX - canvasPointX * newZoom,
-              y: centerY - canvasPointY * newZoom,
-            });
-            setCanvasZoom(newZoom);
-          }}
+          onClick={() => zoomToViewportCenter(1.2)}
           style={{
             padding: '4px 8px',
             fontSize: '14px',
@@ -1196,21 +1178,7 @@ const TemplateCanvas = ({
           +
         </button>
         <button
-          onClick={() => {
-            // Zoom out centered on viewport
-            if (!canvasContainerRef.current) return;
-            const rect = canvasContainerRef.current.getBoundingClientRect();
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-            const canvasPointX = (centerX - canvasPan.x) / canvasZoom;
-            const canvasPointY = (centerY - canvasPan.y) / canvasZoom;
-            const newZoom = Math.max(0.1, Math.min(5, canvasZoom * 0.8));
-            setCanvasPan({
-              x: centerX - canvasPointX * newZoom,
-              y: centerY - canvasPointY * newZoom,
-            });
-            setCanvasZoom(newZoom);
-          }}
+          onClick={() => zoomToViewportCenter(0.8)}
           style={{
             padding: '4px 8px',
             fontSize: '14px',
@@ -1224,15 +1192,7 @@ const TemplateCanvas = ({
           −
         </button>
         <button
-          onClick={() => {
-            // Reset to 100% zoom and center
-            if (!canvasContainerRef.current) return;
-            const rect = canvasContainerRef.current.getBoundingClientRect();
-            const panX = (rect.width - canvasWidth) / 2;
-            const panY = (rect.height - canvasHeight) / 2;
-            setCanvasZoom(1);
-            setCanvasPan({ x: panX, y: panY });
-          }}
+          onClick={resetZoomAndCenter}
           style={{
             padding: '4px 8px',
             fontSize: '12px',
