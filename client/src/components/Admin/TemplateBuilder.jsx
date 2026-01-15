@@ -110,6 +110,7 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const historyIndexRef = useRef(0);
+  const [showRealDataOnCanvas, setShowRealDataOnCanvas] = useState(false);
   
   // Grid and guides settings
   const [gridSettings, setGridSettings] = useState(() => 
@@ -629,6 +630,17 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
                   🔲 Grille
                 </button>
                 <button
+                  onClick={() => setShowRealDataOnCanvas(!showRealDataOnCanvas)}
+                  style={{ 
+                    ...styles.btnSecondary,
+                    backgroundColor: showRealDataOnCanvas ? '#2196F3' : undefined,
+                    color: showRealDataOnCanvas ? 'white' : undefined,
+                  }}
+                  title="Prévisualiser les données réelles sur le canvas"
+                >
+                  👁️ Aperçu données
+                </button>
+                <button
                   onClick={handleSaveTemplate}
                   disabled={saving}
                   style={styles.btnPrimary}
@@ -644,6 +656,8 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
               selectedElement={selectedElement}
               selectedElements={selectedElements}
               gridSettings={gridSettings}
+              showRealData={showRealDataOnCanvas}
+              sampleData={csvData?.preview?.[0]}
               onSelectElement={handleSelectElement}
               onUpdateElement={handleUpdateElement}
               onDeleteElement={handleDeleteElement}

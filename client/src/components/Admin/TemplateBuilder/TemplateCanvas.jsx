@@ -12,6 +12,8 @@ const TemplateCanvas = ({
   selectedElement,
   selectedElements = [],
   gridSettings = { enabled: false, size: 10, snapToGrid: false, showSmartGuides: true },
+  showRealData = false,
+  sampleData = null,
   onSelectElement,
   onUpdateElement,
   onDeleteElement,
@@ -415,11 +417,21 @@ const TemplateCanvas = ({
     if (element.type === 'text') {
       let displayText = element.csvColumn || 'Texte';
       
+      // Use real data if preview mode is enabled and data is available
+      if (showRealData && sampleData && element.csvColumn) {
+        displayText = sampleData[element.csvColumn] || element.csvColumn;
+      }
+      
       // Show prefix/suffix in editor if enabled
       if (element.hasTextModifier && element.csvColumn) {
         const prefix = element.textPrefix || '';
         const suffix = element.textSuffix || '';
-        displayText = `${prefix}${element.csvColumn}${suffix}`;
+        if (showRealData && sampleData) {
+          const csvValue = sampleData[element.csvColumn] || '';
+          displayText = `${prefix}${csvValue}${suffix}`;
+        } else {
+          displayText = `${prefix}${element.csvColumn}${suffix}`;
+        }
       }
       
       return (
