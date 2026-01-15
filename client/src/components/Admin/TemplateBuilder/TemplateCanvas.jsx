@@ -111,8 +111,11 @@ const TemplateCanvas = ({
   const resetZoomAndCenter = React.useCallback(() => {
     if (!canvasContainerRef.current) return;
     const rect = canvasContainerRef.current.getBoundingClientRect();
-    const panX = (rect.width - canvasWidth) / 2;
-    const panY = (rect.height - canvasHeight) / 2;
+    // Calculate centered position at 100% zoom
+    const scaledWidth = canvasWidth * 1;
+    const scaledHeight = canvasHeight * 1;
+    const panX = (rect.width - scaledWidth) / 2;
+    const panY = (rect.height - scaledHeight) / 2;
     setCanvasZoom(1);
     setCanvasPan({ x: panX, y: panY });
   }, [canvasWidth, canvasHeight]);
@@ -248,9 +251,16 @@ const TemplateCanvas = ({
 
     const executeAllJsElements = async () => {
       const results = {};
-      const jsElements = elements.filter(el => el.type === 'jsCode');
       
-      for (const element of jsElements) {
+      // Get all jsCode elements including those within groups
+      const jsElements = elements.filter(el => el.type === 'jsCode');
+      const jsElementsInGroups = elements
+        .filter(el => el.type === 'group' && el.children)
+        .flatMap(group => group.children.filter(child => child.type === 'jsCode'));
+      
+      const allJsElements = [...jsElements, ...jsElementsInGroups];
+      
+      for (const element of allJsElements) {
         if (element.code) {
           try {
             // Create async function from code
@@ -556,6 +566,20 @@ const TemplateCanvas = ({
             width: Math.max(minSizePx, resizeStart.width - dxCanvas) / MM_TO_PX,
           };
           break;
+      }
+
+      // Apply snap-to-grid to resize dimensions and positions in magnetic mode
+      if (updates.width !== undefined) {
+        updates.width = snapToGrid(updates.width);
+      }
+      if (updates.height !== undefined) {
+        updates.height = snapToGrid(updates.height);
+      }
+      if (updates.x !== undefined) {
+        updates.x = snapToGrid(updates.x);
+      }
+      if (updates.y !== undefined) {
+        updates.y = snapToGrid(updates.y);
       }
 
       onUpdateElement(resizingId, updates, true); // Skip history during resize
@@ -1151,25 +1175,28 @@ const TemplateCanvas = ({
       }}>
         <button
           onClick={() => {
-            // Fit canvas to view with some padding - now allows upscaling for better ergonomics
+            // Fit canvas to view with some padding
             if (!canvasContainerRef.current) return;
             const rect = canvasContainerRef.current.getBoundingClientRect();
             const padding = 40; // 40px padding
             const availableWidth = rect.width - padding * 2;
             const availableHeight = rect.height - padding * 2;
             
-            // Calculate zoom to fit - removed 100% cap for better professional ergonomics
+            // Calculate zoom to fit
             const zoomX = availableWidth / canvasWidth;
             const zoomY = availableHeight / canvasHeight;
-            const fitZoom = Math.max(MIN_ZOOM, Math.min(zoomX, zoomY, MAX_ZOOM));
+            // Choose the smaller zoom to ensure entire canvas fits
+            const fitZoom = Math.min(zoomX, zoomY);
+            // Cap the zoom to valid range
+            const cappedZoom = Math.max(MIN_ZOOM, Math.min(fitZoom, MAX_ZOOM));
             
-            // Center the canvas
-            const scaledWidth = canvasWidth * fitZoom;
-            const scaledHeight = canvasHeight * fitZoom;
+            // Center the canvas with the fitted zoom
+            const scaledWidth = canvasWidth * cappedZoom;
+            const scaledHeight = canvasHeight * cappedZoom;
             const panX = (rect.width - scaledWidth) / 2;
             const panY = (rect.height - scaledHeight) / 2;
             
-            setCanvasZoom(fitZoom);
+            setCanvasZoom(cappedZoom);
             setCanvasPan({ x: panX, y: panY });
           }}
           style={{
