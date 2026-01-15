@@ -33,6 +33,14 @@ const TemplateCanvas = ({
   const [dragStartState, setDragStartState] = React.useState(null); // Track initial state for history
   const [codeResults, setCodeResults] = React.useState({}); // Store JS code execution results
   const [imageUrls, setImageUrls] = React.useState({}); // Store fetched image URLs
+  
+  // Canvas navigation state
+  const [canvasZoom, setCanvasZoom] = React.useState(1);
+  const [canvasPan, setCanvasPan] = React.useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = React.useState(false);
+  const [panStart, setPanStart] = React.useState({ x: 0, y: 0 });
+  const [isSpacePressed, setIsSpacePressed] = React.useState(false);
+  const canvasContainerRef = React.useRef(null);
 
 
   // Get base page dimensions in mm
@@ -64,11 +72,97 @@ const TemplateCanvas = ({
       if (e.key === 'Delete' && selectedElement) {
         onDeleteElement(selectedElement.id);
       }
+      // Track space key for pan mode
+      if (e.key === ' ' && !isSpacePressed) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+    };
+    
+    const handleKeyUp = (e) => {
+      if (e.key === ' ') {
+        setIsSpacePressed(false);
+        setIsPanning(false);
+      }
     };
     
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedElement, onDeleteElement]);
+    document.addEventListener('keyup', handleKeyUp);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [selectedElement, onDeleteElement, isSpacePressed]);
+
+  // Handle mouse wheel for zoom
+  React.useEffect(() => {
+    const handleWheel = (e) => {
+      if (!canvasContainerRef.current) return;
+      
+      // Check if mouse is over the canvas container
+      const rect = canvasContainerRef.current.getBoundingClientRect();
+      const isOverCanvas = (
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+      );
+      
+      if (!isOverCanvas) return;
+      
+      e.preventDefault();
+      
+      const delta = -e.deltaY;
+      const zoomFactor = delta > 0 ? 1.1 : 0.9;
+      const newZoom = Math.max(0.1, Math.min(5, canvasZoom * zoomFactor));
+      
+      // Calculate mouse position relative to canvas
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      // Adjust pan to zoom towards mouse position
+      const zoomRatio = newZoom / canvasZoom;
+      setCanvasPan(prev => ({
+        x: mouseX - (mouseX - prev.x) * zoomRatio,
+        y: mouseY - (mouseY - prev.y) * zoomRatio,
+      }));
+      
+      setCanvasZoom(newZoom);
+    };
+    
+    const container = canvasContainerRef.current;
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: false });
+      return () => container.removeEventListener('wheel', handleWheel);
+    }
+  }, [canvasZoom]);
+
+  // Handle canvas panning with middle mouse or space+drag
+  const handleCanvasMouseDown = (e) => {
+    // Middle mouse button (1) or left button with space key
+    if (e.button === 1 || (e.button === 0 && isSpacePressed)) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - canvasPan.x, y: e.clientY - canvasPan.y });
+    }
+  };
+
+  const handleCanvasMouseMove = (e) => {
+    // Don't pan if we're dragging or resizing an element
+    if (isPanning && !draggingId && !resizingId) {
+      e.preventDefault();
+      setCanvasPan({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y,
+      });
+    }
+  };
+
+  const handleCanvasMouseUp = (e) => {
+    if (e.button === 1 || (e.button === 0 && isPanning)) {
+      setIsPanning(false);
+    }
+  };
 
   // Execute JavaScript code for preview
   React.useEffect(() => {
@@ -258,12 +352,12 @@ const TemplateCanvas = ({
       width: element.width,
       height: element.height
     });
-    // Element positions are in mm, convert to px for drag calculations
-    const elementXPx = (element.x || 0) * MM_TO_PX;
-    const elementYPx = (element.y || 0) * MM_TO_PX;
+    // Element positions are in mm, convert to px for drag calculations (accounting for zoom)
+    const elementXPx = (element.x || 0) * MM_TO_PX * canvasZoom;
+    const elementYPx = (element.y || 0) * MM_TO_PX * canvasZoom;
     setDragOffset({
-      x: e.clientX - elementXPx,
-      y: e.clientY - elementYPx,
+      x: e.clientX - elementXPx - canvasPan.x,
+      y: e.clientY - elementYPx - canvasPan.y,
     });
   };
 
@@ -280,11 +374,11 @@ const TemplateCanvas = ({
       width: element.width,
       height: element.height
     });
-    // Element dimensions are in mm, convert to px for resize calculations
-    const widthPx = (element.width || 0) * MM_TO_PX;
-    const heightPx = (element.height || 0) * MM_TO_PX;
-    const leftPx = (element.x || 0) * MM_TO_PX;
-    const topPx = (element.y || 0) * MM_TO_PX;
+    // Element dimensions are in mm, convert to px for resize calculations (accounting for zoom)
+    const widthPx = (element.width || 0) * MM_TO_PX * canvasZoom;
+    const heightPx = (element.height || 0) * MM_TO_PX * canvasZoom;
+    const leftPx = (element.x || 0) * MM_TO_PX * canvasZoom;
+    const topPx = (element.y || 0) * MM_TO_PX * canvasZoom;
     setResizeStart({
       x: e.clientX,
       y: e.clientY,
@@ -300,8 +394,8 @@ const TemplateCanvas = ({
       const element = elements.find(el => el.id === draggingId);
       if (!element) return;
 
-      const newXPx = e.clientX - dragOffset.x;
-      const newYPx = e.clientY - dragOffset.y;
+      const newXPx = (e.clientX - dragOffset.x - canvasPan.x) / canvasZoom;
+      const newYPx = (e.clientY - dragOffset.y - canvasPan.y) / canvasZoom;
 
       // Convert px back to mm before saving
       let newXMm = newXPx / MM_TO_PX;
@@ -327,57 +421,57 @@ const TemplateCanvas = ({
 
       let updates = {};
 
-      // Calculate new dimensions in px first, then convert to mm
-      const minSizePx = MIN_ELEMENT_SIZE_MM * MM_TO_PX; // Convert min size to px for calculations
+      // Calculate new dimensions in px first, then convert to mm (accounting for zoom)
+      const minSizePx = MIN_ELEMENT_SIZE_MM * MM_TO_PX * canvasZoom; // Convert min size to px for calculations
       switch (resizeHandle) {
         case 'se': // bottom-right
           updates = {
-            width: Math.max(minSizePx, resizeStart.width + dx) / MM_TO_PX,
-            height: Math.max(minSizePx, resizeStart.height + dy) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width + dx) / (MM_TO_PX * canvasZoom),
+            height: Math.max(minSizePx, resizeStart.height + dy) / (MM_TO_PX * canvasZoom),
           };
           break;
         case 'sw': // bottom-left
           updates = {
-            x: (resizeStart.left + dx) / MM_TO_PX,
-            width: Math.max(minSizePx, resizeStart.width - dx) / MM_TO_PX,
-            height: Math.max(minSizePx, resizeStart.height + dy) / MM_TO_PX,
+            x: (resizeStart.left + dx) / (MM_TO_PX * canvasZoom),
+            width: Math.max(minSizePx, resizeStart.width - dx) / (MM_TO_PX * canvasZoom),
+            height: Math.max(minSizePx, resizeStart.height + dy) / (MM_TO_PX * canvasZoom),
           };
           break;
         case 'ne': // top-right
           updates = {
-            y: (resizeStart.top + dy) / MM_TO_PX,
-            width: Math.max(minSizePx, resizeStart.width + dx) / MM_TO_PX,
-            height: Math.max(minSizePx, resizeStart.height - dy) / MM_TO_PX,
+            y: (resizeStart.top + dy) / (MM_TO_PX * canvasZoom),
+            width: Math.max(minSizePx, resizeStart.width + dx) / (MM_TO_PX * canvasZoom),
+            height: Math.max(minSizePx, resizeStart.height - dy) / (MM_TO_PX * canvasZoom),
           };
           break;
         case 'nw': // top-left
           updates = {
-            x: (resizeStart.left + dx) / MM_TO_PX,
-            y: (resizeStart.top + dy) / MM_TO_PX,
-            width: Math.max(minSizePx, resizeStart.width - dx) / MM_TO_PX,
-            height: Math.max(minSizePx, resizeStart.height - dy) / MM_TO_PX,
+            x: (resizeStart.left + dx) / (MM_TO_PX * canvasZoom),
+            y: (resizeStart.top + dy) / (MM_TO_PX * canvasZoom),
+            width: Math.max(minSizePx, resizeStart.width - dx) / (MM_TO_PX * canvasZoom),
+            height: Math.max(minSizePx, resizeStart.height - dy) / (MM_TO_PX * canvasZoom),
           };
           break;
         case 'n': // top
           updates = {
-            y: (resizeStart.top + dy) / MM_TO_PX,
-            height: Math.max(minSizePx, resizeStart.height - dy) / MM_TO_PX,
+            y: (resizeStart.top + dy) / (MM_TO_PX * canvasZoom),
+            height: Math.max(minSizePx, resizeStart.height - dy) / (MM_TO_PX * canvasZoom),
           };
           break;
         case 's': // bottom
           updates = {
-            height: Math.max(minSizePx, resizeStart.height + dy) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height + dy) / (MM_TO_PX * canvasZoom),
           };
           break;
         case 'e': // right
           updates = {
-            width: Math.max(minSizePx, resizeStart.width + dx) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width + dx) / (MM_TO_PX * canvasZoom),
           };
           break;
         case 'w': // left
           updates = {
-            x: (resizeStart.left + dx) / MM_TO_PX,
-            width: Math.max(minSizePx, resizeStart.width - dx) / MM_TO_PX,
+            x: (resizeStart.left + dx) / (MM_TO_PX * canvasZoom),
+            width: Math.max(minSizePx, resizeStart.width - dx) / (MM_TO_PX * canvasZoom),
           };
           break;
       }
@@ -898,20 +992,154 @@ const TemplateCanvas = ({
             ...baseStyle,
             backgroundColor: 'rgba(200, 200, 255, 0.1)',
             border: isSelected ? '3px dashed #2196F3' : isInMultiSelect ? '2px dashed #4CAF50' : '1px dashed #999',
+            overflow: 'visible', // Allow children to be visible
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          {/* Render children recursively with proper rendering */}
+          {/* Render children recursively with positions relative to group */}
           {element.children?.map(child => {
-            // Create a child element with absolute position relative to canvas
-            const absoluteChild = {
-              ...child,
-              x: (element.x || 0) + (child.x || 0),
-              y: (element.y || 0) + (child.y || 0),
+            // Convert child position from mm to px
+            const childXPx = (child.x || 0) * MM_TO_PX;
+            const childYPx = (child.y || 0) * MM_TO_PX;
+            const childWidthPx = (child.width || 0) * MM_TO_PX;
+            const childHeightPx = (child.height || 0) * MM_TO_PX;
+            
+            const childBaseStyle = {
+              position: 'absolute',
+              left: `${childXPx}px`,
+              top: `${childYPx}px`,
+              width: `${childWidthPx}px`,
+              height: `${childHeightPx}px`,
+              opacity: child.opacity ?? 1,
+              zIndex: child.zIndex ?? DEFAULT_ELEMENT_Z_INDEX,
+              backgroundColor: child.blockBackgroundTransparent ? 'transparent' : (child.blockBackgroundColor || undefined),
+              transform: child.rotation ? `rotate(${child.rotation}deg)` : undefined,
+              transformOrigin: 'center center',
+              border: '1px dashed #ccc',
+              boxSizing: 'border-box',
+              pointerEvents: 'none', // Prevent direct interaction with children in group
             };
-            // Render child element recursively using renderElement
-            // This ensures all child types (text, image, jsCode, etc.) are properly rendered
-            return renderElement(absoluteChild, depth + 1);
+            
+            // Render child inline based on type
+            if (child.type === 'text') {
+              let displayText = child.csvColumn || 'Texte';
+              if (showRealData && sampleData && child.csvColumn) {
+                displayText = sampleData[child.csvColumn] ?? '';
+              }
+              if (child.hasTextModifier && child.csvColumn) {
+                const prefix = child.textPrefix || '';
+                const suffix = child.textSuffix || '';
+                if (showRealData && sampleData) {
+                  const csvValue = sampleData[child.csvColumn] ?? '';
+                  displayText = `${prefix}${csvValue}${suffix}`;
+                } else {
+                  displayText = `${prefix}${child.csvColumn}${suffix}`;
+                }
+              }
+              
+              return (
+                <div
+                  key={child.id}
+                  style={{
+                    ...childBaseStyle,
+                    display: 'flex',
+                    alignItems: child.verticalAlign === 'top' ? 'flex-start' : child.verticalAlign === 'bottom' ? 'flex-end' : 'center',
+                    justifyContent: child.textAlign === 'left' ? 'flex-start' : child.textAlign === 'right' ? 'flex-end' : 'center',
+                    fontSize: `${child.fontSize}px`,
+                    fontFamily: child.fontFamily,
+                    fontWeight: child.fontWeight,
+                    fontStyle: child.fontStyle,
+                    color: child.color,
+                    padding: '4px',
+                    overflow: 'hidden',
+                    lineHeight: child.lineHeight || 1.2,
+                    letterSpacing: `${child.letterSpacing || 0}px`,
+                  }}
+                >
+                  <span style={{
+                    display: 'block',
+                    backgroundColor: child.highlightEnabled ? (child.highlightColor || '#FFFF00') : 'transparent',
+                    textAlign: child.textAlign,
+                    width: '100%',
+                    textTransform: child.textTransform || 'none',
+                  }}>
+                    {displayText}
+                  </span>
+                </div>
+              );
+            } else if (child.type === 'freeText') {
+              return (
+                <div
+                  key={child.id}
+                  style={{
+                    ...childBaseStyle,
+                    display: 'flex',
+                    alignItems: child.verticalAlign === 'top' ? 'flex-start' : child.verticalAlign === 'bottom' ? 'flex-end' : 'center',
+                    justifyContent: child.textAlign === 'left' ? 'flex-start' : child.textAlign === 'right' ? 'flex-end' : 'center',
+                    fontSize: `${child.fontSize}px`,
+                    fontFamily: child.fontFamily,
+                    fontWeight: child.fontWeight,
+                    fontStyle: child.fontStyle,
+                    color: child.color,
+                    padding: '4px',
+                    overflow: 'hidden',
+                    whiteSpace: 'pre-wrap',
+                    lineHeight: child.lineHeight || 1.2,
+                    letterSpacing: `${child.letterSpacing || 0}px`,
+                  }}
+                >
+                  <span style={{
+                    display: 'block',
+                    backgroundColor: child.highlightEnabled ? (child.highlightColor || '#FFFF00') : 'transparent',
+                    textAlign: child.textAlign,
+                    width: '100%',
+                    textTransform: child.textTransform || 'none',
+                  }}>
+                    {child.content || 'Texte libre'}
+                  </span>
+                </div>
+              );
+            } else if (child.type === 'rectangle') {
+              return (
+                <div
+                  key={child.id}
+                  style={{
+                    ...childBaseStyle,
+                    backgroundColor: child.backgroundColor,
+                    border: `${child.borderWidth}px ${child.borderStyle} ${child.borderColor}`,
+                    borderRadius: `${child.borderRadius}px`,
+                  }}
+                />
+              );
+            } else if (child.type === 'line') {
+              return (
+                <div
+                  key={child.id}
+                  style={{
+                    ...childBaseStyle,
+                    borderBottom: `${child.thickness}px ${child.style} ${child.color}`,
+                    height: 'auto',
+                  }}
+                />
+              );
+            } else {
+              // Generic fallback for other types
+              return (
+                <div
+                  key={child.id}
+                  style={{
+                    ...childBaseStyle,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    color: '#666',
+                  }}
+                >
+                  {child.type}
+                </div>
+              );
+            }
           })}
           <div style={{
             position: 'absolute',
@@ -935,14 +1163,68 @@ const TemplateCanvas = ({
   };
 
   return (
-    <div style={styles.container}>
+    <div 
+      ref={canvasContainerRef}
+      style={{
+        ...styles.container,
+        cursor: isPanning ? 'grabbing' : (isSpacePressed ? 'grab' : 'default'),
+        overflow: 'auto', // Keep scroll bars as fallback
+        position: 'relative',
+      }}
+      onMouseDown={handleCanvasMouseDown}
+      onMouseMove={handleCanvasMouseMove}
+      onMouseUp={handleCanvasMouseUp}
+      onMouseLeave={() => setIsPanning(false)}
+    >
+      {/* Canvas controls overlay */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        right: '10px',
+        zIndex: 1001,
+        display: 'flex',
+        gap: '8px',
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        padding: '8px',
+        borderRadius: '5px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      }}>
+        <button
+          onClick={() => {
+            setCanvasZoom(1);
+            setCanvasPan({ x: 0, y: 0 });
+          }}
+          style={{
+            padding: '4px 8px',
+            fontSize: '12px',
+            border: '1px solid #ddd',
+            borderRadius: '3px',
+            backgroundColor: 'white',
+            cursor: 'pointer',
+          }}
+          title="Réinitialiser la vue (100%, centré)"
+        >
+          🔄 Reset
+        </button>
+        <span style={{
+          padding: '4px 8px',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          color: '#666',
+        }}>
+          {Math.round(canvasZoom * 100)}%
+        </span>
+      </div>
+      
       <div style={styles.canvasWrapper}>
         <div
           style={{
             ...styles.canvas,
-            width: `${canvasWidth}px`,
-            height: `${canvasHeight}px`,
+            width: `${canvasWidth * canvasZoom}px`,
+            height: `${canvasHeight * canvasZoom}px`,
             backgroundColor: pageConfig.backgroundColor || '#FFFFFF',
+            transform: `translate(${canvasPan.x}px, ${canvasPan.y}px)`,
+            transformOrigin: '0 0',
           }}
           onClick={(e) => {
             // Only deselect if clicking directly on canvas (not on an element)
@@ -966,7 +1248,7 @@ const TemplateCanvas = ({
             >
               <defs>
                 <pattern
-                  id="grid"
+                  id={`grid-pattern-${canvasWidth}-${canvasHeight}`}
                   width={gridSettings.size * MM_TO_PX}
                   height={gridSettings.size * MM_TO_PX}
                   patternUnits="userSpaceOnUse"
@@ -974,12 +1256,12 @@ const TemplateCanvas = ({
                   <path
                     d={`M ${gridSettings.size * MM_TO_PX} 0 L 0 0 0 ${gridSettings.size * MM_TO_PX}`}
                     fill="none"
-                    stroke="#ddd"
-                    strokeWidth="0.5"
+                    stroke="rgba(0, 0, 0, 0.15)"
+                    strokeWidth="1"
                   />
                 </pattern>
               </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
+              <rect width="100%" height="100%" fill={`url(#grid-pattern-${canvasWidth}-${canvasHeight})`} />
             </svg>
           )}
 
