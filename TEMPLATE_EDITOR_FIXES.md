@@ -114,6 +114,16 @@ const rowData = (allSampleData && allSampleData.length > 0) ? allSampleData : (d
    - Element resizing handles work correctly at any zoom level
    - Minimum size constraints adjusted for zoom
 
+6. **Canvas Controls Overlay**:
+   - Reset button to restore 100% zoom and center position
+   - Real-time zoom percentage display
+   - Fixed position overlay for easy access
+
+7. **Smart Interaction Handling**:
+   - Pan and element drag/resize operations don't conflict
+   - Scroll bars maintained as fallback navigation
+   - Space key press temporarily enables pan mode
+
 **Files Modified**:
 - `client/src/components/Admin/TemplateBuilder/TemplateCanvas.jsx`
 
@@ -143,7 +153,7 @@ React.useEffect(() => {
   container.addEventListener('wheel', handleWheel, { passive: false });
 }, [canvasZoom]);
 
-// Pan handlers
+// Pan handlers with conflict prevention
 const handleCanvasMouseDown = (e) => {
   if (e.button === 1 || (e.button === 0 && isSpacePressed)) {
     setIsPanning(true);
@@ -151,8 +161,58 @@ const handleCanvasMouseDown = (e) => {
   }
 };
 
-// Canvas transform
+const handleCanvasMouseMove = (e) => {
+  // Don't pan if we're dragging or resizing an element
+  if (isPanning && !draggingId && !resizingId) {
+    e.preventDefault();
+    setCanvasPan({
+      x: e.clientX - panStart.x,
+      y: e.clientY - panStart.y,
+    });
+  }
+};
+
+// Canvas controls overlay with reset button
 <div style={{
+  position: 'absolute',
+  top: '10px',
+  right: '10px',
+  zIndex: 1001,
+  display: 'flex',
+  gap: '8px',
+  backgroundColor: 'rgba(255,255,255,0.9)',
+  padding: '8px',
+  borderRadius: '5px',
+  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+}}>
+  <button
+    onClick={() => {
+      setCanvasZoom(1);
+      setCanvasPan({ x: 0, y: 0 });
+    }}
+    title="Réinitialiser la vue (100%, centré)"
+  >
+    🔄 Reset
+  </button>
+  <span>{Math.round(canvasZoom * 100)}%</span>
+</div>
+
+// Canvas transform with fallback scrolling
+<div 
+  style={{
+    overflow: 'auto', // Keep scroll bars as fallback
+    cursor: isPanning ? 'grabbing' : (isSpacePressed ? 'grab' : 'default'),
+  }}
+  onMouseDown={handleCanvasMouseDown}
+  onMouseMove={handleCanvasMouseMove}
+>
+  <div style={{
+    width: `${canvasWidth * canvasZoom}px`,
+    height: `${canvasHeight * canvasZoom}px`,
+    transform: `translate(${canvasPan.x}px, ${canvasPan.y}px)`,
+    transformOrigin: '0 0',
+  }}>
+
   width: `${canvasWidth * canvasZoom}px`,
   height: `${canvasHeight * canvasZoom}px`,
   transform: `translate(${canvasPan.x}px, ${canvasPan.y}px)`,
@@ -180,6 +240,13 @@ updates.width = Math.max(minSizePx, resizeStart.width + dx) / (MM_TO_PX * canvas
 - Conversion factor: 1mm = 3.779528px (at 96 DPI)
 - Zoom applied via CSS transform on canvas container
 - Element positions/sizes stored in mm, rendered in px * zoom
+
+### Navigation System
+- Zoom range: 10% to 500%
+- Pan implemented via CSS transform translate
+- Scroll bars maintained as fallback for accessibility
+- Conflict prevention: pan disabled during element drag/resize
+- Reset button returns to 100% zoom and centered position
 
 ### Grid System
 - Grid size configurable in mm (default: 10mm)
@@ -218,9 +285,13 @@ updates.width = Math.max(minSizePx, resizeStart.width + dx) / (MM_TO_PX * canvas
    - Test mouse wheel zoom in/out
    - Test middle mouse pan
    - Test space + drag pan
+   - Test reset button (returns to 100% zoom, centered)
+   - Verify zoom percentage display updates correctly
    - Verify element editing works at different zoom levels
    - Test drag & drop at 50%, 100%, and 200% zoom
    - Test resize at various zoom levels
+   - Verify scroll bars work as fallback
+   - Confirm no conflict between pan and element drag/resize
 
 ---
 
@@ -240,7 +311,7 @@ Potential improvements for consideration:
 2. Zoom to selection
 3. Keyboard shortcuts for zoom (Ctrl +/-)
 4. Pan with arrow keys
-5. Reset view button (zoom 100%, center canvas)
-6. Minimap for large canvases
-7. Ruler guides
-8. Custom zoom levels dropdown
+5. Minimap for large canvases
+6. Ruler guides
+7. Custom zoom levels dropdown
+8. Touch gesture support (pinch to zoom, two-finger pan)
