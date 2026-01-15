@@ -419,7 +419,7 @@ const TemplateCanvas = ({
       
       // Use real data if preview mode is enabled and data is available
       if (showRealData && sampleData && element.csvColumn) {
-        displayText = sampleData[element.csvColumn] || element.csvColumn;
+        displayText = sampleData[element.csvColumn] ?? '';
       }
       
       // Show prefix/suffix in editor if enabled
@@ -427,7 +427,7 @@ const TemplateCanvas = ({
         const prefix = element.textPrefix || '';
         const suffix = element.textSuffix || '';
         if (showRealData && sampleData) {
-          const csvValue = sampleData[element.csvColumn] || '';
+          const csvValue = sampleData[element.csvColumn] ?? '';
           displayText = `${prefix}${csvValue}${suffix}`;
         } else {
           displayText = `${prefix}${element.csvColumn}${suffix}`;

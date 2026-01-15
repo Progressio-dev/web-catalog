@@ -1303,13 +1303,13 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
 
         {element.imageMask === 'rounded' || element.imageMask === 'rounded-lg' ? (
           <div style={styles.group}>
-            <label style={styles.label}>Rayon des coins: {element.borderRadius || 0}px</label>
+            <label style={styles.label}>Rayon des coins: {element.borderRadius ?? (element.imageMask === 'rounded' ? 10 : 20)}px</label>
             <input
               type="range"
               min="0"
               max="50"
               step="1"
-              value={element.borderRadius || (element.imageMask === 'rounded' ? 10 : 20)}
+              value={element.borderRadius ?? (element.imageMask === 'rounded' ? 10 : 20)}
               onChange={(e) => onUpdate({ borderRadius: parseInt(e.target.value) || 0 })}
               style={styles.range}
             />
@@ -1528,7 +1528,21 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
 
       <div style={styles.content}>
         <div style={styles.typeLabel}>
-          Type: {element.type === 'text' ? '📝 Texte' : element.type === 'logo' ? '🖼️ Logo' : element.type === 'image' ? '📷 Image' : element.type === 'freeImage' ? '🖼️ Image Libre' : element.type === 'line' ? '➖ Ligne' : element.type === 'freeText' ? '📝 Texte Libre' : element.type === 'jsCode' ? '💻 Code JavaScript' : element.type === 'table' ? '📊 Tableau' : element.type === 'group' ? '📦 Groupe' : '▭ Rectangle'}
+          Type: {(() => {
+            const typeLabels = {
+              text: '📝 Texte',
+              logo: '🖼️ Logo',
+              image: '📷 Image',
+              freeImage: '🖼️ Image Libre',
+              line: '➖ Ligne',
+              freeText: '📝 Texte Libre',
+              jsCode: '💻 Code JavaScript',
+              table: '📊 Tableau',
+              group: '📦 Groupe',
+              rectangle: '▭ Rectangle',
+            };
+            return typeLabels[element.type] || element.type;
+          })()}
         </div>
 
         {renderPositionAndSize()}
