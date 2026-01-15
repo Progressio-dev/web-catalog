@@ -8,6 +8,9 @@ const PAGE_FORMATS = {
   Letter: { width: 215.9, height: 279.4 },
 };
 
+const DEFAULT_ELEMENT_Z_INDEX = 1; // Ensure elements appear above grid (z-index 0)
+const MAX_GROUP_DEPTH = 10; // Prevent infinite recursion in nested groups
+
 const TemplateCanvas = ({
   pageConfig,
   elements,
@@ -428,7 +431,13 @@ const TemplateCanvas = ({
     }
   }, [draggingId, resizingId, dragOffset, resizeStart, resizeHandle, mouseDownPos]);
 
-  const renderElement = (element) => {
+  const renderElement = (element, depth = 0) => {
+    // Prevent infinite recursion in nested groups
+    if (depth > MAX_GROUP_DEPTH) {
+      console.warn('Maximum group nesting depth exceeded for element:', element.id);
+      return null;
+    }
+    
     const isSelected = selectedElement?.id === element.id;
     const isInMultiSelect = selectedElements.some(el => el.id === element.id);
     // Convert mm to px for rendering
@@ -447,7 +456,7 @@ const TemplateCanvas = ({
       border: isSelected ? '3px solid #2196F3' : isInMultiSelect ? '2px solid #4CAF50' : '1px dashed #ccc',
       boxSizing: 'border-box',
       opacity: element.opacity ?? 1,
-      zIndex: element.zIndex ?? 1, // Changed from 0 to 1 to ensure elements appear above grid
+      zIndex: element.zIndex ?? DEFAULT_ELEMENT_Z_INDEX,
       backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
       transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
       transformOrigin: 'center center',
@@ -902,7 +911,7 @@ const TemplateCanvas = ({
             };
             // Render child element recursively using renderElement
             // This ensures all child types (text, image, jsCode, etc.) are properly rendered
-            return renderElement(absoluteChild);
+            return renderElement(absoluteChild, depth + 1);
           })}
           <div style={{
             position: 'absolute',
