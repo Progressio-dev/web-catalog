@@ -372,6 +372,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
     height: ${element.height || 'auto'}mm;
     opacity: ${element.opacity ?? 1};
     z-index: ${element.zIndex ?? 0};
+    ${element.rotation ? `transform: rotate(${element.rotation}deg); transform-origin: center center;` : ''}
   `;
 
   if (element.type === 'text') {
@@ -710,6 +711,52 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
       })
     );
     return childrenHtml.join('');
+  }
+
+  // Free image element
+  if (element.type === 'freeImage') {
+    if (!element.imageData) {
+      // No image uploaded, skip rendering
+      return '';
+    }
+
+    // Determine block background
+    const blockBgColor = element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || 'transparent');
+    
+    // Get image transformation properties
+    const imageCropX = element.imageCropX || 50;
+    const imageCropY = element.imageCropY || 50;
+    const imageMask = element.imageMask || 'none';
+    
+    // Determine border radius based on mask
+    let borderRadius = '0';
+    if (imageMask === 'circle') {
+      borderRadius = '50%';
+    } else if (imageMask === 'rounded') {
+      borderRadius = `${element.borderRadius || 10}px`;
+    } else if (imageMask === 'rounded-lg') {
+      borderRadius = `${element.borderRadius || 20}px`;
+    }
+    
+    const imageStyle = `
+      ${baseStyle}
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: ${blockBgColor};
+      overflow: hidden;
+      border-radius: ${borderRadius};
+    `;
+    
+    const imgStyle = `
+      width: 100%;
+      height: 100%;
+      object-fit: ${element.fit || 'contain'};
+      object-position: ${imageCropX}% ${imageCropY}%;
+    `;
+    
+    // imageData already contains the base64 data URL
+    return `<div style="${imageStyle}"><img src="${element.imageData}" style="${imgStyle}" /></div>`;
   }
 
   // Table element - render data as HTML table

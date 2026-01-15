@@ -1,4 +1,5 @@
 import React from 'react';
+import { calculateBorderRadius } from '../../../utils/imageUtils';
 
 const PAGE_FORMATS = {
   A4: { width: 210, height: 297 },
@@ -12,6 +13,8 @@ const TemplateCanvas = ({
   selectedElement,
   selectedElements = [],
   gridSettings = { enabled: false, size: 10, snapToGrid: false, showSmartGuides: true },
+  showRealData = false,
+  sampleData = null,
   onSelectElement,
   onUpdateElement,
   onDeleteElement,
@@ -353,6 +356,8 @@ const TemplateCanvas = ({
       opacity: element.opacity ?? 1,
       zIndex: element.zIndex ?? 0,
       backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
+      transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+      transformOrigin: 'center center',
     };
 
     const renderResizeHandles = () => {
@@ -413,11 +418,21 @@ const TemplateCanvas = ({
     if (element.type === 'text') {
       let displayText = element.csvColumn || 'Texte';
       
+      // Use real data if preview mode is enabled and data is available
+      if (showRealData && sampleData && element.csvColumn) {
+        displayText = sampleData[element.csvColumn] ?? '';
+      }
+      
       // Show prefix/suffix in editor if enabled
       if (element.hasTextModifier && element.csvColumn) {
         const prefix = element.textPrefix || '';
         const suffix = element.textSuffix || '';
-        displayText = `${prefix}${element.csvColumn}${suffix}`;
+        if (showRealData && sampleData) {
+          const csvValue = sampleData[element.csvColumn] ?? '';
+          displayText = `${prefix}${csvValue}${suffix}`;
+        } else {
+          displayText = `${prefix}${element.csvColumn}${suffix}`;
+        }
       }
       
       return (
@@ -460,19 +475,11 @@ const TemplateCanvas = ({
       
       // Compute image styles based on transformations
       const imageRotation = element.imageRotation || 0;
-      const imageMask = element.imageMask || 'none';
       const imageCropX = element.imageCropX || 50;
       const imageCropY = element.imageCropY || 50;
       
-      // Determine border radius based on mask
-      let borderRadiusStyle = '0px';
-      if (imageMask === 'circle') {
-        borderRadiusStyle = '50%';
-      } else if (imageMask === 'rounded') {
-        borderRadiusStyle = `${element.borderRadius || 10}px`;
-      } else if (imageMask === 'rounded-lg') {
-        borderRadiusStyle = `${element.borderRadius || 20}px`;
-      }
+      // Calculate border radius using shared utility
+      const borderRadiusStyle = calculateBorderRadius(element);
       
       const imageStyle = {
         width: '100%',
@@ -711,6 +718,48 @@ const TemplateCanvas = ({
           }}>
             📊 Tableau ({columns.length} colonnes)
           </div>
+          {renderResizeHandles()}
+        </div>
+      );
+    }
+
+    // Free image element
+    if (element.type === 'freeImage') {
+      const imageCropX = element.imageCropX || 50;
+      const imageCropY = element.imageCropY || 50;
+      
+      // Calculate border radius using shared utility
+      const borderRadiusStyle = calculateBorderRadius(element);
+
+      const imageStyle = {
+        width: '100%',
+        height: '100%',
+        objectFit: element.fit || 'contain',
+        objectPosition: `${imageCropX}% ${imageCropY}%`,
+        borderRadius: borderRadiusStyle,
+      };
+
+      return (
+        <div
+          key={element.id}
+          style={{
+            ...baseStyle,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || '#f0f0f0'),
+            fontSize: '12px',
+            color: '#666',
+            overflow: 'hidden',
+            borderRadius: borderRadiusStyle,
+          }}
+          onMouseDown={(e) => handleMouseDown(e, element)}
+        >
+          {element.imageData ? (
+            <img src={element.imageData} alt="Free Image" style={imageStyle} />
+          ) : (
+            '🖼️ Image Libre (aucune image)'
+          )}
           {renderResizeHandles()}
         </div>
       );

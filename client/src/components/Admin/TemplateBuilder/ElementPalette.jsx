@@ -166,6 +166,16 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
     });
   };
 
+  const addFreeImageElement = () => {
+    onAddElement({
+      type: 'freeImage',
+      width: 60, // mm
+      height: 60, // mm
+      imageData: null, // Will be set when user uploads image
+      fit: 'contain',
+    });
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.section}>
@@ -252,6 +262,10 @@ const ElementPalette = ({ csvColumns, onAddElement }) => {
           <button onClick={addImageElement} style={styles.elementBtn}>
             <span style={styles.icon}>📷</span>
             <span>Image produit</span>
+          </button>
+          <button onClick={addFreeImageElement} style={styles.elementBtn}>
+            <span style={styles.icon}>🖼️</span>
+            <span>Image libre</span>
           </button>
           <button onClick={addLineElement} style={styles.elementBtn}>
             <span style={styles.icon}>➖</span>
