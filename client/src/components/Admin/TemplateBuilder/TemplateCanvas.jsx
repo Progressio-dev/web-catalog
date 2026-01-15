@@ -11,6 +11,14 @@ const PAGE_FORMATS = {
 const DEFAULT_ELEMENT_Z_INDEX = 1; // Ensure elements appear above grid (z-index 0)
 const MAX_GROUP_DEPTH = 10; // Prevent infinite recursion in nested groups
 
+// Zoom configuration constants
+const MIN_ZOOM = 0.1; // 10% minimum zoom
+const MAX_ZOOM = 5;   // 500% maximum zoom
+const ZOOM_INCREMENT_WHEEL = 1.08;  // 8% zoom increment for mouse wheel (smoother)
+const ZOOM_DECREMENT_WHEEL = 0.92;  // 8% zoom decrement for mouse wheel
+const ZOOM_INCREMENT_BUTTON = 1.2;  // 20% zoom increment for buttons/keyboard
+const ZOOM_DECREMENT_BUTTON = 0.8;  // 20% zoom decrement for buttons/keyboard
+
 const TemplateCanvas = ({
   pageConfig,
   elements,
@@ -41,6 +49,14 @@ const TemplateCanvas = ({
   const [panStart, setPanStart] = React.useState({ x: 0, y: 0 });
   const [isSpacePressed, setIsSpacePressed] = React.useState(false);
   const canvasContainerRef = React.useRef(null);
+  
+  // Use refs for canvasPan and canvasZoom to avoid recreating wheel listener on every change
+  const canvasPanRef = React.useRef(canvasPan);
+  const canvasZoomRef = React.useRef(canvasZoom);
+  React.useEffect(() => {
+    canvasPanRef.current = canvasPan;
+    canvasZoomRef.current = canvasZoom;
+  }, [canvasPan, canvasZoom]);
 
 
   // Get base page dimensions in mm
@@ -75,7 +91,33 @@ const TemplateCanvas = ({
     setCanvasPan({ x: panX, y: panY });
   }, [canvasWidth, canvasHeight]); // Recenter when canvas size changes
 
-  // Handle delete key
+  // Helper function: Zoom centered on viewport
+  const zoomToViewportCenter = React.useCallback((zoomFactor) => {
+    if (!canvasContainerRef.current) return;
+    const rect = canvasContainerRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const canvasPointX = (centerX - canvasPan.x) / canvasZoom;
+    const canvasPointY = (centerY - canvasPan.y) / canvasZoom;
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, canvasZoom * zoomFactor));
+    setCanvasPan({
+      x: centerX - canvasPointX * newZoom,
+      y: centerY - canvasPointY * newZoom,
+    });
+    setCanvasZoom(newZoom);
+  }, [canvasZoom, canvasPan]);
+
+  // Helper function: Reset to 100% zoom and center
+  const resetZoomAndCenter = React.useCallback(() => {
+    if (!canvasContainerRef.current) return;
+    const rect = canvasContainerRef.current.getBoundingClientRect();
+    const panX = (rect.width - canvasWidth) / 2;
+    const panY = (rect.height - canvasHeight) / 2;
+    setCanvasZoom(1);
+    setCanvasPan({ x: panX, y: panY });
+  }, [canvasWidth, canvasHeight]);
+
+  // Handle delete key and keyboard shortcuts for zoom/pan
   React.useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Delete' && selectedElement) {
@@ -85,6 +127,20 @@ const TemplateCanvas = ({
       if (e.key === ' ' && !isSpacePressed) {
         e.preventDefault();
         setIsSpacePressed(true);
+      }
+      
+      // Keyboard shortcuts for zoom (Ctrl/Cmd + Plus/Minus)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          zoomToViewportCenter(ZOOM_INCREMENT_BUTTON);
+        } else if (e.key === '-' || e.key === '_') {
+          e.preventDefault();
+          zoomToViewportCenter(ZOOM_DECREMENT_BUTTON);
+        } else if (e.key === '0') {
+          e.preventDefault();
+          resetZoomAndCenter();
+        }
       }
     };
     
@@ -101,9 +157,9 @@ const TemplateCanvas = ({
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [selectedElement, onDeleteElement, isSpacePressed]);
+  }, [selectedElement, onDeleteElement, isSpacePressed, zoomToViewportCenter, resetZoomAndCenter]);
 
-  // Handle mouse wheel for zoom
+  // Handle mouse wheel for zoom with improved ergonomics
   React.useEffect(() => {
     const handleWheel = (e) => {
       if (!canvasContainerRef.current) return;
@@ -122,8 +178,11 @@ const TemplateCanvas = ({
       e.preventDefault();
       
       const delta = -e.deltaY;
-      const zoomFactor = delta > 0 ? 1.1 : 0.9;
-      const newZoom = Math.max(0.1, Math.min(5, canvasZoom * zoomFactor));
+      // Smoother zoom: use smaller increments for better control (8% steps)
+      const zoomFactor = delta > 0 ? ZOOM_INCREMENT_WHEEL : ZOOM_DECREMENT_WHEEL;
+      const currentZoom = canvasZoomRef.current;
+      const currentPan = canvasPanRef.current;
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentZoom * zoomFactor));
       
       // Calculate mouse position relative to container
       const mouseX = e.clientX - rect.left;
@@ -131,8 +190,8 @@ const TemplateCanvas = ({
       
       // Calculate the point on the canvas that's under the mouse (in canvas coordinates)
       // We need to account for current pan and zoom
-      const canvasPointX = (mouseX - canvasPan.x) / canvasZoom;
-      const canvasPointY = (mouseY - canvasPan.y) / canvasZoom;
+      const canvasPointX = (mouseX - currentPan.x) / currentZoom;
+      const canvasPointY = (mouseY - currentPan.y) / currentZoom;
       
       // After zoom, this point should still be under the mouse
       // newMousePos = canvasPoint * newZoom + newPan
@@ -151,7 +210,7 @@ const TemplateCanvas = ({
       container.addEventListener('wheel', handleWheel, { passive: false });
       return () => container.removeEventListener('wheel', handleWheel);
     }
-  }, [canvasZoom]); // Only depend on canvasZoom, not canvasPan (to avoid infinite loop)
+  }, []); // Empty deps - use refs to avoid recreating listener on every state change
 
   // Handle canvas panning with middle mouse or space+drag
   const handleCanvasMouseDown = (e) => {
@@ -1019,150 +1078,28 @@ const TemplateCanvas = ({
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          {/* Render children recursively with positions relative to group */}
+          {/* Render children recursively - now using renderElement for full preview support */}
           {element.children?.map(child => {
-            // Convert child position from mm to px
-            const childXPx = (child.x || 0) * MM_TO_PX;
-            const childYPx = (child.y || 0) * MM_TO_PX;
-            const childWidthPx = (child.width || 0) * MM_TO_PX;
-            const childHeightPx = (child.height || 0) * MM_TO_PX;
+            // Create a wrapper div to position the child within the group
+            const childElement = renderElement(child, depth + 1);
             
-            const childBaseStyle = {
-              position: 'absolute',
-              left: `${childXPx}px`,
-              top: `${childYPx}px`,
-              width: `${childWidthPx}px`,
-              height: `${childHeightPx}px`,
-              opacity: child.opacity ?? 1,
-              zIndex: child.zIndex ?? DEFAULT_ELEMENT_Z_INDEX,
-              backgroundColor: child.blockBackgroundTransparent ? 'transparent' : (child.blockBackgroundColor || undefined),
-              transform: child.rotation ? `rotate(${child.rotation}deg)` : undefined,
-              transformOrigin: 'center center',
-              border: '1px dashed #ccc',
-              boxSizing: 'border-box',
-              pointerEvents: 'none', // Prevent direct interaction with children in group
-            };
-            
-            // Render child inline based on type
-            if (child.type === 'text') {
-              let displayText = child.csvColumn || 'Texte';
-              if (showRealData && sampleData && child.csvColumn) {
-                displayText = sampleData[child.csvColumn] ?? '';
-              }
-              if (child.hasTextModifier && child.csvColumn) {
-                const prefix = child.textPrefix || '';
-                const suffix = child.textSuffix || '';
-                if (showRealData && sampleData) {
-                  const csvValue = sampleData[child.csvColumn] ?? '';
-                  displayText = `${prefix}${csvValue}${suffix}`;
-                } else {
-                  displayText = `${prefix}${child.csvColumn}${suffix}`;
-                }
-              }
-              
-              return (
-                <div
-                  key={child.id}
-                  style={{
-                    ...childBaseStyle,
-                    display: 'flex',
-                    alignItems: child.verticalAlign === 'top' ? 'flex-start' : child.verticalAlign === 'bottom' ? 'flex-end' : 'center',
-                    justifyContent: child.textAlign === 'left' ? 'flex-start' : child.textAlign === 'right' ? 'flex-end' : 'center',
-                    fontSize: `${child.fontSize}px`,
-                    fontFamily: child.fontFamily,
-                    fontWeight: child.fontWeight,
-                    fontStyle: child.fontStyle,
-                    color: child.color,
-                    padding: '4px',
-                    overflow: 'hidden',
-                    lineHeight: child.lineHeight || 1.2,
-                    letterSpacing: `${child.letterSpacing || 0}px`,
-                  }}
-                >
-                  <span style={{
-                    display: 'block',
-                    backgroundColor: child.highlightEnabled ? (child.highlightColor || '#FFFF00') : 'transparent',
-                    textAlign: child.textAlign,
-                    width: '100%',
-                    textTransform: child.textTransform || 'none',
-                  }}>
-                    {displayText}
-                  </span>
-                </div>
-              );
-            } else if (child.type === 'freeText') {
-              return (
-                <div
-                  key={child.id}
-                  style={{
-                    ...childBaseStyle,
-                    display: 'flex',
-                    alignItems: child.verticalAlign === 'top' ? 'flex-start' : child.verticalAlign === 'bottom' ? 'flex-end' : 'center',
-                    justifyContent: child.textAlign === 'left' ? 'flex-start' : child.textAlign === 'right' ? 'flex-end' : 'center',
-                    fontSize: `${child.fontSize}px`,
-                    fontFamily: child.fontFamily,
-                    fontWeight: child.fontWeight,
-                    fontStyle: child.fontStyle,
-                    color: child.color,
-                    padding: '4px',
-                    overflow: 'hidden',
-                    whiteSpace: 'pre-wrap',
-                    lineHeight: child.lineHeight || 1.2,
-                    letterSpacing: `${child.letterSpacing || 0}px`,
-                  }}
-                >
-                  <span style={{
-                    display: 'block',
-                    backgroundColor: child.highlightEnabled ? (child.highlightColor || '#FFFF00') : 'transparent',
-                    textAlign: child.textAlign,
-                    width: '100%',
-                    textTransform: child.textTransform || 'none',
-                  }}>
-                    {child.content || 'Texte libre'}
-                  </span>
-                </div>
-              );
-            } else if (child.type === 'rectangle') {
-              return (
-                <div
-                  key={child.id}
-                  style={{
-                    ...childBaseStyle,
-                    backgroundColor: child.backgroundColor,
-                    border: `${child.borderWidth}px ${child.borderStyle} ${child.borderColor}`,
-                    borderRadius: `${child.borderRadius}px`,
-                  }}
-                />
-              );
-            } else if (child.type === 'line') {
-              return (
-                <div
-                  key={child.id}
-                  style={{
-                    ...childBaseStyle,
-                    borderBottom: `${child.thickness}px ${child.style} ${child.color}`,
-                    height: 'auto',
-                  }}
-                />
-              );
-            } else {
-              // Generic fallback for other types
-              return (
-                <div
-                  key={child.id}
-                  style={{
-                    ...childBaseStyle,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '10px',
-                    color: '#666',
-                  }}
-                >
-                  {child.type}
-                </div>
-              );
-            }
+            // Wrap with positioning container
+            return (
+              <div
+                key={child.id}
+                style={{
+                  position: 'absolute',
+                  left: `${(child.x || 0) * MM_TO_PX}px`,
+                  top: `${(child.y || 0) * MM_TO_PX}px`,
+                  // Intentionally disable child interactions - groups are treated as single units
+                  // This matches professional design tool behavior (Figma, Sketch, etc.)
+                  // To edit children, user must ungroup first
+                  pointerEvents: 'none',
+                }}
+              >
+                {childElement}
+              </div>
+            );
           })}
           <div style={{
             position: 'absolute',
@@ -1214,17 +1151,17 @@ const TemplateCanvas = ({
       }}>
         <button
           onClick={() => {
-            // Fit canvas to view with some padding
+            // Fit canvas to view with some padding - now allows upscaling for better ergonomics
             if (!canvasContainerRef.current) return;
             const rect = canvasContainerRef.current.getBoundingClientRect();
             const padding = 40; // 40px padding
             const availableWidth = rect.width - padding * 2;
             const availableHeight = rect.height - padding * 2;
             
-            // Calculate zoom to fit
+            // Calculate zoom to fit - removed 100% cap for better professional ergonomics
             const zoomX = availableWidth / canvasWidth;
             const zoomY = availableHeight / canvasHeight;
-            const fitZoom = Math.min(zoomX, zoomY, 1); // Don't zoom in beyond 100%
+            const fitZoom = Math.max(MIN_ZOOM, Math.min(zoomX, zoomY, MAX_ZOOM));
             
             // Center the canvas
             const scaledWidth = canvasWidth * fitZoom;
@@ -1243,20 +1180,40 @@ const TemplateCanvas = ({
             backgroundColor: 'white',
             cursor: 'pointer',
           }}
-          title="Ajuster à la vue"
+          title="Ajuster à la vue (peut zoomer au-delà de 100%)"
         >
           🔍 Fit
         </button>
         <button
-          onClick={() => {
-            // Reset to 100% zoom and center
-            if (!canvasContainerRef.current) return;
-            const rect = canvasContainerRef.current.getBoundingClientRect();
-            const panX = (rect.width - canvasWidth) / 2;
-            const panY = (rect.height - canvasHeight) / 2;
-            setCanvasZoom(1);
-            setCanvasPan({ x: panX, y: panY });
+          onClick={() => zoomToViewportCenter(ZOOM_INCREMENT_BUTTON)}
+          style={{
+            padding: '4px 8px',
+            fontSize: '14px',
+            border: '1px solid #ddd',
+            borderRadius: '3px',
+            backgroundColor: 'white',
+            cursor: 'pointer',
           }}
+          title="Zoom avant (Ctrl/Cmd + +)"
+        >
+          +
+        </button>
+        <button
+          onClick={() => zoomToViewportCenter(ZOOM_DECREMENT_BUTTON)}
+          style={{
+            padding: '4px 8px',
+            fontSize: '14px',
+            border: '1px solid #ddd',
+            borderRadius: '3px',
+            backgroundColor: 'white',
+            cursor: 'pointer',
+          }}
+          title="Zoom arrière (Ctrl/Cmd + -)"
+        >
+          −
+        </button>
+        <button
+          onClick={resetZoomAndCenter}
           style={{
             padding: '4px 8px',
             fontSize: '12px',
@@ -1265,7 +1222,7 @@ const TemplateCanvas = ({
             backgroundColor: 'white',
             cursor: 'pointer',
           }}
-          title="Réinitialiser à 100% et centrer"
+          title="Réinitialiser à 100% et centrer (Ctrl/Cmd + 0)"
         >
           🔄 Reset
         </button>
@@ -1273,10 +1230,22 @@ const TemplateCanvas = ({
           padding: '4px 8px',
           fontSize: '12px',
           fontWeight: 'bold',
-          color: '#666',
+          color: canvasZoom < 1 ? '#2196F3' : canvasZoom > 1 ? '#FF9800' : '#666',
         }}>
           {Math.round(canvasZoom * 100)}%
         </span>
+        {isSpacePressed && (
+          <span style={{
+            padding: '4px 8px',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            color: '#4CAF50',
+            backgroundColor: '#E8F5E9',
+            borderRadius: '3px',
+          }}>
+            ✋ Mode Déplacement
+          </span>
+        )}
       </div>
       
       <div style={styles.canvasWrapper}>
