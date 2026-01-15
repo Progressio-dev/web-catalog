@@ -1,5 +1,6 @@
 import React from 'react';
 import { calculateBorderRadius } from '../../../utils/imageUtils';
+import api from '../../../services/api';
 
 const PAGE_FORMATS = {
   A4: { width: 210, height: 297 },
@@ -27,6 +28,8 @@ const TemplateCanvas = ({
   const [mouseDownPos, setMouseDownPos] = React.useState(null);
   const [smartGuides, setSmartGuides] = React.useState({ horizontal: [], vertical: [] });
   const [dragStartState, setDragStartState] = React.useState(null); // Track initial state for history
+  const [codeResults, setCodeResults] = React.useState({}); // Store JS code execution results
+  const [imageUrls, setImageUrls] = React.useState({}); // Store fetched image URLs
 
 
   // Get base page dimensions in mm
@@ -63,6 +66,96 @@ const TemplateCanvas = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedElement, onDeleteElement]);
+
+  // Execute JavaScript code for preview
+  React.useEffect(() => {
+    if (!showRealData || !sampleData) {
+      setCodeResults({});
+      return;
+    }
+
+    const executeAllJsElements = async () => {
+      const results = {};
+      const jsElements = elements.filter(el => el.type === 'jsCode');
+      
+      for (const element of jsElements) {
+        if (element.code) {
+          try {
+            // Create async function from code
+            const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+            const fn = new AsyncFunction('data', element.code);
+            
+            // Execute with timeout (5 seconds)
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout')), 5000)
+            );
+            
+            const result = await Promise.race([fn(sampleData), timeoutPromise]);
+            results[element.id] = String(result);
+          } catch (error) {
+            results[element.id] = '❌ Erreur';
+          }
+        } else {
+          results[element.id] = '(code vide)';
+        }
+      }
+      
+      setCodeResults(results);
+    };
+    
+    executeAllJsElements();
+  }, [elements, showRealData, sampleData]);
+
+  // Fetch product images for preview
+  React.useEffect(() => {
+    if (!showRealData || !sampleData) {
+      setImageUrls({});
+      return;
+    }
+
+    const fetchImages = async () => {
+      const imageElements = elements.filter(el => el.type === 'image' && el.source !== 'logo' && el.csvColumn);
+      if (imageElements.length === 0) return;
+
+      const requests = [];
+
+      imageElements.forEach(el => {
+        const refValue = sampleData[el.csvColumn];
+        if (!refValue) return;
+        
+        const key = `${el.id}-${refValue}`;
+        if (imageUrls[key] !== undefined) return;
+        
+        requests.push({ el, refValue, key });
+      });
+
+      if (requests.length === 0) return;
+
+      await Promise.all(
+        requests.map(async ({ el, refValue, key }) => {
+          try {
+            const response = await api.get(`/product-image/${encodeURIComponent(refValue)}`, {
+              params: {
+                pageUrlTemplate: el.pageUrlTemplate,
+                imageSelector: el.imageSelector,
+                imageAttribute: el.imageAttribute,
+                urlEncodeValue: el.urlEncodeValue !== false && el.urlEncodeValue !== 'false',
+                csvColumn: el.csvColumn,
+                baseUrl: el.baseUrl,
+                extension: el.extension
+              }
+            });
+            setImageUrls(prev => ({ ...prev, [key]: response.data.imageUrl }));
+          } catch (error) {
+            console.error('Error fetching image:', error);
+            setImageUrls(prev => ({ ...prev, [key]: null }));
+          }
+        })
+      );
+    };
+
+    fetchImages();
+  }, [elements, showRealData, sampleData]);
 
   // Snap value to grid
   const snapToGrid = (value) => {
@@ -354,7 +447,7 @@ const TemplateCanvas = ({
       border: isSelected ? '3px solid #2196F3' : isInMultiSelect ? '2px solid #4CAF50' : '1px dashed #ccc',
       boxSizing: 'border-box',
       opacity: element.opacity ?? 1,
-      zIndex: element.zIndex ?? 0,
+      zIndex: element.zIndex ?? 1, // Changed from 0 to 1 to ensure elements appear above grid
       backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
       transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
       transformOrigin: 'center center',
@@ -494,6 +587,19 @@ const TemplateCanvas = ({
       if (element.type === 'logo' && element.logoPath) {
         content = <img src={element.logoPath} alt="logo" style={imageStyle} />;
       }
+      // Handle image element with preview data
+      else if (element.type === 'image' && element.source !== 'logo' && showRealData && sampleData && element.csvColumn) {
+        const refValue = sampleData[element.csvColumn];
+        const imageUrl = refValue ? imageUrls[`${element.id}-${refValue}`] : null;
+        
+        if (imageUrl) {
+          content = <img src={imageUrl} alt="Product" style={imageStyle} />;
+        } else if (refValue && imageUrls[`${element.id}-${refValue}`] === undefined) {
+          content = '⏳ Chargement...';
+        } else {
+          content = '📷 Image';
+        }
+      }
       // Handle legacy logo format (type: 'image' with source: 'logo')
       else if (element.type === 'image' && element.source === 'logo') {
         content = '🖼️ Logo (ancien format)';
@@ -598,6 +704,12 @@ const TemplateCanvas = ({
     }
 
     if (element.type === 'jsCode') {
+      // Display executed result if preview mode is enabled
+      let displayContent = '💻 Code JS';
+      if (showRealData && codeResults[element.id]) {
+        displayContent = codeResults[element.id];
+      }
+      
       return (
         <div
           key={element.id}
@@ -627,7 +739,7 @@ const TemplateCanvas = ({
             width: '100%',
             textTransform: element.textTransform || 'none',
           }}>
-            💻 Code JS
+            {displayContent}
           </span>
           {renderResizeHandles()}
         </div>
@@ -777,38 +889,17 @@ const TemplateCanvas = ({
           }}
           onMouseDown={(e) => handleMouseDown(e, element)}
         >
-          {/* Render children relative to group */}
+          {/* Render children recursively with proper rendering */}
           {element.children?.map(child => {
-            const childXPx = (child.x || 0) * MM_TO_PX;
-            const childYPx = (child.y || 0) * MM_TO_PX;
-            const childWidthPx = (child.width || 0) * MM_TO_PX;
-            const childHeightPx = (child.height || 0) * MM_TO_PX;
-
-            return (
-              <div
-                key={child.id}
-                style={{
-                  position: 'absolute',
-                  left: `${childXPx}px`,
-                  top: `${childYPx}px`,
-                  width: `${childWidthPx}px`,
-                  height: `${childHeightPx}px`,
-                  border: '1px solid #ccc',
-                  backgroundColor: 'rgba(255,255,255,0.8)',
-                  fontSize: '10px',
-                  padding: '2px',
-                  overflow: 'hidden',
-                  pointerEvents: 'none',
-                }}
-              >
-                {child.type === 'text' ? (child.csvColumn || 'Texte') : 
-                 child.type === 'logo' ? '🖼️ Logo' :
-                 child.type === 'image' ? '📷 Image' :
-                 child.type === 'line' ? '➖' :
-                 child.type === 'rectangle' ? '▭' :
-                 child.type}
-              </div>
-            );
+            // Create a child element with absolute position relative to canvas
+            const absoluteChild = {
+              ...child,
+              x: (element.x || 0) + (child.x || 0),
+              y: (element.y || 0) + (child.y || 0),
+            };
+            // Render child element recursively using renderElement
+            // This ensures all child types (text, image, jsCode, etc.) are properly rendered
+            return renderElement(absoluteChild);
           })}
           <div style={{
             position: 'absolute',
@@ -817,6 +908,9 @@ const TemplateCanvas = ({
             fontSize: '10px',
             color: '#666',
             pointerEvents: 'none',
+            backgroundColor: 'rgba(255,255,255,0.8)',
+            padding: '2px 4px',
+            borderRadius: '2px',
           }}>
             📦 Groupe ({element.children?.length || 0} éléments)
           </div>
