@@ -70,6 +70,53 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     : ['Arial', 'Times New Roman', 'Helvetica', 'Courier New', 'Georgia'];
   const tokenExampleString = '{value}, {{value}}, %VALUE%, %REFERENCE%, %REF%, %{COLONNE}%';
 
+  // Shared typography controls to avoid duplication
+  const renderTypographyControls = () => (
+    <>
+      <div style={styles.group}>
+        <label style={styles.label}>Interlignage: {(element.lineHeight || 1.2).toFixed(1)}</label>
+        <input
+          type="range"
+          min="0.5"
+          max="3"
+          step="0.1"
+          value={element.lineHeight || 1.2}
+          onChange={(e) => onUpdate({ lineHeight: parseFloat(e.target.value) || 1.2 })}
+          style={styles.range}
+        />
+        <p style={styles.hint}>Espacement entre les lignes (ex: 1.5 = 150%)</p>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Transformation du texte:</label>
+        <select
+          value={element.textTransform || 'none'}
+          onChange={(e) => onUpdate({ textTransform: e.target.value })}
+          style={styles.select}
+        >
+          <option value="none">Normal</option>
+          <option value="uppercase">MAJUSCULES</option>
+          <option value="lowercase">minuscules</option>
+          <option value="capitalize">Première Lettre Majuscule</option>
+        </select>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Espacement des lettres: {(element.letterSpacing || 0).toFixed(1)}px</label>
+        <input
+          type="range"
+          min="-5"
+          max="20"
+          step="0.5"
+          value={element.letterSpacing || 0}
+          onChange={(e) => onUpdate({ letterSpacing: parseFloat(e.target.value) || 0 })}
+          style={styles.range}
+        />
+        <p style={styles.hint}>Espacement entre les lettres en pixels</p>
+      </div>
+    </>
+  );
+
   // Effect to fetch real-time image preview for image elements
   React.useEffect(() => {
     // Only run for image elements with sample data
@@ -313,47 +360,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
       </div>
 
       {/* Advanced Typography Controls */}
-      <div style={styles.group}>
-        <label style={styles.label}>Interlignage: {(element.lineHeight || 1.2).toFixed(1)}</label>
-        <input
-          type="range"
-          min="0.5"
-          max="3"
-          step="0.1"
-          value={element.lineHeight || 1.2}
-          onChange={(e) => onUpdate({ lineHeight: parseFloat(e.target.value) || 1.2 })}
-          style={styles.range}
-        />
-        <p style={styles.hint}>Espacement entre les lignes (ex: 1.5 = 150%)</p>
-      </div>
-
-      <div style={styles.group}>
-        <label style={styles.label}>Transformation du texte:</label>
-        <select
-          value={element.textTransform || 'none'}
-          onChange={(e) => onUpdate({ textTransform: e.target.value })}
-          style={styles.select}
-        >
-          <option value="none">Normal</option>
-          <option value="uppercase">MAJUSCULES</option>
-          <option value="lowercase">minuscules</option>
-          <option value="capitalize">Première Lettre Majuscule</option>
-        </select>
-      </div>
-
-      <div style={styles.group}>
-        <label style={styles.label}>Espacement des lettres: {(element.letterSpacing || 0).toFixed(1)}px</label>
-        <input
-          type="range"
-          min="-5"
-          max="20"
-          step="0.5"
-          value={element.letterSpacing || 0}
-          onChange={(e) => onUpdate({ letterSpacing: parseFloat(e.target.value) || 0 })}
-          style={styles.range}
-        />
-        <p style={styles.hint}>Espacement entre les lettres en pixels</p>
-      </div>
+      {renderTypographyControls()}
 
       {/* Typography Style Presets */}
       <div style={styles.group}>
@@ -898,47 +905,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
       </div>
 
       {/* Advanced Typography Controls */}
-      <div style={styles.group}>
-        <label style={styles.label}>Interlignage: {(element.lineHeight || 1.2).toFixed(1)}</label>
-        <input
-          type="range"
-          min="0.5"
-          max="3"
-          step="0.1"
-          value={element.lineHeight || 1.2}
-          onChange={(e) => onUpdate({ lineHeight: parseFloat(e.target.value) || 1.2 })}
-          style={styles.range}
-        />
-        <p style={styles.hint}>Espacement entre les lignes (ex: 1.5 = 150%)</p>
-      </div>
-
-      <div style={styles.group}>
-        <label style={styles.label}>Transformation du texte:</label>
-        <select
-          value={element.textTransform || 'none'}
-          onChange={(e) => onUpdate({ textTransform: e.target.value })}
-          style={styles.select}
-        >
-          <option value="none">Normal</option>
-          <option value="uppercase">MAJUSCULES</option>
-          <option value="lowercase">minuscules</option>
-          <option value="capitalize">Première Lettre Majuscule</option>
-        </select>
-      </div>
-
-      <div style={styles.group}>
-        <label style={styles.label}>Espacement des lettres: {(element.letterSpacing || 0).toFixed(1)}px</label>
-        <input
-          type="range"
-          min="-5"
-          max="20"
-          step="0.5"
-          value={element.letterSpacing || 0}
-          onChange={(e) => onUpdate({ letterSpacing: parseFloat(e.target.value) || 0 })}
-          style={styles.range}
-        />
-        <p style={styles.hint}>Espacement entre les lettres en pixels</p>
-      </div>
+      {renderTypographyControls()}
     </>
   );
 
@@ -1092,47 +1059,7 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
       </div>
 
       {/* Advanced Typography Controls */}
-      <div style={styles.group}>
-        <label style={styles.label}>Interlignage: {(element.lineHeight || 1.2).toFixed(1)}</label>
-        <input
-          type="range"
-          min="0.5"
-          max="3"
-          step="0.1"
-          value={element.lineHeight || 1.2}
-          onChange={(e) => onUpdate({ lineHeight: parseFloat(e.target.value) || 1.2 })}
-          style={styles.range}
-        />
-        <p style={styles.hint}>Espacement entre les lignes (ex: 1.5 = 150%)</p>
-      </div>
-
-      <div style={styles.group}>
-        <label style={styles.label}>Transformation du texte:</label>
-        <select
-          value={element.textTransform || 'none'}
-          onChange={(e) => onUpdate({ textTransform: e.target.value })}
-          style={styles.select}
-        >
-          <option value="none">Normal</option>
-          <option value="uppercase">MAJUSCULES</option>
-          <option value="lowercase">minuscules</option>
-          <option value="capitalize">Première Lettre Majuscule</option>
-        </select>
-      </div>
-
-      <div style={styles.group}>
-        <label style={styles.label}>Espacement des lettres: {(element.letterSpacing || 0).toFixed(1)}px</label>
-        <input
-          type="range"
-          min="-5"
-          max="20"
-          step="0.5"
-          value={element.letterSpacing || 0}
-          onChange={(e) => onUpdate({ letterSpacing: parseFloat(e.target.value) || 0 })}
-          style={styles.range}
-        />
-        <p style={styles.hint}>Espacement entre les lettres en pixels</p>
-      </div>
+      {renderTypographyControls()}
 
       <div style={styles.group}>
         <label style={styles.label}>Police:</label>
