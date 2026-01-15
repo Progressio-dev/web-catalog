@@ -257,6 +257,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
       height: `${heightPx}px`,
       opacity: element.opacity ?? 1,
       zIndex: element.zIndex ?? 0,
+      transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+      transformOrigin: 'center center',
     };
 
     if (element.type === 'text') {
@@ -592,6 +594,52 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
           }}>
             {result}
           </span>
+        </div>
+      );
+    }
+
+    // Free image element
+    if (element.type === 'freeImage') {
+      const imageCropX = element.imageCropX || 50;
+      const imageCropY = element.imageCropY || 50;
+      const imageMask = element.imageMask || 'none';
+      
+      // Determine border radius based on mask
+      let borderRadius = '0';
+      if (imageMask === 'circle') {
+        borderRadius = '50%';
+      } else if (imageMask === 'rounded') {
+        borderRadius = `${(element.borderRadius || 10) * zoom}px`;
+      } else if (imageMask === 'rounded-lg') {
+        borderRadius = `${(element.borderRadius || 20) * zoom}px`;
+      }
+
+      return (
+        <div key={element.id} style={{
+          ...baseStyle,
+          backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
+          overflow: 'hidden',
+          borderRadius: borderRadius,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          {element.imageData ? (
+            <img 
+              src={element.imageData}
+              alt="Free Image"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: element.fit || 'contain',
+                objectPosition: `${imageCropX}% ${imageCropY}%`,
+              }}
+            />
+          ) : (
+            <span style={{ fontSize: `${10 * zoom}px`, color: '#999' }}>
+              🖼️ Image Libre
+            </span>
+          )}
         </div>
       );
     }

@@ -353,6 +353,8 @@ const TemplateCanvas = ({
       opacity: element.opacity ?? 1,
       zIndex: element.zIndex ?? 0,
       backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || undefined),
+      transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
+      transformOrigin: 'center center',
     };
 
     const renderResizeHandles = () => {
@@ -711,6 +713,56 @@ const TemplateCanvas = ({
           }}>
             📊 Tableau ({columns.length} colonnes)
           </div>
+          {renderResizeHandles()}
+        </div>
+      );
+    }
+
+    // Free image element
+    if (element.type === 'freeImage') {
+      const imageCropX = element.imageCropX || 50;
+      const imageCropY = element.imageCropY || 50;
+      const imageMask = element.imageMask || 'none';
+      
+      // Determine border radius based on mask
+      let borderRadiusStyle = '0px';
+      if (imageMask === 'circle') {
+        borderRadiusStyle = '50%';
+      } else if (imageMask === 'rounded') {
+        borderRadiusStyle = `${element.borderRadius || 10}px`;
+      } else if (imageMask === 'rounded-lg') {
+        borderRadiusStyle = `${element.borderRadius || 20}px`;
+      }
+
+      const imageStyle = {
+        width: '100%',
+        height: '100%',
+        objectFit: element.fit || 'contain',
+        objectPosition: `${imageCropX}% ${imageCropY}%`,
+        borderRadius: borderRadiusStyle,
+      };
+
+      return (
+        <div
+          key={element.id}
+          style={{
+            ...baseStyle,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: element.blockBackgroundTransparent ? 'transparent' : (element.blockBackgroundColor || '#f0f0f0'),
+            fontSize: '12px',
+            color: '#666',
+            overflow: 'hidden',
+            borderRadius: borderRadiusStyle,
+          }}
+          onMouseDown={(e) => handleMouseDown(e, element)}
+        >
+          {element.imageData ? (
+            <img src={element.imageData} alt="Free Image" style={imageStyle} />
+          ) : (
+            '🖼️ Image Libre (aucune image)'
+          )}
           {renderResizeHandles()}
         </div>
       );

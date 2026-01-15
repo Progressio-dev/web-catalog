@@ -314,16 +314,15 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
 
       {/* Advanced Typography Controls */}
       <div style={styles.group}>
-        <label style={styles.label}>Interlignage (line-height):</label>
+        <label style={styles.label}>Interlignage: {(element.lineHeight || 1.2).toFixed(1)}</label>
         <input
-          type="number"
+          type="range"
           min="0.5"
           max="3"
           step="0.1"
           value={element.lineHeight || 1.2}
           onChange={(e) => onUpdate({ lineHeight: parseFloat(e.target.value) || 1.2 })}
-          style={styles.input}
-          placeholder="1.2"
+          style={styles.range}
         />
         <p style={styles.hint}>Espacement entre les lignes (ex: 1.5 = 150%)</p>
       </div>
@@ -343,16 +342,15 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
       </div>
 
       <div style={styles.group}>
-        <label style={styles.label}>Espacement des lettres (letter-spacing):</label>
+        <label style={styles.label}>Espacement des lettres: {(element.letterSpacing || 0).toFixed(1)}px</label>
         <input
-          type="number"
+          type="range"
           min="-5"
           max="20"
           step="0.5"
           value={element.letterSpacing || 0}
           onChange={(e) => onUpdate({ letterSpacing: parseFloat(e.target.value) || 0 })}
-          style={styles.input}
-          placeholder="0"
+          style={styles.range}
         />
         <p style={styles.hint}>Espacement entre les lettres en pixels</p>
       </div>
@@ -898,6 +896,49 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
           </button>
         </div>
       </div>
+
+      {/* Advanced Typography Controls */}
+      <div style={styles.group}>
+        <label style={styles.label}>Interlignage: {(element.lineHeight || 1.2).toFixed(1)}</label>
+        <input
+          type="range"
+          min="0.5"
+          max="3"
+          step="0.1"
+          value={element.lineHeight || 1.2}
+          onChange={(e) => onUpdate({ lineHeight: parseFloat(e.target.value) || 1.2 })}
+          style={styles.range}
+        />
+        <p style={styles.hint}>Espacement entre les lignes (ex: 1.5 = 150%)</p>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Transformation du texte:</label>
+        <select
+          value={element.textTransform || 'none'}
+          onChange={(e) => onUpdate({ textTransform: e.target.value })}
+          style={styles.select}
+        >
+          <option value="none">Normal</option>
+          <option value="uppercase">MAJUSCULES</option>
+          <option value="lowercase">minuscules</option>
+          <option value="capitalize">Première Lettre Majuscule</option>
+        </select>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Espacement des lettres: {(element.letterSpacing || 0).toFixed(1)}px</label>
+        <input
+          type="range"
+          min="-5"
+          max="20"
+          step="0.5"
+          value={element.letterSpacing || 0}
+          onChange={(e) => onUpdate({ letterSpacing: parseFloat(e.target.value) || 0 })}
+          style={styles.range}
+        />
+        <p style={styles.hint}>Espacement entre les lettres en pixels</p>
+      </div>
     </>
   );
 
@@ -1050,6 +1091,49 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         </div>
       </div>
 
+      {/* Advanced Typography Controls */}
+      <div style={styles.group}>
+        <label style={styles.label}>Interlignage: {(element.lineHeight || 1.2).toFixed(1)}</label>
+        <input
+          type="range"
+          min="0.5"
+          max="3"
+          step="0.1"
+          value={element.lineHeight || 1.2}
+          onChange={(e) => onUpdate({ lineHeight: parseFloat(e.target.value) || 1.2 })}
+          style={styles.range}
+        />
+        <p style={styles.hint}>Espacement entre les lignes (ex: 1.5 = 150%)</p>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Transformation du texte:</label>
+        <select
+          value={element.textTransform || 'none'}
+          onChange={(e) => onUpdate({ textTransform: e.target.value })}
+          style={styles.select}
+        >
+          <option value="none">Normal</option>
+          <option value="uppercase">MAJUSCULES</option>
+          <option value="lowercase">minuscules</option>
+          <option value="capitalize">Première Lettre Majuscule</option>
+        </select>
+      </div>
+
+      <div style={styles.group}>
+        <label style={styles.label}>Espacement des lettres: {(element.letterSpacing || 0).toFixed(1)}px</label>
+        <input
+          type="range"
+          min="-5"
+          max="20"
+          step="0.5"
+          value={element.letterSpacing || 0}
+          onChange={(e) => onUpdate({ letterSpacing: parseFloat(e.target.value) || 0 })}
+          style={styles.range}
+        />
+        <p style={styles.hint}>Espacement entre les lettres en pixels</p>
+      </div>
+
       <div style={styles.group}>
         <label style={styles.label}>Police:</label>
         <select
@@ -1196,6 +1280,118 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
     );
   };
 
+  const renderFreeImageProperties = () => {
+    const handleImageUpload = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        onUpdate({ imageData: event.target.result });
+      };
+      reader.readAsDataURL(file);
+    };
+
+    return (
+      <>
+        <div style={styles.group}>
+          <label style={styles.label}>Image:</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            style={styles.input}
+          />
+          {element.imageData && (
+            <div style={{ marginTop: '10px', textAlign: 'center' }}>
+              <img
+                src={element.imageData}
+                alt="Preview"
+                style={{ maxWidth: '100%', maxHeight: '150px', objectFit: 'contain' }}
+              />
+            </div>
+          )}
+        </div>
+
+        <div style={styles.group}>
+          <label style={styles.label}>Ajustement:</label>
+          <select
+            value={element.fit || 'contain'}
+            onChange={(e) => onUpdate({ fit: e.target.value })}
+            style={styles.select}
+          >
+            <option value="contain">Contenir</option>
+            <option value="cover">Couvrir</option>
+            <option value="fill">Remplir</option>
+          </select>
+        </div>
+
+        {/* Advanced Image Editing */}
+        <div style={styles.group}>
+          <label style={styles.label}>🎨 Édition avancée</label>
+        </div>
+
+        <div style={styles.group}>
+          <label style={styles.label}>Position de l'image (crop):</label>
+          <div style={styles.cropControls}>
+            <div style={styles.cropRow}>
+              <label style={styles.cropLabel}>X offset (%):</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={element.imageCropX || 50}
+                onChange={(e) => onUpdate({ imageCropX: parseInt(e.target.value) || 50 })}
+                style={styles.cropInput}
+              />
+            </div>
+            <div style={styles.cropRow}>
+              <label style={styles.cropLabel}>Y offset (%):</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={element.imageCropY || 50}
+                onChange={(e) => onUpdate({ imageCropY: parseInt(e.target.value) || 50 })}
+                style={styles.cropInput}
+              />
+            </div>
+          </div>
+          <p style={styles.hint}>Position du point focal de l'image (50% = centré)</p>
+        </div>
+
+        <div style={styles.group}>
+          <label style={styles.label}>Forme / Masque:</label>
+          <select
+            value={element.imageMask || 'none'}
+            onChange={(e) => onUpdate({ imageMask: e.target.value })}
+            style={styles.select}
+          >
+            <option value="none">Aucun (rectangle)</option>
+            <option value="circle">Cercle</option>
+            <option value="rounded">Coins arrondis</option>
+            <option value="rounded-lg">Coins très arrondis</option>
+          </select>
+        </div>
+
+        {element.imageMask === 'rounded' || element.imageMask === 'rounded-lg' ? (
+          <div style={styles.group}>
+            <label style={styles.label}>Rayon des coins: {element.borderRadius || 0}px</label>
+            <input
+              type="range"
+              min="0"
+              max="50"
+              step="1"
+              value={element.borderRadius || (element.imageMask === 'rounded' ? 10 : 20)}
+              onChange={(e) => onUpdate({ borderRadius: parseInt(e.target.value) || 0 })}
+              style={styles.range}
+            />
+          </div>
+        ) : null}
+      </>
+    );
+  };
+
   const renderPositionAndSize = () => (
     <>
       <div style={styles.group}>
@@ -1327,6 +1523,46 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
         )}
       </div>
 
+      {/* Rotation - available for all block types */}
+      <div style={styles.group}>
+        <label style={styles.label}>Rotation: {element.rotation || 0}°</label>
+        <input
+          type="range"
+          min="0"
+          max="360"
+          step="1"
+          value={element.rotation || 0}
+          onChange={(e) => onUpdate({ rotation: parseInt(e.target.value) || 0 })}
+          style={styles.range}
+        />
+        <div style={styles.buttonGroup}>
+          <button
+            onClick={() => onUpdate({ rotation: 0 })}
+            style={styles.toggleBtn}
+          >
+            0°
+          </button>
+          <button
+            onClick={() => onUpdate({ rotation: 90 })}
+            style={styles.toggleBtn}
+          >
+            90°
+          </button>
+          <button
+            onClick={() => onUpdate({ rotation: 180 })}
+            style={styles.toggleBtn}
+          >
+            180°
+          </button>
+          <button
+            onClick={() => onUpdate({ rotation: 270 })}
+            style={styles.toggleBtn}
+          >
+            270°
+          </button>
+        </div>
+      </div>
+
       {/* Show highlight options only for text-based elements */}
       {(element.type === 'text' || element.type === 'freeText' || element.type === 'jsCode') && (
         <div style={styles.group}>
@@ -1365,13 +1601,14 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
 
       <div style={styles.content}>
         <div style={styles.typeLabel}>
-          Type: {element.type === 'text' ? '📝 Texte' : element.type === 'logo' ? '🖼️ Logo' : element.type === 'image' ? '📷 Image' : element.type === 'line' ? '➖ Ligne' : element.type === 'freeText' ? '📝 Texte Libre' : element.type === 'jsCode' ? '💻 Code JavaScript' : element.type === 'table' ? '📊 Tableau' : element.type === 'group' ? '📦 Groupe' : '▭ Rectangle'}
+          Type: {element.type === 'text' ? '📝 Texte' : element.type === 'logo' ? '🖼️ Logo' : element.type === 'image' ? '📷 Image' : element.type === 'freeImage' ? '🖼️ Image Libre' : element.type === 'line' ? '➖ Ligne' : element.type === 'freeText' ? '📝 Texte Libre' : element.type === 'jsCode' ? '💻 Code JavaScript' : element.type === 'table' ? '📊 Tableau' : element.type === 'group' ? '📦 Groupe' : '▭ Rectangle'}
         </div>
 
         {renderPositionAndSize()}
 
         {element.type === 'text' && renderTextProperties()}
         {element.type === 'image' && renderImageProperties()}
+        {element.type === 'freeImage' && renderFreeImageProperties()}
         {element.type === 'freeText' && renderFreeTextProperties()}
         {element.type === 'jsCode' && renderJsCodeProperties()}
         {element.type === 'table' && renderTableProperties()}
