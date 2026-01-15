@@ -111,12 +111,13 @@ const TemplateCanvas = ({
   const resetZoomAndCenter = React.useCallback(() => {
     if (!canvasContainerRef.current) return;
     const rect = canvasContainerRef.current.getBoundingClientRect();
-    // Calculate centered position at 100% zoom
-    const scaledWidth = canvasWidth * 1;
-    const scaledHeight = canvasHeight * 1;
+    const zoom = 1; // Reset to 100%
+    // Calculate centered position at reset zoom
+    const scaledWidth = canvasWidth * zoom;
+    const scaledHeight = canvasHeight * zoom;
     const panX = (rect.width - scaledWidth) / 2;
     const panY = (rect.height - scaledHeight) / 2;
-    setCanvasZoom(1);
+    setCanvasZoom(zoom);
     setCanvasPan({ x: panX, y: panY });
   }, [canvasWidth, canvasHeight]);
 
@@ -569,18 +570,11 @@ const TemplateCanvas = ({
       }
 
       // Apply snap-to-grid to resize dimensions and positions in magnetic mode
-      if (updates.width !== undefined) {
-        updates.width = snapToGrid(updates.width);
-      }
-      if (updates.height !== undefined) {
-        updates.height = snapToGrid(updates.height);
-      }
-      if (updates.x !== undefined) {
-        updates.x = snapToGrid(updates.x);
-      }
-      if (updates.y !== undefined) {
-        updates.y = snapToGrid(updates.y);
-      }
+      ['width', 'height', 'x', 'y'].forEach(key => {
+        if (updates[key] !== undefined) {
+          updates[key] = snapToGrid(updates[key]);
+        }
+      });
 
       onUpdateElement(resizingId, updates, true); // Skip history during resize
     }
