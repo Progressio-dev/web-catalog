@@ -148,7 +148,8 @@ const TemplateCanvas = ({
   };
 
   const handleCanvasMouseMove = (e) => {
-    if (isPanning) {
+    // Don't pan if we're dragging or resizing an element
+    if (isPanning && !draggingId && !resizingId) {
       e.preventDefault();
       setCanvasPan({
         x: e.clientX - panStart.x,
@@ -1167,13 +1168,54 @@ const TemplateCanvas = ({
       style={{
         ...styles.container,
         cursor: isPanning ? 'grabbing' : (isSpacePressed ? 'grab' : 'default'),
-        overflow: 'hidden', // Changed from auto to hidden for custom pan
+        overflow: 'auto', // Keep scroll bars as fallback
+        position: 'relative',
       }}
       onMouseDown={handleCanvasMouseDown}
       onMouseMove={handleCanvasMouseMove}
       onMouseUp={handleCanvasMouseUp}
       onMouseLeave={() => setIsPanning(false)}
     >
+      {/* Canvas controls overlay */}
+      <div style={{
+        position: 'absolute',
+        top: '10px',
+        right: '10px',
+        zIndex: 1001,
+        display: 'flex',
+        gap: '8px',
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        padding: '8px',
+        borderRadius: '5px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      }}>
+        <button
+          onClick={() => {
+            setCanvasZoom(1);
+            setCanvasPan({ x: 0, y: 0 });
+          }}
+          style={{
+            padding: '4px 8px',
+            fontSize: '12px',
+            border: '1px solid #ddd',
+            borderRadius: '3px',
+            backgroundColor: 'white',
+            cursor: 'pointer',
+          }}
+          title="Réinitialiser la vue (100%, centré)"
+        >
+          🔄 Reset
+        </button>
+        <span style={{
+          padding: '4px 8px',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          color: '#666',
+        }}>
+          {Math.round(canvasZoom * 100)}%
+        </span>
+      </div>
+      
       <div style={styles.canvasWrapper}>
         <div
           style={{
@@ -1268,7 +1310,7 @@ const TemplateCanvas = ({
 
           {/* Page info */}
           <div style={styles.pageInfo}>
-            {pageConfig.format} - {pageConfig.orientation} ({pageWidth} x {pageHeight} mm) - Zoom: {Math.round(canvasZoom * 100)}%
+            {pageConfig.format} - {pageConfig.orientation} ({pageWidth} x {pageHeight} mm)
           </div>
         </div>
       </div>
