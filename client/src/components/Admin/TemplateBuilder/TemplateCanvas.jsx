@@ -11,6 +11,14 @@ const PAGE_FORMATS = {
 const DEFAULT_ELEMENT_Z_INDEX = 1; // Ensure elements appear above grid (z-index 0)
 const MAX_GROUP_DEPTH = 10; // Prevent infinite recursion in nested groups
 
+// Zoom configuration constants
+const MIN_ZOOM = 0.1; // 10% minimum zoom
+const MAX_ZOOM = 5;   // 500% maximum zoom
+const ZOOM_INCREMENT_WHEEL = 1.08;  // 8% zoom increment for mouse wheel (smoother)
+const ZOOM_DECREMENT_WHEEL = 0.92;  // 8% zoom decrement for mouse wheel
+const ZOOM_INCREMENT_BUTTON = 1.2;  // 20% zoom increment for buttons/keyboard
+const ZOOM_DECREMENT_BUTTON = 0.8;  // 20% zoom decrement for buttons/keyboard
+
 const TemplateCanvas = ({
   pageConfig,
   elements,
@@ -83,7 +91,7 @@ const TemplateCanvas = ({
     const centerY = rect.height / 2;
     const canvasPointX = (centerX - canvasPan.x) / canvasZoom;
     const canvasPointY = (centerY - canvasPan.y) / canvasZoom;
-    const newZoom = Math.max(0.1, Math.min(5, canvasZoom * zoomFactor));
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, canvasZoom * zoomFactor));
     setCanvasPan({
       x: centerX - canvasPointX * newZoom,
       y: centerY - canvasPointY * newZoom,
@@ -117,10 +125,10 @@ const TemplateCanvas = ({
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
         if (e.key === '+' || e.key === '=') {
           e.preventDefault();
-          zoomToViewportCenter(1.2);
+          zoomToViewportCenter(ZOOM_INCREMENT_BUTTON);
         } else if (e.key === '-' || e.key === '_') {
           e.preventDefault();
-          zoomToViewportCenter(0.8);
+          zoomToViewportCenter(ZOOM_DECREMENT_BUTTON);
         } else if (e.key === '0') {
           e.preventDefault();
           resetZoomAndCenter();
@@ -162,9 +170,9 @@ const TemplateCanvas = ({
       e.preventDefault();
       
       const delta = -e.deltaY;
-      // Smoother zoom: use smaller increments for better control
-      const zoomFactor = delta > 0 ? 1.08 : 0.92;
-      const newZoom = Math.max(0.1, Math.min(5, canvasZoom * zoomFactor));
+      // Smoother zoom: use smaller increments for better control (8% steps)
+      const zoomFactor = delta > 0 ? ZOOM_INCREMENT_WHEEL : ZOOM_DECREMENT_WHEEL;
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, canvasZoom * zoomFactor));
       
       // Calculate mouse position relative to container
       const mouseX = e.clientX - rect.left;
@@ -1073,7 +1081,10 @@ const TemplateCanvas = ({
                   position: 'absolute',
                   left: `${(child.x || 0) * MM_TO_PX}px`,
                   top: `${(child.y || 0) * MM_TO_PX}px`,
-                  pointerEvents: 'none', // Prevent direct interaction with children in group
+                  // Intentionally disable child interactions - groups are treated as single units
+                  // This matches professional design tool behavior (Figma, Sketch, etc.)
+                  // To edit children, user must ungroup first
+                  pointerEvents: 'none',
                 }}
               >
                 {childElement}
@@ -1140,7 +1151,7 @@ const TemplateCanvas = ({
             // Calculate zoom to fit - removed 100% cap for better professional ergonomics
             const zoomX = availableWidth / canvasWidth;
             const zoomY = availableHeight / canvasHeight;
-            const fitZoom = Math.max(0.1, Math.min(zoomX, zoomY, 5)); // Allow zoom from 10% to 500%
+            const fitZoom = Math.max(MIN_ZOOM, Math.min(zoomX, zoomY, MAX_ZOOM));
             
             // Center the canvas
             const scaledWidth = canvasWidth * fitZoom;
@@ -1164,7 +1175,7 @@ const TemplateCanvas = ({
           🔍 Fit
         </button>
         <button
-          onClick={() => zoomToViewportCenter(1.2)}
+          onClick={() => zoomToViewportCenter(ZOOM_INCREMENT_BUTTON)}
           style={{
             padding: '4px 8px',
             fontSize: '14px',
@@ -1178,7 +1189,7 @@ const TemplateCanvas = ({
           +
         </button>
         <button
-          onClick={() => zoomToViewportCenter(0.8)}
+          onClick={() => zoomToViewportCenter(ZOOM_DECREMENT_BUTTON)}
           style={{
             padding: '4px 8px',
             fontSize: '14px',
