@@ -73,7 +73,7 @@ const TemplateCanvas = ({
     const panX = (rect.width - canvasWidth) / 2;
     const panY = (rect.height - canvasHeight) / 2;
     setCanvasPan({ x: panX, y: panY });
-  }, []); // Only run once on mount
+  }, [canvasWidth, canvasHeight]); // Recenter when canvas size changes
 
   // Handle delete key
   React.useEffect(() => {
@@ -151,7 +151,7 @@ const TemplateCanvas = ({
       container.addEventListener('wheel', handleWheel, { passive: false });
       return () => container.removeEventListener('wheel', handleWheel);
     }
-  }, [canvasZoom, canvasPan]);
+  }, [canvasZoom]); // Only depend on canvasZoom, not canvasPan (to avoid infinite loop)
 
   // Handle canvas panning with middle mouse or space+drag
   const handleCanvasMouseDown = (e) => {
