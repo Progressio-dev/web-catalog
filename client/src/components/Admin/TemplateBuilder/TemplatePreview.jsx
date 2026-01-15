@@ -627,7 +627,8 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
     // Table element
     if (element.type === 'table') {
       const columns = element.columns || [];
-      const rowData = allSampleData || [displayData];
+      // Use all sample data for tables, fallback to displayData wrapped in array
+      const rowData = (allSampleData && allSampleData.length > 0) ? allSampleData : (displayData ? [displayData] : []);
       
       return (
         <div
@@ -673,7 +674,7 @@ const TemplatePreview = ({ elements, pageConfig, sampleData, allSampleData, cust
                       padding: `${(element.cellPadding || 2) * zoom}px`,
                       textAlign: element.textAlign || 'left',
                     }}>
-                      {row[col.csvColumn] || ''}
+                      {row?.[col.csvColumn] || ''}
                     </td>
                   ))}
                 </tr>
