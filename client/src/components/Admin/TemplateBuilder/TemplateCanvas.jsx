@@ -49,6 +49,14 @@ const TemplateCanvas = ({
   const [panStart, setPanStart] = React.useState({ x: 0, y: 0 });
   const [isSpacePressed, setIsSpacePressed] = React.useState(false);
   const canvasContainerRef = React.useRef(null);
+  
+  // Use refs for canvasPan and canvasZoom to avoid recreating wheel listener on every change
+  const canvasPanRef = React.useRef(canvasPan);
+  const canvasZoomRef = React.useRef(canvasZoom);
+  React.useEffect(() => {
+    canvasPanRef.current = canvasPan;
+    canvasZoomRef.current = canvasZoom;
+  }, [canvasPan, canvasZoom]);
 
 
   // Get base page dimensions in mm
@@ -172,7 +180,9 @@ const TemplateCanvas = ({
       const delta = -e.deltaY;
       // Smoother zoom: use smaller increments for better control (8% steps)
       const zoomFactor = delta > 0 ? ZOOM_INCREMENT_WHEEL : ZOOM_DECREMENT_WHEEL;
-      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, canvasZoom * zoomFactor));
+      const currentZoom = canvasZoomRef.current;
+      const currentPan = canvasPanRef.current;
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentZoom * zoomFactor));
       
       // Calculate mouse position relative to container
       const mouseX = e.clientX - rect.left;
@@ -180,8 +190,8 @@ const TemplateCanvas = ({
       
       // Calculate the point on the canvas that's under the mouse (in canvas coordinates)
       // We need to account for current pan and zoom
-      const canvasPointX = (mouseX - canvasPan.x) / canvasZoom;
-      const canvasPointY = (mouseY - canvasPan.y) / canvasZoom;
+      const canvasPointX = (mouseX - currentPan.x) / currentZoom;
+      const canvasPointY = (mouseY - currentPan.y) / currentZoom;
       
       // After zoom, this point should still be under the mouse
       // newMousePos = canvasPoint * newZoom + newPan
@@ -200,7 +210,7 @@ const TemplateCanvas = ({
       container.addEventListener('wheel', handleWheel, { passive: false });
       return () => container.removeEventListener('wheel', handleWheel);
     }
-  }, [canvasZoom, canvasPan]); // Include canvasPan in dependencies for proper zoom behavior
+  }, []); // Empty deps - use refs to avoid recreating listener on every state change
 
   // Handle canvas panning with middle mouse or space+drag
   const handleCanvasMouseDown = (e) => {
