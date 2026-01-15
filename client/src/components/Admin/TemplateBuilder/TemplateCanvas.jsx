@@ -1,4 +1,5 @@
 import React from 'react';
+import { calculateBorderRadius } from '../../../utils/imageUtils';
 
 const PAGE_FORMATS = {
   A4: { width: 210, height: 297 },
@@ -474,19 +475,11 @@ const TemplateCanvas = ({
       
       // Compute image styles based on transformations
       const imageRotation = element.imageRotation || 0;
-      const imageMask = element.imageMask || 'none';
       const imageCropX = element.imageCropX || 50;
       const imageCropY = element.imageCropY || 50;
       
-      // Determine border radius based on mask
-      let borderRadiusStyle = '0px';
-      if (imageMask === 'circle') {
-        borderRadiusStyle = '50%';
-      } else if (imageMask === 'rounded') {
-        borderRadiusStyle = `${element.borderRadius || 10}px`;
-      } else if (imageMask === 'rounded-lg') {
-        borderRadiusStyle = `${element.borderRadius || 20}px`;
-      }
+      // Calculate border radius using shared utility
+      const borderRadiusStyle = calculateBorderRadius(element);
       
       const imageStyle = {
         width: '100%',
@@ -734,17 +727,9 @@ const TemplateCanvas = ({
     if (element.type === 'freeImage') {
       const imageCropX = element.imageCropX || 50;
       const imageCropY = element.imageCropY || 50;
-      const imageMask = element.imageMask || 'none';
       
-      // Determine border radius based on mask
-      let borderRadiusStyle = '0px';
-      if (imageMask === 'circle') {
-        borderRadiusStyle = '50%';
-      } else if (imageMask === 'rounded') {
-        borderRadiusStyle = `${element.borderRadius || 10}px`;
-      } else if (imageMask === 'rounded-lg') {
-        borderRadiusStyle = `${element.borderRadius || 20}px`;
-      }
+      // Calculate border radius using shared utility
+      const borderRadiusStyle = calculateBorderRadius(element);
 
       const imageStyle = {
         width: '100%',

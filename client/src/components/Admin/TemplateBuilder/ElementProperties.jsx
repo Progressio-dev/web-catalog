@@ -1,5 +1,6 @@
 import React from 'react';
 import api from '../../../services/api';
+import { getDefaultBorderRadius } from '../../../utils/imageUtils';
 
 // Helper function to escape regex special characters
 const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1303,13 +1304,13 @@ const ElementProperties = ({ element, onUpdate, onDelete, csvColumns, availableF
 
         {element.imageMask === 'rounded' || element.imageMask === 'rounded-lg' ? (
           <div style={styles.group}>
-            <label style={styles.label}>Rayon des coins: {element.borderRadius ?? (element.imageMask === 'rounded' ? 10 : 20)}px</label>
+            <label style={styles.label}>Rayon des coins: {element.borderRadius ?? getDefaultBorderRadius(element.imageMask)}px</label>
             <input
               type="range"
               min="0"
               max="50"
               step="1"
-              value={element.borderRadius ?? (element.imageMask === 'rounded' ? 10 : 20)}
+              value={element.borderRadius ?? getDefaultBorderRadius(element.imageMask)}
               onChange={(e) => onUpdate({ borderRadius: parseInt(e.target.value) || 0 })}
               style={styles.range}
             />
