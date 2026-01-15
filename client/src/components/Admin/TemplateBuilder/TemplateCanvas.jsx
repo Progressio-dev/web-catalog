@@ -66,6 +66,15 @@ const TemplateCanvas = ({
   const canvasWidth = pageWidth * MM_TO_PX;
   const canvasHeight = pageHeight * MM_TO_PX;
 
+  // Center canvas on initial load
+  React.useEffect(() => {
+    if (!canvasContainerRef.current) return;
+    const rect = canvasContainerRef.current.getBoundingClientRect();
+    const panX = (rect.width - canvasWidth) / 2;
+    const panY = (rect.height - canvasHeight) / 2;
+    setCanvasPan({ x: panX, y: panY });
+  }, []); // Only run once on mount
+
   // Handle delete key
   React.useEffect(() => {
     const handleKeyDown = (e) => {
@@ -116,16 +125,23 @@ const TemplateCanvas = ({
       const zoomFactor = delta > 0 ? 1.1 : 0.9;
       const newZoom = Math.max(0.1, Math.min(5, canvasZoom * zoomFactor));
       
-      // Calculate mouse position relative to canvas
+      // Calculate mouse position relative to container
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       
-      // Adjust pan to zoom towards mouse position
-      const zoomRatio = newZoom / canvasZoom;
-      setCanvasPan(prev => ({
-        x: mouseX - (mouseX - prev.x) * zoomRatio,
-        y: mouseY - (mouseY - prev.y) * zoomRatio,
-      }));
+      // Calculate the point on the canvas that's under the mouse (in canvas coordinates)
+      // We need to account for current pan and zoom
+      const canvasPointX = (mouseX - canvasPan.x) / canvasZoom;
+      const canvasPointY = (mouseY - canvasPan.y) / canvasZoom;
+      
+      // After zoom, this point should still be under the mouse
+      // newMousePos = canvasPoint * newZoom + newPan
+      // mouseX = canvasPointX * newZoom + newPan.x
+      // newPan.x = mouseX - canvasPointX * newZoom
+      setCanvasPan({
+        x: mouseX - canvasPointX * newZoom,
+        y: mouseY - canvasPointY * newZoom,
+      });
       
       setCanvasZoom(newZoom);
     };
@@ -135,7 +151,7 @@ const TemplateCanvas = ({
       container.addEventListener('wheel', handleWheel, { passive: false });
       return () => container.removeEventListener('wheel', handleWheel);
     }
-  }, [canvasZoom]);
+  }, [canvasZoom, canvasPan]);
 
   // Handle canvas panning with middle mouse or space+drag
   const handleCanvasMouseDown = (e) => {
@@ -352,12 +368,13 @@ const TemplateCanvas = ({
       width: element.width,
       height: element.height
     });
-    // Element positions are in mm, convert to px for drag calculations (accounting for zoom)
-    const elementXPx = (element.x || 0) * MM_TO_PX * canvasZoom;
-    const elementYPx = (element.y || 0) * MM_TO_PX * canvasZoom;
+    // Calculate offset from mouse to element top-left in screen coordinates
+    // Element position in mm -> px -> scaled by zoom -> offset by pan
+    const elementScreenX = (element.x || 0) * MM_TO_PX * canvasZoom + canvasPan.x;
+    const elementScreenY = (element.y || 0) * MM_TO_PX * canvasZoom + canvasPan.y;
     setDragOffset({
-      x: e.clientX - elementXPx - canvasPan.x,
-      y: e.clientY - elementYPx - canvasPan.y,
+      x: e.clientX - elementScreenX,
+      y: e.clientY - elementScreenY,
     });
   };
 
@@ -374,11 +391,12 @@ const TemplateCanvas = ({
       width: element.width,
       height: element.height
     });
-    // Element dimensions are in mm, convert to px for resize calculations (accounting for zoom)
-    const widthPx = (element.width || 0) * MM_TO_PX * canvasZoom;
-    const heightPx = (element.height || 0) * MM_TO_PX * canvasZoom;
-    const leftPx = (element.x || 0) * MM_TO_PX * canvasZoom;
-    const topPx = (element.y || 0) * MM_TO_PX * canvasZoom;
+    // Store element dimensions in canvas pixels (not screen pixels)
+    // These are base pixel values before zoom is applied
+    const widthPx = (element.width || 0) * MM_TO_PX;
+    const heightPx = (element.height || 0) * MM_TO_PX;
+    const leftPx = (element.x || 0) * MM_TO_PX;
+    const topPx = (element.y || 0) * MM_TO_PX;
     setResizeStart({
       x: e.clientX,
       y: e.clientY,
@@ -394,12 +412,14 @@ const TemplateCanvas = ({
       const element = elements.find(el => el.id === draggingId);
       if (!element) return;
 
-      const newXPx = (e.clientX - dragOffset.x - canvasPan.x) / canvasZoom;
-      const newYPx = (e.clientY - dragOffset.y - canvasPan.y) / canvasZoom;
+      // Convert mouse position to canvas coordinates
+      // Mouse is in screen coords, we need canvas coords (in px)
+      const canvasX = (e.clientX - dragOffset.x - canvasPan.x) / canvasZoom;
+      const canvasY = (e.clientY - dragOffset.y - canvasPan.y) / canvasZoom;
 
-      // Convert px back to mm before saving
-      let newXMm = newXPx / MM_TO_PX;
-      let newYMm = newYPx / MM_TO_PX;
+      // Convert px to mm
+      let newXMm = canvasX / MM_TO_PX;
+      let newYMm = canvasY / MM_TO_PX;
 
       // Apply snap-to-grid
       newXMm = snapToGrid(newXMm);
@@ -421,57 +441,60 @@ const TemplateCanvas = ({
 
       let updates = {};
 
-      // Calculate new dimensions in px first, then convert to mm (accounting for zoom)
-      const minSizePx = MIN_ELEMENT_SIZE_MM * MM_TO_PX * canvasZoom; // Convert min size to px for calculations
+      // Calculate new dimensions - dx/dy are in screen pixels, need to account for zoom
+      const dxCanvas = dx / canvasZoom;
+      const dyCanvas = dy / canvasZoom;
+      const minSizePx = MIN_ELEMENT_SIZE_MM * MM_TO_PX;
+      
       switch (resizeHandle) {
         case 'se': // bottom-right
           updates = {
-            width: Math.max(minSizePx, resizeStart.width + dx) / (MM_TO_PX * canvasZoom),
-            height: Math.max(minSizePx, resizeStart.height + dy) / (MM_TO_PX * canvasZoom),
+            width: Math.max(minSizePx, resizeStart.width + dxCanvas) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height + dyCanvas) / MM_TO_PX,
           };
           break;
         case 'sw': // bottom-left
           updates = {
-            x: (resizeStart.left + dx) / (MM_TO_PX * canvasZoom),
-            width: Math.max(minSizePx, resizeStart.width - dx) / (MM_TO_PX * canvasZoom),
-            height: Math.max(minSizePx, resizeStart.height + dy) / (MM_TO_PX * canvasZoom),
+            x: (resizeStart.left + dxCanvas) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width - dxCanvas) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height + dyCanvas) / MM_TO_PX,
           };
           break;
         case 'ne': // top-right
           updates = {
-            y: (resizeStart.top + dy) / (MM_TO_PX * canvasZoom),
-            width: Math.max(minSizePx, resizeStart.width + dx) / (MM_TO_PX * canvasZoom),
-            height: Math.max(minSizePx, resizeStart.height - dy) / (MM_TO_PX * canvasZoom),
+            y: (resizeStart.top + dyCanvas) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width + dxCanvas) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height - dyCanvas) / MM_TO_PX,
           };
           break;
         case 'nw': // top-left
           updates = {
-            x: (resizeStart.left + dx) / (MM_TO_PX * canvasZoom),
-            y: (resizeStart.top + dy) / (MM_TO_PX * canvasZoom),
-            width: Math.max(minSizePx, resizeStart.width - dx) / (MM_TO_PX * canvasZoom),
-            height: Math.max(minSizePx, resizeStart.height - dy) / (MM_TO_PX * canvasZoom),
+            x: (resizeStart.left + dxCanvas) / MM_TO_PX,
+            y: (resizeStart.top + dyCanvas) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width - dxCanvas) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height - dyCanvas) / MM_TO_PX,
           };
           break;
         case 'n': // top
           updates = {
-            y: (resizeStart.top + dy) / (MM_TO_PX * canvasZoom),
-            height: Math.max(minSizePx, resizeStart.height - dy) / (MM_TO_PX * canvasZoom),
+            y: (resizeStart.top + dyCanvas) / MM_TO_PX,
+            height: Math.max(minSizePx, resizeStart.height - dyCanvas) / MM_TO_PX,
           };
           break;
         case 's': // bottom
           updates = {
-            height: Math.max(minSizePx, resizeStart.height + dy) / (MM_TO_PX * canvasZoom),
+            height: Math.max(minSizePx, resizeStart.height + dyCanvas) / MM_TO_PX,
           };
           break;
         case 'e': // right
           updates = {
-            width: Math.max(minSizePx, resizeStart.width + dx) / (MM_TO_PX * canvasZoom),
+            width: Math.max(minSizePx, resizeStart.width + dxCanvas) / MM_TO_PX,
           };
           break;
         case 'w': // left
           updates = {
-            x: (resizeStart.left + dx) / (MM_TO_PX * canvasZoom),
-            width: Math.max(minSizePx, resizeStart.width - dx) / (MM_TO_PX * canvasZoom),
+            x: (resizeStart.left + dxCanvas) / MM_TO_PX,
+            width: Math.max(minSizePx, resizeStart.width - dxCanvas) / MM_TO_PX,
           };
           break;
       }
@@ -1191,8 +1214,26 @@ const TemplateCanvas = ({
       }}>
         <button
           onClick={() => {
-            setCanvasZoom(1);
-            setCanvasPan({ x: 0, y: 0 });
+            // Fit canvas to view with some padding
+            if (!canvasContainerRef.current) return;
+            const rect = canvasContainerRef.current.getBoundingClientRect();
+            const padding = 40; // 40px padding
+            const availableWidth = rect.width - padding * 2;
+            const availableHeight = rect.height - padding * 2;
+            
+            // Calculate zoom to fit
+            const zoomX = availableWidth / canvasWidth;
+            const zoomY = availableHeight / canvasHeight;
+            const fitZoom = Math.min(zoomX, zoomY, 1); // Don't zoom in beyond 100%
+            
+            // Center the canvas
+            const scaledWidth = canvasWidth * fitZoom;
+            const scaledHeight = canvasHeight * fitZoom;
+            const panX = (rect.width - scaledWidth) / 2;
+            const panY = (rect.height - scaledHeight) / 2;
+            
+            setCanvasZoom(fitZoom);
+            setCanvasPan({ x: panX, y: panY });
           }}
           style={{
             padding: '4px 8px',
@@ -1202,7 +1243,29 @@ const TemplateCanvas = ({
             backgroundColor: 'white',
             cursor: 'pointer',
           }}
-          title="Réinitialiser la vue (100%, centré)"
+          title="Ajuster à la vue"
+        >
+          🔍 Fit
+        </button>
+        <button
+          onClick={() => {
+            // Reset to 100% zoom and center
+            if (!canvasContainerRef.current) return;
+            const rect = canvasContainerRef.current.getBoundingClientRect();
+            const panX = (rect.width - canvasWidth) / 2;
+            const panY = (rect.height - canvasHeight) / 2;
+            setCanvasZoom(1);
+            setCanvasPan({ x: panX, y: panY });
+          }}
+          style={{
+            padding: '4px 8px',
+            fontSize: '12px',
+            border: '1px solid #ddd',
+            borderRadius: '3px',
+            backgroundColor: 'white',
+            cursor: 'pointer',
+          }}
+          title="Réinitialiser à 100% et centrer"
         >
           🔄 Reset
         </button>
@@ -1220,10 +1283,10 @@ const TemplateCanvas = ({
         <div
           style={{
             ...styles.canvas,
-            width: `${canvasWidth * canvasZoom}px`,
-            height: `${canvasHeight * canvasZoom}px`,
+            width: `${canvasWidth}px`,
+            height: `${canvasHeight}px`,
             backgroundColor: pageConfig.backgroundColor || '#FFFFFF',
-            transform: `translate(${canvasPan.x}px, ${canvasPan.y}px)`,
+            transform: `translate(${canvasPan.x}px, ${canvasPan.y}px) scale(${canvasZoom})`,
             transformOrigin: '0 0',
           }}
           onClick={(e) => {
