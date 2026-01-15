@@ -358,6 +358,15 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     }
   };
 
+  // Helper: Snap value to grid (used for grouping)
+  const snapToGrid = (value) => {
+    if (!gridSettings.snapToGrid || !gridSettings.enabled) {
+      return value;
+    }
+    const gridSizeMm = gridSettings.size;
+    return Math.round(value / gridSizeMm) * gridSizeMm;
+  };
+
   const handleGroupElements = () => {
     const toGroup = selectedElements.length > 0 ? selectedElements : (selectedElement ? [selectedElement] : []);
     if (toGroup.length < 2) {
@@ -371,8 +380,9 @@ const TemplateBuilder = ({ template, onSave, onCancel }) => {
     const rights = toGroup.map(el => el.x + el.width);
     const bottoms = toGroup.map(el => el.y + el.height);
 
-    const groupX = Math.min(...xs);
-    const groupY = Math.min(...ys);
+    // Apply snap-to-grid to group position to prevent offset
+    const groupX = snapToGrid(Math.min(...xs));
+    const groupY = snapToGrid(Math.min(...ys));
     const groupWidth = Math.max(...rights) - groupX;
     const groupHeight = Math.max(...bottoms) - groupY;
 
