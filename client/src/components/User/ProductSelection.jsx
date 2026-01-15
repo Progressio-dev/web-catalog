@@ -169,7 +169,7 @@ const styles = {
   container: {
     display: 'flex',
     gap: '20px',
-    height: '600px',
+    height: '800px',
   },
   leftColumn: {
     flex: 2,
