@@ -221,7 +221,7 @@ const styles = {
     display: 'flex',
     gap: '20px',
     marginBottom: '30px',
-    height: '600px',
+    height: '800px',
   },
   leftPanel: {
     flex: '0 0 40%',
