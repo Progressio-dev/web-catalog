@@ -75,10 +75,9 @@ const TemplateCanvas = ({
   React.useEffect(() => {
     if (!canvasContainerRef.current) return;
     const rect = canvasContainerRef.current.getBoundingClientRect();
-    const scaledWidth = canvasWidth * canvasZoom;
-    const scaledHeight = canvasHeight * canvasZoom;
-    const panX = (rect.width - scaledWidth) / 2;
-    const panY = (rect.height - scaledHeight) / 2;
+    // Center at 100% zoom (initial zoom level)
+    const panX = (rect.width - canvasWidth) / 2;
+    const panY = (rect.height - canvasHeight) / 2;
     setCanvasPan({ x: panX, y: panY });
   }, [canvasWidth, canvasHeight]); // Recenter when canvas size changes
 
