@@ -14,8 +14,6 @@ const MAX_GROUP_DEPTH = 10; // Prevent infinite recursion in nested groups
 // Zoom configuration constants
 const MIN_ZOOM = 0.1; // 10% minimum zoom
 const MAX_ZOOM = 5;   // 500% maximum zoom
-const ZOOM_INCREMENT_WHEEL = 1.08;  // 8% zoom increment for mouse wheel (smoother)
-const ZOOM_DECREMENT_WHEEL = 0.92;  // 8% zoom decrement for mouse wheel
 const ZOOM_INCREMENT_BUTTON = 1.2;  // 20% zoom increment for buttons/keyboard
 const ZOOM_DECREMENT_BUTTON = 0.8;  // 20% zoom decrement for buttons/keyboard
 
@@ -49,15 +47,6 @@ const TemplateCanvas = ({
   const [panStart, setPanStart] = React.useState({ x: 0, y: 0 });
   const [isSpacePressed, setIsSpacePressed] = React.useState(false);
   const canvasContainerRef = React.useRef(null);
-  
-  // Use refs for canvasPan and canvasZoom to avoid recreating wheel listener on every change
-  const canvasPanRef = React.useRef(canvasPan);
-  const canvasZoomRef = React.useRef(canvasZoom);
-  React.useEffect(() => {
-    canvasPanRef.current = canvasPan;
-    canvasZoomRef.current = canvasZoom;
-  }, [canvasPan, canvasZoom]);
-
 
   // Get base page dimensions in mm
   let pageWidth =
@@ -86,6 +75,7 @@ const TemplateCanvas = ({
   React.useEffect(() => {
     if (!canvasContainerRef.current) return;
     const rect = canvasContainerRef.current.getBoundingClientRect();
+    // Center at 100% zoom (initial zoom level)
     const panX = (rect.width - canvasWidth) / 2;
     const panY = (rect.height - canvasHeight) / 2;
     setCanvasPan({ x: panX, y: panY });
@@ -162,59 +152,6 @@ const TemplateCanvas = ({
       document.removeEventListener('keyup', handleKeyUp);
     };
   }, [selectedElement, onDeleteElement, isSpacePressed, zoomToViewportCenter, resetZoomAndCenter]);
-
-  // Handle mouse wheel for zoom with improved ergonomics
-  React.useEffect(() => {
-    const handleWheel = (e) => {
-      if (!canvasContainerRef.current) return;
-      
-      // Check if mouse is over the canvas container
-      const rect = canvasContainerRef.current.getBoundingClientRect();
-      const isOverCanvas = (
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom
-      );
-      
-      if (!isOverCanvas) return;
-      
-      e.preventDefault();
-      
-      const delta = -e.deltaY;
-      // Smoother zoom: use smaller increments for better control (8% steps)
-      const zoomFactor = delta > 0 ? ZOOM_INCREMENT_WHEEL : ZOOM_DECREMENT_WHEEL;
-      const currentZoom = canvasZoomRef.current;
-      const currentPan = canvasPanRef.current;
-      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentZoom * zoomFactor));
-      
-      // Calculate mouse position relative to container
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      
-      // Calculate the point on the canvas that's under the mouse (in canvas coordinates)
-      // We need to account for current pan and zoom
-      const canvasPointX = (mouseX - currentPan.x) / currentZoom;
-      const canvasPointY = (mouseY - currentPan.y) / currentZoom;
-      
-      // After zoom, this point should still be under the mouse
-      // newMousePos = canvasPoint * newZoom + newPan
-      // mouseX = canvasPointX * newZoom + newPan.x
-      // newPan.x = mouseX - canvasPointX * newZoom
-      setCanvasPan({
-        x: mouseX - canvasPointX * newZoom,
-        y: mouseY - canvasPointY * newZoom,
-      });
-      
-      setCanvasZoom(newZoom);
-    };
-    
-    const container = canvasContainerRef.current;
-    if (container) {
-      container.addEventListener('wheel', handleWheel, { passive: false });
-      return () => container.removeEventListener('wheel', handleWheel);
-    }
-  }, []); // Empty deps - use refs to avoid recreating listener on every state change
 
   // Handle canvas panning with middle mouse or space+drag
   const handleCanvasMouseDown = (e) => {
