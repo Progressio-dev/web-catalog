@@ -29,8 +29,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/admin/login';
+      // Only redirect to login if accessing admin routes
+      const url = error.config?.url || '';
+      if (url.includes('/templates') && !url.includes('/templates/public')) {
+        // Admin template routes
+        localStorage.removeItem('token');
+        window.location.href = '/admin/login';
+      } else if (url.includes('/logos/') || url.includes('/settings')) {
+        // Other protected routes
+        localStorage.removeItem('token');
+        window.location.href = '/admin/login';
+      }
+      // For public routes, just pass the error through without redirecting
     }
     return Promise.reject(error);
   }
@@ -77,6 +87,7 @@ export const logoAPI = {
 // Template API
 export const templateAPI = {
   getAll: () => api.get('/templates'),
+  getActive: () => api.get('/templates/public'),
   get: (id) => api.get(`/templates/${id}`),
   create: (data) => api.post('/templates', data),
   update: (id, data) => api.put(`/templates/${id}`, data),
