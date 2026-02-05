@@ -1,18 +1,5 @@
 const { dbAll, dbGet, dbRun } = require('../config/database');
 
-// Get active templates (public - no auth required)
-exports.getActiveTemplates = async (req, res) => {
-  try {
-    const templates = await dbAll(
-      'SELECT * FROM templates WHERE is_active = 1 ORDER BY created_at DESC'
-    );
-    res.json(templates);
-  } catch (error) {
-    console.error('Get active templates error:', error);
-    res.status(500).json({ error: 'Failed to fetch active templates' });
-  }
-};
-
 // Get all templates
 exports.getTemplates = async (req, res) => {
   try {
