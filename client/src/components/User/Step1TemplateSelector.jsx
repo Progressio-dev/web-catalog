@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import { templateAPI } from '../../services/api';
 import { toast } from 'react-toastify';
 
 /**
@@ -15,10 +15,8 @@ const Step1TemplateSelector = ({ onTemplateSelected }) => {
 
   const fetchTemplates = async () => {
     try {
-      const response = await api.get('/templates');
-      // Filter only active templates
-      const activeTemplates = response.data.filter(t => t.is_active === 1);
-      setTemplates(activeTemplates);
+      const response = await templateAPI.getActive();
+      setTemplates(response.data);
     } catch (error) {
       console.error('Fetch templates error:', error);
       toast.error('Erreur lors du chargement des templates');
