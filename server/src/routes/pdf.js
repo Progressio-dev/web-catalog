@@ -47,11 +47,11 @@ router.use(globalLimiter);
 // Public routes
 router.post('/upload-csv', upload.single('csv'), pdfController.uploadCsv);
 router.post('/generate-pdf', pdfController.generatePdf);
+router.post('/preview', pdfController.generatePreview);
 
 // Protected routes (admin only)
 router.use(authMiddleware);
 router.post('/templates/analyze-csv', pdfController.analyzeCsv);
-router.post('/preview', pdfController.generatePreview);
 router.get('/product-image/:ref', pdfController.getProductImage);
 
 module.exports = router;
