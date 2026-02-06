@@ -1,9 +1,18 @@
 const { dbAll, dbGet, dbRun } = require('../config/database');
+const { isAuthenticated } = require('../middleware/authMiddleware');
 
 // Get all templates
 exports.getTemplates = async (req, res) => {
   try {
-    const templates = await dbAll('SELECT * FROM templates ORDER BY created_at DESC');
+    const authenticated = isAuthenticated(req);
+    
+    // If authenticated (admin), return all templates
+    // If not authenticated (public user), return only active templates
+    const query = authenticated 
+      ? 'SELECT * FROM templates ORDER BY created_at DESC'
+      : 'SELECT * FROM templates WHERE is_active = 1 ORDER BY created_at DESC';
+    
+    const templates = await dbAll(query);
     res.json(templates);
   } catch (error) {
     console.error('Get templates error:', error);
@@ -15,7 +24,15 @@ exports.getTemplates = async (req, res) => {
 exports.getTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    const template = await dbGet('SELECT * FROM templates WHERE id = ?', [id]);
+    const authenticated = isAuthenticated(req);
+    
+    // If authenticated (admin), allow access to any template
+    // If not authenticated (public user), only allow access to active templates
+    const query = authenticated
+      ? 'SELECT * FROM templates WHERE id = ?'
+      : 'SELECT * FROM templates WHERE id = ? AND is_active = 1';
+    
+    const template = await dbGet(query, [id]);
     
     if (!template) {
       return res.status(404).json({ error: 'Template not found' });

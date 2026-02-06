@@ -3,16 +3,16 @@ const router = express.Router();
 const templateController = require('../controllers/templateController');
 const authMiddleware = require('../middleware/authMiddleware');
 
-// All template routes are protected
-router.use(authMiddleware);
-
+// Public routes - accessible without authentication for PDF generation workflow
 router.get('/', templateController.getTemplates);
 router.get('/:id', templateController.getTemplate);
-router.get('/:id/export', templateController.exportTemplate);
-router.post('/', templateController.createTemplate);
-router.post('/import', templateController.importTemplate);
-router.put('/:id', templateController.updateTemplate);
-router.delete('/:id', templateController.deleteTemplate);
-router.post('/:id/duplicate', templateController.duplicateTemplate);
+
+// Protected routes - require authentication for admin operations
+router.get('/:id/export', authMiddleware, templateController.exportTemplate);
+router.post('/', authMiddleware, templateController.createTemplate);
+router.post('/import', authMiddleware, templateController.importTemplate);
+router.put('/:id', authMiddleware, templateController.updateTemplate);
+router.delete('/:id', authMiddleware, templateController.deleteTemplate);
+router.post('/:id/duplicate', authMiddleware, templateController.duplicateTemplate);
 
 module.exports = router;
