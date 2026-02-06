@@ -30,7 +30,11 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/admin/login';
+      // Only redirect to login if the user is on an admin page
+      // This prevents redirects when public users try to access the home page
+      if (window.location.pathname.startsWith('/admin')) {
+        window.location.href = '/admin/login';
+      }
     }
     return Promise.reject(error);
   }
