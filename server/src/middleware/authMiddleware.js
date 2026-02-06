@@ -1,5 +1,23 @@
 const jwt = require('jsonwebtoken');
 
+/**
+ * Verify if a request has a valid authentication token
+ * Returns true if authenticated, false otherwise
+ */
+const isAuthenticated = (req) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return false;
+    }
+    const token = authHeader.substring(7);
+    jwt.verify(token, process.env.JWT_SECRET);
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
 const authMiddleware = (req, res, next) => {
   try {
     // Get token from header
@@ -30,3 +48,4 @@ const authMiddleware = (req, res, next) => {
 };
 
 module.exports = authMiddleware;
+module.exports.isAuthenticated = isAuthenticated;

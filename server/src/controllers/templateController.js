@@ -1,20 +1,5 @@
 const { dbAll, dbGet, dbRun } = require('../config/database');
-const jwt = require('jsonwebtoken');
-
-// Helper function to check if user is authenticated
-const isAuthenticated = (req) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return false;
-    }
-    const token = authHeader.substring(7);
-    jwt.verify(token, process.env.JWT_SECRET);
-    return true;
-  } catch (error) {
-    return false;
-  }
-};
+const { isAuthenticated } = require('../middleware/authMiddleware');
 
 // Get all templates
 exports.getTemplates = async (req, res) => {
