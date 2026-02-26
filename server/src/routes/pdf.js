@@ -33,21 +33,34 @@ const upload = multer({
   }
 });
 
+// General-purpose limiter applied to all non-PDF routes (e.g. CSV upload, admin endpoints).
+// Defaults: 60 requests per minute. Override via RATE_LIMIT_WINDOW_MS / RATE_LIMIT_MAX env vars.
 const globalLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 60,
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 60,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Trop de requêtes, veuillez réessayer plus tard.' }
 });
 
-// Apply rate limiting to all routes
-router.use(globalLimiter);
+// Dedicated limiter for PDF-generation endpoints (/generate-pdf and /preview).
+// PDF rendering is CPU-intensive but legitimate batch jobs may generate many PDFs in quick
+// succession, so we use a longer window with a much higher ceiling than the global limiter.
+// Defaults: 300 requests per 5 minutes. Override via PDF_RATE_LIMIT_WINDOW_MS / PDF_RATE_LIMIT_MAX.
+const pdfLimiter = rateLimit({
+  windowMs: parseInt(process.env.PDF_RATE_LIMIT_WINDOW_MS, 10) || 5 * 60 * 1000,
+  max: parseInt(process.env.PDF_RATE_LIMIT_MAX, 10) || 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de requêtes de génération PDF, veuillez réessayer dans quelques minutes.' }
+});
 
 // Public routes
-router.post('/upload-csv', upload.single('csv'), pdfController.uploadCsv);
-router.post('/generate-pdf', pdfController.generatePdf);
-router.post('/preview', pdfController.generatePreview);
+// /upload-csv uses the global limiter (file uploads are less frequent and not batch-heavy)
+router.post('/upload-csv', globalLimiter, upload.single('csv'), pdfController.uploadCsv);
+// /generate-pdf and /preview use the more permissive PDF-specific limiter to support batch loads
+router.post('/generate-pdf', pdfLimiter, pdfController.generatePdf);
+router.post('/preview', pdfLimiter, pdfController.generatePreview);
 
 // Protected routes (admin only)
 router.use(authMiddleware);
