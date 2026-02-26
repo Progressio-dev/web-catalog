@@ -1422,7 +1422,7 @@ exports.generatePdf = async (params) => {
     // Ensure images have finished loading (or errored) before rendering the PDF.
     try {
       await page.waitForFunction(
-        () => Array.from(document.images).every((img) => img.complete),
+        () => Array.from(document.images).every((img) => img.complete && img.naturalWidth > 0),
         { timeout: DOWNLOAD_IMAGE_TIMEOUT_MS }
       );
     } catch (error) {
