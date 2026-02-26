@@ -1423,7 +1423,7 @@ exports.generatePdf = async (params) => {
     try {
       await page.waitForFunction(
         () => Array.from(document.images).every((img) => img.complete),
-        { timeout: DOWNLOAD_IMAGE_TIMEOUT_MS }
+        { timeout: DOWNLOAD_IMAGE_TIMEOUT_MS, polling: 100 }
       );
       const failedImages = await page.evaluate(
         () => Array.from(document.images).filter((img) => img.complete && img.naturalWidth === 0).length
