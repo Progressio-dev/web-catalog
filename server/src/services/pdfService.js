@@ -127,16 +127,22 @@ function collectImageElements(elements) {
  * @returns {Promise<Map<string,string>>}
  */
 async function preDownloadProductImages(items, imageElements, productImageBaseUrl) {
-  // Resolve all image URLs for all items across all image elements
-  const resolutionPromises = [];
+  // Resolve all image URLs for all items across all image elements (batch to avoid overload)
+  const resolutionTasks = [];
   for (const item of items) {
     for (const element of imageElements) {
-      resolutionPromises.push(
+      resolutionTasks.push(() =>
         buildProductImageUrl(item, element, { productImageBaseUrl }).catch(() => null)
       );
     }
   }
-  const resolvedUrls = await Promise.all(resolutionPromises);
+
+  const resolvedUrls = [];
+  for (let i = 0; i < resolutionTasks.length; i += DOWNLOAD_CONCURRENCY_LIMIT) {
+    const batch = resolutionTasks.slice(i, i + DOWNLOAD_CONCURRENCY_LIMIT);
+    const batchResults = await Promise.all(batch.map((task) => task()));
+    resolvedUrls.push(...batchResults);
+  }
 
   // Collect unique non-data URLs that need to be fetched/read
   const uniqueUrls = new Set(
@@ -745,7 +751,7 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
         if (options.preloadedImages && options.preloadedImages.has(imageUrl)) {
           finalSrc = options.preloadedImages.get(imageUrl);
         } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-          const dataUrl = await fetchRemoteImageAsDataUrl(imageUrl);
+          const dataUrl = await fetchRemoteImageAsDataUrlWithRetry(imageUrl);
           if (dataUrl) {
             finalSrc = dataUrl;
           } else {
@@ -1410,10 +1416,28 @@ exports.generatePdf = async (params) => {
     await page.setDefaultNavigationTimeout(PDF_NAVIGATION_TIMEOUT_MS);
     await page.setDefaultTimeout(PDF_NAVIGATION_TIMEOUT_MS);
 
-    // Set content and wait for the load event.
-    // Since images are embedded as data URLs, the load event fires quickly.
-    // Any remaining remote-URL images (fallback) will also be waited on here.
-    await page.setContent(html, { waitUntil: 'load', timeout: PDF_NAVIGATION_TIMEOUT_MS });
+    // Set content and wait for DOM readiness (avoid hanging on slow remote images).
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: PDF_NAVIGATION_TIMEOUT_MS });
+
+    // Ensure images have finished loading (or errored) before rendering the PDF.
+    try {
+      await page.waitForFunction(
+        () => Array.from(document.images).every((img) => img.complete),
+        { timeout: DOWNLOAD_IMAGE_TIMEOUT_MS, polling: 100 }
+      );
+      const failedImages = await page.evaluate(
+        () => Array.from(document.images).filter((img) => img.complete && img.naturalWidth === 0).length
+      );
+      if (failedImages > 0) {
+        console.warn(
+          `[PDF image] ${failedImages} image(s) failed to load before PDF rendering (items: ${items.length}, template: ${template?.id ?? 'unknown'}).`
+        );
+      }
+    } catch (error) {
+      console.warn(
+        `[PDF image] Timed out after ${DOWNLOAD_IMAGE_TIMEOUT_MS}ms waiting for images to load (items: ${items.length}, template: ${template?.id ?? 'unknown'}); continuing.`
+      );
+    }
 
     // Configure page format based on template
     const pageConfig = {
