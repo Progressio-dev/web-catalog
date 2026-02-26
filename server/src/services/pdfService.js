@@ -1432,7 +1432,9 @@ exports.generatePdf = async (params) => {
         console.warn(`[PDF image] ${failedImages} image(s) failed to load before PDF rendering.`);
       }
     } catch (error) {
-      console.warn(`[PDF image] Timed out after ${DOWNLOAD_IMAGE_TIMEOUT_MS}ms waiting for images to load; continuing.`);
+      console.warn(
+        `[PDF image] Timed out after ${DOWNLOAD_IMAGE_TIMEOUT_MS}ms waiting for images to load (items: ${items.length}, template: ${template?.id ?? 'unknown'}); continuing.`
+      );
     }
 
     // Configure page format based on template
