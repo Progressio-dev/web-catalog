@@ -1429,7 +1429,9 @@ exports.generatePdf = async (params) => {
         () => Array.from(document.images).filter((img) => img.complete && img.naturalWidth === 0).length
       );
       if (failedImages > 0) {
-        console.warn(`[PDF image] ${failedImages} image(s) failed to load before PDF rendering.`);
+        console.warn(
+          `[PDF image] ${failedImages} image(s) failed to load before PDF rendering (items: ${items.length}, template: ${template?.id ?? 'unknown'}).`
+        );
       }
     } catch (error) {
       console.warn(
