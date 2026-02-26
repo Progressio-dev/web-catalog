@@ -1422,11 +1422,17 @@ exports.generatePdf = async (params) => {
     // Ensure images have finished loading (or errored) before rendering the PDF.
     try {
       await page.waitForFunction(
-        () => Array.from(document.images).every((img) => img.complete && img.naturalWidth > 0),
+        () => Array.from(document.images).every((img) => img.complete),
         { timeout: DOWNLOAD_IMAGE_TIMEOUT_MS }
       );
+      const failedImages = await page.evaluate(
+        () => Array.from(document.images).filter((img) => img.complete && img.naturalWidth === 0).length
+      );
+      if (failedImages > 0) {
+        console.warn(`[PDF image] ${failedImages} image(s) failed to load before PDF rendering.`);
+      }
     } catch (error) {
-      console.warn('[PDF image] Timed out waiting for images to load; continuing.');
+      console.warn(`[PDF image] Timed out after ${DOWNLOAD_IMAGE_TIMEOUT_MS}ms waiting for images to load; continuing.`);
     }
 
     // Configure page format based on template
