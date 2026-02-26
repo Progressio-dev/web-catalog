@@ -1,6 +1,7 @@
 const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const cheerio = require('cheerio');
 const { dbGet } = require('../config/database');
 const { getUploadDir, getGeneratedDir } = require('../config/paths');
@@ -73,6 +74,168 @@ function imageToDataUrl(filePath) {
     console.error(`Error converting image to data URL (${filePath}):`, error.message);
     return null;
   }
+}
+
+/**
+ * Download an image URL to a local temp file on disk.
+ * @param {string} url - Remote image URL
+ * @param {string} destPath - Absolute path where the file should be saved
+ * @returns {Promise<boolean>} true if download succeeded
+ */
+async function downloadImageToTempFile(url, destPath) {
+  const fetchApi = globalThis.fetch;
+  if (typeof fetchApi !== 'function') return false;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const response = await fetchApi(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': DEFAULT_USER_AGENT,
+        Accept: 'image/avif,image/webp,image/*,*/*;q=0.8',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`[PDF pre-download] Failed to fetch image (status ${response.status}): ${url}`);
+      return false;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.toLowerCase().startsWith('image/')) {
+      console.warn(`[PDF pre-download] Blocked non-image content-type (${contentType}): ${url}`);
+      return false;
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > MAX_INLINE_IMAGE_BYTES) {
+      console.warn(`[PDF pre-download] Image too large (${buffer.length} bytes): ${url}`);
+      return false;
+    }
+
+    await fs.promises.writeFile(destPath, buffer);
+    return true;
+  } catch (error) {
+    console.warn(`[PDF pre-download] Error downloading image (${url}):`, error.message);
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Collect all image-type elements from a template element list (recursively handles groups).
+ * @param {Array} elements
+ * @returns {Array} Flat list of image elements
+ */
+function collectImageElements(elements) {
+  const result = [];
+  for (const el of elements || []) {
+    if (el.type === 'image' && el.source !== 'logo') {
+      result.push(el);
+    } else if (el.type === 'group' && el.children) {
+      result.push(...collectImageElements(el.children));
+    }
+  }
+  return result;
+}
+
+/**
+ * Pre-download all product images needed for PDF generation to a temporary directory.
+ * Returns a map of URL → base64 data URL and a cleanup function to remove temp files.
+ *
+ * @param {Array} items - Data rows
+ * @param {Array} imageElements - Image elements from the template
+ * @param {string|null} productImageBaseUrl - Optional base URL from settings
+ * @returns {Promise<{ imageMap: Map<string,string>, cleanup: Function }>}
+ */
+async function preDownloadProductImages(items, imageElements, productImageBaseUrl) {
+  const uniqueSuffix = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  const tempDir = path.join(getUploadDir(), 'temp', `pdf_imgs_${uniqueSuffix}`);
+
+  const cleanup = () => {
+    try {
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    } catch (e) {
+      console.warn('[PDF pre-download] Failed to clean up temp images dir:', e.message);
+    }
+  };
+
+  try {
+    fs.mkdirSync(tempDir, { recursive: true });
+  } catch (e) {
+    console.warn('[PDF pre-download] Failed to create temp dir:', e.message);
+    return { imageMap: new Map(), cleanup: () => {} };
+  }
+
+  // Resolve all image URLs for all items across all image elements
+  const resolutionPromises = [];
+  for (const item of items) {
+    for (const element of imageElements) {
+      resolutionPromises.push(
+        buildProductImageUrl(item, element, { productImageBaseUrl }).catch(() => null)
+      );
+    }
+  }
+  const resolvedUrls = await Promise.all(resolutionPromises);
+
+  // Collect unique downloadable URLs (remote HTTP or local /uploads/)
+  const uniqueUrls = new Set(
+    resolvedUrls.filter(
+      (url) =>
+        url &&
+        !url.startsWith('data:') &&
+        (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/uploads/'))
+    )
+  );
+
+  const imageMap = new Map();
+
+  // Download all unique URLs concurrently
+  const downloadPromises = Array.from(uniqueUrls).map(async (url) => {
+    try {
+      let dataUrl = null;
+
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        // Derive a safe filename using a SHA-256 hash of the URL
+        const safeHash = crypto.createHash('sha256').update(url).digest('hex').slice(0, 40);
+        const extMatch = url.split('?')[0].match(/\.(jpg|jpeg|png|gif|webp|svg)$/i);
+        const ext = extMatch ? extMatch[0] : '.png';
+        const tempFile = path.join(tempDir, `img_${safeHash}${ext}`);
+
+        const downloaded = await downloadImageToTempFile(url, tempFile);
+        if (downloaded) {
+          dataUrl = imageToDataUrl(tempFile);
+        }
+      } else if (url.startsWith('/uploads/')) {
+        const uploadDir = path.resolve(getUploadDir());
+        const relPath = url.replace(/^\/uploads\//, '');
+        const absPath = path.resolve(uploadDir, relPath);
+        // Security: ensure the resolved path is within the upload directory
+        if (absPath.startsWith(uploadDir + path.sep) || absPath === uploadDir) {
+          dataUrl = imageToDataUrl(absPath);
+        } else {
+          console.warn(`[PDF pre-download] Blocked suspicious upload path: ${url}`);
+        }
+      }
+
+      if (dataUrl) {
+        imageMap.set(url, dataUrl);
+      }
+    } catch (e) {
+      console.warn(`[PDF pre-download] Failed to pre-download image (${url}):`, e.message);
+    }
+  });
+
+  await Promise.all(downloadPromises);
+
+  console.log(`[PDF pre-download] Pre-downloaded ${imageMap.size}/${uniqueUrls.size} images`);
+
+  return { imageMap, cleanup };
 }
 
 async function fetchRemoteImageAsDataUrl(url) {
@@ -627,7 +790,10 @@ async function renderElement(element, item, logos, template, useHttpUrls = false
 
       // For PDF generation, inline images as data URLs to avoid blocked or relative requests
       if (!useHttpUrls && !imageUrl.startsWith('data:')) {
-        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        // Use pre-downloaded image if available (avoids redundant network requests)
+        if (options.preloadedImages && options.preloadedImages.has(imageUrl)) {
+          finalSrc = options.preloadedImages.get(imageUrl);
+        } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
           const dataUrl = await fetchRemoteImageAsDataUrl(imageUrl);
           if (dataUrl) {
             finalSrc = dataUrl;
@@ -1254,6 +1420,7 @@ exports.generatePdf = async (params) => {
   const { items, template, logo, allLogos, mappings, visibleFields, options } = params;
 
   let browser;
+  let cleanupTempImages = () => {};
   try {
     // Launch browser
     browser = await puppeteer.launch({
@@ -1295,8 +1462,22 @@ exports.generatePdf = async (params) => {
       productImageBaseUrl = process.env.PRODUCT_IMAGE_BASE_URL;
     }
 
-    // Build HTML
-    const html = await buildHtml(items, template, logo, allLogos, mappings || [], visibleFields, { productImageBaseUrl });
+    // Pre-download all product images to temp directory before HTML generation.
+    // This ensures images are reliably available as local data URLs when Puppeteer
+    // renders the page, avoiding race conditions and network timeouts during rendering.
+    let preloadedImages = new Map();
+    const templateConfig = template ? JSON.parse(template.config) : null;
+    if (templateConfig && templateConfig.elements) {
+      const imageElements = collectImageElements(templateConfig.elements);
+      if (imageElements.length > 0) {
+        const { imageMap, cleanup } = await preDownloadProductImages(items, imageElements, productImageBaseUrl);
+        preloadedImages = imageMap;
+        cleanupTempImages = cleanup;
+      }
+    }
+
+    // Build HTML (passes pre-downloaded images so renderElement uses local data URLs)
+    const html = await buildHtml(items, template, logo, allLogos, mappings || [], visibleFields, { productImageBaseUrl, preloadedImages });
 
     // Set content
     await page.setDefaultNavigationTimeout(PDF_NAVIGATION_TIMEOUT_MS);
@@ -1408,6 +1589,8 @@ exports.generatePdf = async (params) => {
     if (browser) {
       await browser.close();
     }
+    // Clean up temporary downloaded images regardless of success or failure
+    cleanupTempImages();
   }
 };
 
