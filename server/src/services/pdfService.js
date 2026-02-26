@@ -20,7 +20,10 @@ const PAGE_FORMATS = {
 
 const PRODUCT_IMAGE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const productImageCache = new Map();
-const FETCH_TIMEOUT_MS = 5000;
+const FETCH_TIMEOUT_MS = 5000; // timeout for HTML page scraping
+const DOWNLOAD_IMAGE_TIMEOUT_MS = 15000; // longer timeout for image binary downloads
+const DOWNLOAD_MAX_RETRIES = 2; // number of additional retry attempts for failed downloads
+const DOWNLOAD_CONCURRENCY_LIMIT = 10; // max simultaneous image downloads
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
 const PDF_NAVIGATION_TIMEOUT_MS = 60000;
 const PDF_RESOURCE_WAIT_TIMEOUT_MS = 15000;
@@ -78,6 +81,8 @@ function imageToDataUrl(filePath) {
 
 /**
  * Download an image URL to a local temp file on disk.
+ * Makes up to DOWNLOAD_MAX_RETRIES additional retry attempts on failure
+ * (total of DOWNLOAD_MAX_RETRIES + 1 attempts) with exponential backoff.
  * @param {string} url - Remote image URL
  * @param {string} destPath - Absolute path where the file should be saved
  * @returns {Promise<boolean>} true if download succeeded
@@ -86,43 +91,56 @@ async function downloadImageToTempFile(url, destPath) {
   const fetchApi = globalThis.fetch;
   if (typeof fetchApi !== 'function') return false;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  try {
-    const response = await fetchApi(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': DEFAULT_USER_AGENT,
-        Accept: 'image/avif,image/webp,image/*,*/*;q=0.8',
-      },
-    });
-
-    if (!response.ok) {
-      console.warn(`[PDF pre-download] Failed to fetch image (status ${response.status}): ${url}`);
-      return false;
+  const totalAttempts = DOWNLOAD_MAX_RETRIES + 1;
+  for (let attempt = 0; attempt < totalAttempts; attempt++) {
+    if (attempt > 0) {
+      // Exponential backoff: 1s, 2s for retry attempts
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      console.log(`[PDF pre-download] Retry attempt ${attempt}/${DOWNLOAD_MAX_RETRIES} for: ${url}`);
     }
 
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.toLowerCase().startsWith('image/')) {
-      console.warn(`[PDF pre-download] Blocked non-image content-type (${contentType}): ${url}`);
-      return false;
-    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_IMAGE_TIMEOUT_MS);
 
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.length > MAX_INLINE_IMAGE_BYTES) {
-      console.warn(`[PDF pre-download] Image too large (${buffer.length} bytes): ${url}`);
-      return false;
-    }
+    try {
+      const response = await fetchApi(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': DEFAULT_USER_AGENT,
+          Accept: 'image/avif,image/webp,image/*,*/*;q=0.8',
+        },
+      });
 
-    await fs.promises.writeFile(destPath, buffer);
-    return true;
-  } catch (error) {
-    console.warn(`[PDF pre-download] Error downloading image (${url}):`, error.message);
-    return false;
-  } finally {
-    clearTimeout(timeoutId);
+      if (!response.ok) {
+        console.warn(`[PDF pre-download] Failed to fetch image (status ${response.status}): ${url}`);
+        // Don't retry on 4xx errors (client errors); do retry on 5xx (server errors)
+        if (response.status < 500) return false;
+        continue;
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.toLowerCase().startsWith('image/')) {
+        console.warn(`[PDF pre-download] Blocked non-image content-type (${contentType}): ${url}`);
+        return false;
+      }
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+      if (buffer.length > MAX_INLINE_IMAGE_BYTES) {
+        console.warn(`[PDF pre-download] Image too large (${buffer.length} bytes): ${url}`);
+        return false;
+      }
+
+      await fs.promises.writeFile(destPath, buffer);
+      return true;
+    } catch (error) {
+      console.warn(`[PDF pre-download] Error downloading image (attempt ${attempt + 1}/${totalAttempts}) (${url}):`, error.message);
+      if (attempt === totalAttempts - 1) return false;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
+
+  return false;
 }
 
 /**
@@ -195,8 +213,8 @@ async function preDownloadProductImages(items, imageElements, productImageBaseUr
 
   const imageMap = new Map();
 
-  // Download all unique URLs concurrently
-  const downloadPromises = Array.from(uniqueUrls).map(async (url) => {
+  // Helper to process a single URL download
+  const processUrl = async (url) => {
     try {
       let dataUrl = null;
 
@@ -210,6 +228,8 @@ async function preDownloadProductImages(items, imageElements, productImageBaseUr
         const downloaded = await downloadImageToTempFile(url, tempFile);
         if (downloaded) {
           dataUrl = imageToDataUrl(tempFile);
+        } else {
+          console.warn(`[PDF pre-download] Could not download image after retries: ${url}`);
         }
       } else if (url.startsWith('/uploads/')) {
         const uploadDir = path.resolve(getUploadDir());
@@ -229,9 +249,14 @@ async function preDownloadProductImages(items, imageElements, productImageBaseUr
     } catch (e) {
       console.warn(`[PDF pre-download] Failed to pre-download image (${url}):`, e.message);
     }
-  });
+  };
 
-  await Promise.all(downloadPromises);
+  // Download with limited concurrency to avoid overwhelming remote servers
+  const urlList = Array.from(uniqueUrls);
+  for (let i = 0; i < urlList.length; i += DOWNLOAD_CONCURRENCY_LIMIT) {
+    const batch = urlList.slice(i, i + DOWNLOAD_CONCURRENCY_LIMIT);
+    await Promise.all(batch.map(processUrl));
+  }
 
   console.log(`[PDF pre-download] Pre-downloaded ${imageMap.size}/${uniqueUrls.size} images`);
 
@@ -246,7 +271,7 @@ async function fetchRemoteImageAsDataUrl(url) {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_IMAGE_TIMEOUT_MS);
 
   try {
     const response = await fetchApi(url, {
@@ -1546,9 +1571,13 @@ exports.generatePdf = async (params) => {
       
       console.log(`📊 [PDF Image Debug] Image loading status: ${loadedCount} loaded, ${failedCount} failed, ${pendingCount} pending (total: ${images.length})`);
       
-      const allDone = images.length === 0 || (failedCount === 0 && pendingCount === 0);
+      const allDone = images.length === 0 || pendingCount === 0;
       if (allDone) {
-        console.log('✅ [PDF Image Debug] All images loaded successfully!');
+        if (failedCount > 0) {
+          console.warn(`⚠️ [PDF Image Debug] All images processed: ${loadedCount} loaded, ${failedCount} failed.`);
+        } else {
+          console.log('✅ [PDF Image Debug] All images loaded successfully!');
+        }
       }
       return allDone;
     }, { timeout: PDF_RESOURCE_WAIT_TIMEOUT_MS, polling: 500 }).catch(() => {
