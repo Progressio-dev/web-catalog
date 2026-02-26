@@ -33,24 +33,33 @@ const upload = multer({
   }
 });
 
+// Global limiter: applies to non-PDF routes (upload-csv, protected routes)
 const globalLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 60,
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 60,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Trop de requêtes, veuillez réessayer plus tard.' }
 });
 
-// Apply rate limiting to all routes
-router.use(globalLimiter);
+// PDF-specific limiter: more permissive to support bulk PDF generation
+// /upload-csv stays on the global limiter to limit CSV upload frequency
+const pdfLimiter = rateLimit({
+  windowMs: parseInt(process.env.PDF_RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
+  max: parseInt(process.env.PDF_RATE_LIMIT_MAX, 10) || 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de requêtes de génération PDF, veuillez réessayer plus tard.' }
+});
 
 // Public routes
-router.post('/upload-csv', upload.single('csv'), pdfController.uploadCsv);
-router.post('/generate-pdf', pdfController.generatePdf);
-router.post('/preview', pdfController.generatePreview);
+router.post('/upload-csv', globalLimiter, upload.single('csv'), pdfController.uploadCsv);
+router.post('/generate-pdf', pdfLimiter, pdfController.generatePdf);
+router.post('/preview', pdfLimiter, pdfController.generatePreview);
 
 // Protected routes (admin only)
 router.use(authMiddleware);
+router.use(globalLimiter);
 router.post('/templates/analyze-csv', pdfController.analyzeCsv);
 router.get('/product-image/:ref', pdfController.getProductImage);
 
